@@ -1,6 +1,12 @@
 notebooks/
 data/embeddings/
 data/
-train_run/
 __pycache__/
 metrics.txt
+src/utils/ProSST/
+src/utils/SaProt/
+src/utils/Foldseek/
+src/utils/SaProt_650M_AF2/
+wandb/
+checkpoints/
+metrics*
