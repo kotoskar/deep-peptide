@@ -19,12 +19,14 @@ import numpy as np
 import argparse
 # from torch.utils.tensorboard import SummaryWriter
 
+import wandb
+
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 from fairscale.nn.wrap import enable_wrap, wrap
 
 from tqdm import tqdm
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 global_step = 0
 
 
@@ -43,7 +45,6 @@ def get_dataloaders(args: argparse.Namespace, train_partitions: List[int] = [0,1
         test_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=test_partitions, label_type=args.label_type)
 
     print(f'Loaded data. {len(train_set)} train sequences (p.{train_partitions}), {len(valid_set)} validation sequences (p.{valid_partitions}), {len(test_set)} test sequences (p.{test_partitions}).')
-
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, collate_fn=train_set.collate_fn, num_workers=2)
     valid_loader = DataLoader(valid_set, batch_size=args.batch_size, collate_fn=valid_set.collate_fn, num_workers=1)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, collate_fn=valid_set.collate_fn, num_workers=1)
@@ -94,11 +95,16 @@ def get_model(args: argparse.Namespace):
     return model
 
 
-def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False):
+def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False, wandb_run = None):
     global global_step
     global_step = 0
+    device = f'cuda:{args.device}'
     train_loader, valid_loader, test_loader = get_dataloaders(args, train_partitions, valid_partitions, test_partitions)
+    
+    torch.serialization.safe_globals([np._core.multiarray._reconstruct])
 
+    if not os.path.exists(args.checkpoints_dir):
+        os.mkdir(args.checkpoints_dir)
 
     if not is_initiated:
         # when we run in nested CV, we need to do this outside of train() to avoid reinitialization errors.
@@ -129,24 +135,34 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
     # writer = SummaryWriter(args.out_dir)
 
     previous_best = -100000000000
-
+    if wandb_run:
+        wandb_run.watch(model, log="all")
     for epoch in tqdm(range(args.epochs)):
-
-        train_loss, train_probs, train_preds, train_peptides, train_labels = run_dataloader(train_loader, model, optimizer, do_train=True)
+        train_loss, train_probs, train_preds, train_peptides, train_labels = run_dataloader(train_loader, model, optimizer, do_train=True, device=device)
         #train_metrics = compute_crf_metrics(train_probs, train_preds, train_peptides, train_labels)
         #train_metrics = metrics_fn(train_peptides, train_preds)
         #add_dict_to_writer(train_metrics, writer, global_step, prefix='Train')
-
-        valid_loss, valid_probs, valid_preds, valid_peptides, valid_labels = run_dataloader(valid_loader, model, optimizer, do_train=False)
+        if wandb_run:
+            wandb_run.log({'train loss': train_loss})
+        valid_loss, valid_probs, valid_preds, valid_peptides, valid_labels = run_dataloader(valid_loader, model, optimizer, do_train=False, device=device)
         #valid_metrics_old = compute_crf_metrics(valid_probs, valid_preds, valid_peptides, valid_labels)#, organism=valid_loader.dataset.data['organism'])
         #valid_metrics = metrics_fn(valid_peptides, valid_preds, valid_loader.dataset.data['organism'])
         valid_metrics = compute_all_metrics(valid_probs, valid_preds, valid_labels, valid_loader.dataset.names, valid_loader.dataset.data, windows = [3])[0]
         log_metrics(valid_metrics, 'metrics.txt', prefix='Valid')
+        print(f'Metrics: {valid_metrics}')
         # add_dict_to_writer(valid_metrics, writer, global_step, prefix='Valid')
         # writer.add_scalar('Valid/loss', valid_loss, global_step=global_step)
-
+        if wandb_run:
+            wandb_run.log({'val loss': valid_loss})
+            wandb_run.log(valid_metrics)
 
         print(f'Epoch {epoch} completed. Validation loss {valid_loss:.2f}')
+        if ((epoch + 1) % 10 == 0) or epoch == 0:
+            torch.save(model.state_dict(), f'{args.checkpoints_dir}/model_{epoch}.pth')
+            if wandb_run:
+                artifact = wandb.Artifact(f"DeepPeptide_esm3_epoch{epoch}", type="model")
+                artifact.add_file(f'{args.checkpoints_dir}/model_{epoch}.pth')
+                wandb_run.log_artifact(artifact)
 
         stopping_metric = (valid_metrics['f1 peptides'] + valid_metrics['f1 propeptides'])/2#(valid_metrics['F1 +- 3 peptide'] + valid_metrics['F1 +- 3 propeptide'])/2
         if stopping_metric > previous_best:
@@ -162,7 +178,7 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
             # json.dump(valid_metrics, open(os.path.join(args.out_dir, 'valid_metrics_old.json'), 'w'), indent=2)
 
     model.load_state_dict(torch.load(os.path.join(args.out_dir, 'model.pt')))
-    test_loss, test_probs, test_preds, test_peptides, test_labels = run_dataloader(test_loader, model, optimizer, do_train=False)
+    test_loss, test_probs, test_preds, test_peptides, test_labels = run_dataloader(test_loader, model, optimizer, do_train=False, device=device)
     #test_metrics = compute_crf_metrics(test_probs, test_preds, test_peptides, test_labels, organism=test_loader.dataset.data['organism'])
     #test_metrics = metrics_fn(test_peptides, test_preds, test_loader.dataset.data['organism'])
     test_metrics = compute_all_metrics(test_probs, test_preds, test_labels, test_loader.dataset.names, test_loader.dataset.data, windows = [3])[0]
@@ -181,6 +197,7 @@ def run_dataloader(loader: torch.utils.data.DataLoader,
                     model: torch.nn.Module,
                     optimizer: torch.optim.Optimizer,
                     do_train: bool = True,
+                    device = 'cpu'
                 ) -> Tuple[float, List[np.ndarray], List[List[int]], List[np.ndarray], List[np.ndarray]]:
     '''
     Run a dataloader through the model. Collect predicted probabilitities and
@@ -239,6 +256,7 @@ def parse_arguments():
     p = argparse.ArgumentParser()
 
     p.add_argument('--embeddings_dir', type=str, help='Embeddings dir produced by `extract.py`', default = '/data3/fegt_data/embeddings/')
+    p.add_argument('--checkpoints_dir', type=str, help='Dir to save checkpoints', default = './checkpoints')
     p.add_argument('--data_file', '-df', type=str, help='Sequences with Graph-Part headers', default = 'data/uniprot_12052022_cv_5_50/labeled_sequences.csv')
     p.add_argument('--partitioning_file', '-pf', type=str, help='Graph-Part output. Assume train-val-test split.', default = 'data/uniprot_12052022_cv_5_50/graphpart_assignments.csv')
     p.add_argument('--embedding', '-em', type=str, help='Sequence embedding strategy.', default='precomputed')
@@ -247,7 +265,7 @@ def parse_arguments():
     p.add_argument('--model', '-m', type=str, default='lstmcnncrf')
 
     p.add_argument('--out_dir', '-od', type=str, help='name that will be added to the runs folder output', default='train_run')
-    p.add_argument('--epochs', type=int, default=30, help='number of times to iterate through all samples')
+    p.add_argument('--epochs', type=int, default=100, help='number of times to iterate through all samples')
     p.add_argument('--batch_size', '-bs', type=int, default=100, help='samples that will be processed in parallel')
 
     p.add_argument('--lr', type=float, default=1e-4)
@@ -256,6 +274,7 @@ def parse_arguments():
     p.add_argument('--kernel_size', type=int, default=3)
     p.add_argument('--num_filters', type=int, default=32)
     p.add_argument('--hidden_size', type=int, default=64)
+    p.add_argument('--device', type=int, default=0)
 
     p.add_argument('--label_type', type=str, default='multistate_with_propeptides')
 
@@ -268,4 +287,8 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-    train(parse_arguments())
+    run = wandb.init(project="DeepPeptide")
+    config = run.config
+
+    print(f'Running on device: {device}')
+    train(parse_arguments(), wandb=run)
