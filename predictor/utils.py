@@ -49,7 +49,7 @@ class ESMEmbedder():
 
     def __init__(self, esm: str = 'esm2', local_esm_path: str = None):
 
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.device = torch.device('cuda:2') if torch.cuda.is_available() else torch.device('cpu')
 
         if local_esm_path is not None:
            self.esm_model, self.esm_alphabet = pretrained.load_model_and_alphabet(local_esm_path)
@@ -117,7 +117,7 @@ class ESMEmbedder():
 def esm_embed(sequences:List[str], repr_layers: int=33, progress_bar: bool = False, esm: str = 'esm2', local_esm_path: str = None) -> List[torch.Tensor]:
     '''Generate the esm-1b embeddings for a sequence.'''
     
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device('cuda:2') if torch.cuda.is_available() else torch.device('cpu')
 
     if local_esm_path is not None:
         esm_model, esm_alphabet = pretrained.load_model_and_alphabet(local_esm_path)
