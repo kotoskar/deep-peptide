@@ -37,12 +37,12 @@ def log_metrics(metrics: dict, filepath: str, prefix: str = ""):
             f.write(f"{prefix}{key}: {metrics[key]}\n")
 
 
-def get_dataloaders(args: argparse.Namespace, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4]) -> Tuple[DataLoader, DataLoader, DataLoader]:
+def get_dataloaders(args: argparse.Namespace, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], restrict = None, device = None) -> Tuple[DataLoader, DataLoader, DataLoader]:
 
     if args.embedding == 'precomputed':
-        train_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=train_partitions, label_type=args.label_type)
-        valid_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=valid_partitions, label_type=args.label_type)
-        test_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=test_partitions, label_type=args.label_type)
+        train_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=train_partitions, label_type=args.label_type, restrict=restrict, device=device)
+        valid_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=valid_partitions, label_type=args.label_type, restrict=restrict, device=device)
+        test_set = PrecomputedCSVForOverlapCRFDataset(args.embeddings_dir, args.data_file, args.partitioning_file, partitions=test_partitions, label_type=args.label_type, restrict=restrict, device=device)
 
     print(f'Loaded data. {len(train_set)} train sequences (p.{train_partitions}), {len(valid_set)} validation sequences (p.{valid_partitions}), {len(test_set)} test sequences (p.{test_partitions}).')
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, collate_fn=train_set.collate_fn, num_workers=2)
@@ -100,7 +100,13 @@ def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partiti
     global global_step
     global_step = 0
     device = f'cuda:{args.device}'
-    train_loader, valid_loader, test_loader = get_dataloaders(args, train_partitions, valid_partitions, test_partitions)
+
+    if args.homo_only:
+        with open('./data/protein_id_homo.txt', 'r') as f:
+            homo_ids = [line.strip() for line in f if line.strip()]
+        train_loader, valid_loader, test_loader = get_dataloaders(args, train_partitions, valid_partitions, test_partitions, restrict=homo_ids, device=device)
+    else:
+        train_loader, valid_loader, test_loader = get_dataloaders(args, train_partitions, valid_partitions, test_partitions, device=device)
     
     torch.serialization.safe_globals([np._core.multiarray._reconstruct])
 
@@ -249,9 +255,6 @@ def run_dataloader(loader: torch.utils.data.DataLoader,
     return epoch_loss, probs, preds, true, labels
 
 
-
-
-
 def parse_arguments():
     '''Parse arguments, prepare output directory and dump run configuration.'''
     p = argparse.ArgumentParser()
@@ -278,6 +281,7 @@ def parse_arguments():
     p.add_argument('--device', type=int, default=0)
     p.add_argument('--port', type=int, default=12355)
     p.add_argument('--feature_extractor', type=str, default='LSTMCNN')
+    p.add_argument('--homo_only', type=bool, default=False)
 
     p.add_argument('--label_type', type=str, default='multistate_with_propeptides')
 

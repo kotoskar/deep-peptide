@@ -600,7 +600,6 @@ class SequenceTaggingLSTMCNNCRF(nn.Module):
 
 
         logits = self.classifier(features)
-
         viterbi_paths = self.crf.decode(emissions=logits, mask = mask.byte())
         #pad the viterbi paths
         max_pad_len = max([len(x) for x in viterbi_paths])

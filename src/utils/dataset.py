@@ -459,6 +459,8 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         partitioning_file: str, 
         partitions: List[int]=[0], 
         label_type = None, # for compatibility
+        restrict = None,
+        device = None
         ):
         """
         Dataset to hold fasta files with precomputed embeddings.
@@ -476,18 +478,22 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
 
         super().__init__()
         self.embeddings_dir = embeddings_dir
-
+        self.device = device if device is not None else torch.device("cpu")
         data = pd.read_csv(data_file, index_col='protein_id')
         emb_names = [emb[:-3] for emb in os.listdir(embeddings_dir)]
-        
         partitioning = pd.read_csv(partitioning_file, index_col='AC')
         data = data.join(partitioning)
         data = data.loc[data['cluster'].isin(partitions)]
         data = data.fillna('') # empty coordinates would become nan.
         # self.data = data
+        if restrict:
+            data = data[data.index.isin(restrict)]
         self.data = data[data.index.isin(emb_names)]
+        if not len(self.data):
+            self.sequences = data['sequence'].tolist()
+            data['hash'] = make_hashes(self.sequences)
+            self.data = data[data['hash'].isin(emb_names)]
         self.names = self.data.index.tolist() # don't want to bother with pandas indexing here.
-        
         
         # NOTE self.peptides is 1-based indexing straight from UniProt.
 
@@ -556,19 +562,24 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         seq_len = len(self.sequences[index])
         prot_id = self.uniprot_ids[index]
         try:
-            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), weights_only=False)
+            # embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), map_location=self.device, weights_only=False)
+            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), map_location='cpu', weights_only=False)
+            # print(f'EMB LOCATION: {embeddings.device}')
         except FileNotFoundError:
             # raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
             try:
-                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+                # embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location=self.device, weights_only=False)
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location='cpu', weights_only=False)
+                # print(f'EMB LOCATION: {embeddings.device}')
             except FileNotFoundError:
                 raise FileNotFoundError(f'Could not find embedding for {prot_id} in {self.embeddings_dir}.')
             except Exception:
-                index = index -1
+                index = index - 1
                 seq_hash = self.hashes[index]
                 seq_len = len(self.sequences[index])
                 prot_id = self.uniprot_ids[index]
-                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+                # embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location=self.device, weights_only=False)
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location='cpu', weights_only=False)
 
 
         try:
@@ -576,6 +587,8 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         except Exception:
             pass
         
+        #embeddings.to(self.device)
+        #print(f'EMB LOC AFTER: {embeddings.device}')
 
         peptides, propeptides = self.peptides[index]
         peptides, propeptides = self._sample_from_overlapping_peptides(peptides, propeptides)
