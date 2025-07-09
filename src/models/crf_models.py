@@ -6,6 +6,32 @@ import torch.nn as nn
 from .multi_tag_crf import CRF
 from .lstm_cnn import LSTMCNN
 
+from transformers import AutoModelForMaskedLM
+
+
+class CustomTransformerWrapper(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int = 64):
+        super().__init__()
+        transformer = AutoModelForMaskedLM.from_pretrained('Synthyra/ESMplusplus_small', trust_remote_code=True)
+        self.input_dim = input_dim
+        self.hidden_dim = 960
+        self.encoder = transformer.transformer.blocks
+
+        self.input_proj = nn.Linear(input_dim, self.hidden_dim)
+        self.output_proj = nn.Linear(self.hidden_dim, output_dim) if output_dim else nn.Identity()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: [batch_size, seq_len, input_dim] - input embeddings
+        Returns:
+            [batch_size, seq_len, output_dim or hidden_dim]
+        """
+        x = self.input_proj(x)  # Project to 960
+        for block in self.encoder:
+            x, _ = block(x)
+        x = self.output_proj(x)
+        return x
 
 
 class CRFBaseModel(nn.Module):
@@ -115,8 +141,10 @@ class CRFBaseModel(nn.Module):
 
 
     def forward(self, embeddings, mask, targets = None, skip_marginals: bool = False, top_k: int = 1):
-
-        features = self.feature_extractor(embeddings, mask) # (batch_size, seq_len, feature_dim)
+        if isinstance(self.feature_extractor, CustomTransformerWrapper):
+            features = self.feature_extractor(embeddings)
+        else:
+            features = self.feature_extractor(embeddings, mask) # (batch_size, seq_len, feature_dim)
         emissions = self.features_to_emissions(features) # (batch_size, seq_len, num_labels)
         emissions = self._repeat_emissions(emissions) # (batch_size, seq_len, num_states)
         
@@ -245,6 +273,7 @@ class CRFBaseModel(nn.Module):
             return torch.exp(llh_pep[0]).item(), torch.exp(llh_pro[0]).item()
 
 
+
 class LSTMCNNCRF(CRFBaseModel):
     '''LSTM-CNN feature extractor + multistate CRF.'''
     def __init__(
@@ -257,13 +286,17 @@ class LSTMCNNCRF(CRFBaseModel):
         hidden_size: int = 128,
         num_lstm_layers : int = 1,
         num_labels: int = 2, #logits (=emissions) to produce by the NN
-        num_states = 61 # total number of states in the state space model
+        num_states = 61, # total number of states in the state space model
+        feature_extractor = 'LSTMCNN'
         ) -> None:
 
 
         super().__init__(num_labels, num_states)
 
-        self.feature_extractor = LSTMCNN(input_size=input_size, dropout_input=dropout_input, n_filters=n_filters, filter_size=filter_size, hidden_size=hidden_size, num_lstm_layers=1, dropout_conv1=dropout_conv1, n_tissues=0)
+        if feature_extractor == 'LSTMCNN':
+            self.feature_extractor = LSTMCNN(input_size=input_size, dropout_input=dropout_input, n_filters=n_filters, filter_size=filter_size, hidden_size=hidden_size, num_lstm_layers=1, dropout_conv1=dropout_conv1, n_tissues=0)
+        else:
+            self.feature_extractor = CustomTransformerWrapper(input_dim=input_size)
         self.features_to_emissions = nn.Linear(n_filters*2, num_labels)
         self.num_states = num_states
 

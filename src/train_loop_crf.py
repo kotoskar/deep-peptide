@@ -63,6 +63,7 @@ def get_model(args: argparse.Namespace):
             hidden_size=args.hidden_size,
             filter_size=args.kernel_size,
             dropout_conv1=args.conv_dropout,
+            feature_extractor=args.feature_extractor
         )
     elif args.model == 'lstmcnncrf_simple':
         model = SimpleLSTMCNNCRF(
@@ -95,7 +96,7 @@ def get_model(args: argparse.Namespace):
     return model
 
 
-def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False, wandb_run = None):
+def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False, wandb_run = None):
     global global_step
     global_step = 0
     device = f'cuda:{args.device}'
@@ -108,7 +109,7 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
 
     if not is_initiated:
         # when we run in nested CV, we need to do this outside of train() to avoid reinitialization errors.
-        url = "tcp://localhost:12355"
+        url = f"tcp://localhost:{args.port}"
         torch.distributed.init_process_group(backend="nccl", init_method = url, world_size=1, rank=0)
 
 
@@ -127,8 +128,8 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
     # https://github.com/pytorch/pytorch/issues/75943
     model = FSDP(model, **fsdp_params)
 
-
-    model.feature_extractor.biLSTM.flatten_parameters()
+    if args.feature_extractor == 'LSTMCNN':
+        model.feature_extractor.biLSTM.flatten_parameters()
     # model = get_model(args)
     # model.to(device)
     optimizer = Adam(model.parameters(), lr = args.lr)
@@ -148,7 +149,7 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
         #valid_metrics_old = compute_crf_metrics(valid_probs, valid_preds, valid_peptides, valid_labels)#, organism=valid_loader.dataset.data['organism'])
         #valid_metrics = metrics_fn(valid_peptides, valid_preds, valid_loader.dataset.data['organism'])
         valid_metrics = compute_all_metrics(valid_probs, valid_preds, valid_labels, valid_loader.dataset.names, valid_loader.dataset.data, windows = [3])[0]
-        log_metrics(valid_metrics, 'metrics.txt', prefix='Valid')
+        log_metrics(valid_metrics, f'metrics_{model_name}.txt', prefix='Valid')
         print(f'Metrics: {valid_metrics}')
         # add_dict_to_writer(valid_metrics, writer, global_step, prefix='Valid')
         # writer.add_scalar('Valid/loss', valid_loss, global_step=global_step)
@@ -160,7 +161,7 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
         if ((epoch + 1) % 10 == 0) or epoch == 0:
             torch.save(model.state_dict(), f'{args.checkpoints_dir}/model_{epoch}.pth')
             if wandb_run:
-                artifact = wandb.Artifact(f"DeepPeptide_esm3_epoch{epoch}", type="model")
+                artifact = wandb.Artifact(f"DeepPeptide_{model_name}_epoch{epoch}", type="model")
                 artifact.add_file(f'{args.checkpoints_dir}/model_{epoch}.pth')
                 wandb_run.log_artifact(artifact)
 
@@ -182,7 +183,7 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
     #test_metrics = compute_crf_metrics(test_probs, test_preds, test_peptides, test_labels, organism=test_loader.dataset.data['organism'])
     #test_metrics = metrics_fn(test_peptides, test_preds, test_loader.dataset.data['organism'])
     test_metrics = compute_all_metrics(test_probs, test_preds, test_labels, test_loader.dataset.names, test_loader.dataset.data, windows = [3])[0]
-    log_metrics(test_metrics, 'metrics.txt', prefix='Test')
+    log_metrics(test_metrics, f'metrics_{model_name}.txt', prefix='Test')
     # add_dict_to_writer(test_metrics, writer, global_step, prefix='Test')
     # writer.add_scalar('Test/loss', test_loss, global_step=global_step)
     print('Test complete.')
@@ -275,6 +276,8 @@ def parse_arguments():
     p.add_argument('--num_filters', type=int, default=32)
     p.add_argument('--hidden_size', type=int, default=64)
     p.add_argument('--device', type=int, default=0)
+    p.add_argument('--port', type=int, default=12355)
+    p.add_argument('--feature_extractor', type=str, default='LSTMCNN')
 
     p.add_argument('--label_type', type=str, default='multistate_with_propeptides')
 

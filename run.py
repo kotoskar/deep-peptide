@@ -6,14 +6,10 @@ import torch
 import os
 os.environ["WANDB_START_METHOD"] = "thread"
 
-
 start_time = time.time()
-run_name = f"run{int(start_time)}"
-
-run = wandb.init(project="DeepPeptide", name=run_name, reinit=True)
-config = run.config
-# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-# print(f'Running on device: {device}')
-train(parse_arguments(), wandb_run=run)
+model_name = "ESM3"
+run_name = f"DeepPeptide_{model_name}"
+with wandb.init(project="DeepPeptide", name=run_name, reinit=True) as run:
+    train(parse_arguments(), model_name=model_name, wandb_run=run)
 end_time = time.time()
 print(f"Time taken: {end_time - start_time} seconds")

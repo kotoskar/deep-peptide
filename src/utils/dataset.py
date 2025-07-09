@@ -99,6 +99,7 @@ class PrecomputedCSVDataset(Dataset):
         self.sequences = data['sequence'].tolist()
         self.organism = data['organism'].tolist()
         self.hashes = make_hashes(self.sequences)
+        self.uniprot_ids = data.index.tolist()
         
         if 'tissue' in data.columns:
             tissues = data['tissue'].astype('category')
@@ -115,11 +116,17 @@ class PrecomputedCSVDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
 
         seq_hash = self.hashes[index]
-        #print(seq_hash, self.names[index], self.sequences[index])
+        prot_id = self.uniprot_ids[index]
+        # print(seq_hash, self.names[index], self.sequences[index])
         try:
-            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'))
+            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), weights_only=False)
         except FileNotFoundError:
-            raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            # raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            try:
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+            except FileNotFoundError:
+                # print(f'Embedding file not found for {prot_id}.')
+                raise FileNotFoundError(f'Could not find embedding for {prot_id} in {self.embeddings_dir}.')
         label = self.labels[index]
 
         if self.label_type == 'intensity':
@@ -239,6 +246,7 @@ class BLOSUMCSVDataset(Dataset):
 
         self.sequences = data['sequence'].tolist()
         self.organism = data['organism'].tolist()
+        self.uniprot_ids = data.index.tolist()
         self.hashes = make_hashes(self.sequences)
         
         if 'tissue' in data.columns:
@@ -402,6 +410,7 @@ class PrecomputedCSVForCRFDataset(Dataset):
 
         self.sequences = data['sequence'].tolist()
         self.organism = data['organism'].tolist()
+        self.uniprot_ids = data.index.tolist()
         self.hashes = make_hashes(self.sequences)
         
 
@@ -411,10 +420,15 @@ class PrecomputedCSVForCRFDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, int]:
 
         seq_hash = self.hashes[index]
+        prot_id = self.uniprot_ids[index]
         try:
-            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'))
+            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), weights_only=False)
         except FileNotFoundError:
-            raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            # raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            try:
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+            except FileNotFoundError:
+                raise FileNotFoundError(f'Could not find embedding for {prot_id} in {self.embeddings_dir}.')
         
         label = torch.from_numpy(self.labels[index])
         mask = torch.ones(embeddings.shape[0])
@@ -464,35 +478,44 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         self.embeddings_dir = embeddings_dir
 
         data = pd.read_csv(data_file, index_col='protein_id')
+        emb_names = [emb[:-3] for emb in os.listdir(embeddings_dir)]
+        
         partitioning = pd.read_csv(partitioning_file, index_col='AC')
         data = data.join(partitioning)
         data = data.loc[data['cluster'].isin(partitions)]
         data = data.fillna('') # empty coordinates would become nan.
-        self.data = data
-
-        self.names = data.index.tolist() # don't want to bother with pandas indexing here.
-
+        # self.data = data
+        self.data = data[data.index.isin(emb_names)]
+        self.names = self.data.index.tolist() # don't want to bother with pandas indexing here.
+        
         
         # NOTE self.peptides is 1-based indexing straight from UniProt.
-        self.data = data
-        self.names = data.index.tolist()
 
-        coordinate_strings = data['coordinates'].tolist()
-        propeptide_coordinate_strings = data['propeptide_coordinates'].tolist()
+        # print(data.index)
+        # print(emb_names)
+        
+        # print(len(data))
+
+        coordinate_strings = self.data['coordinates'].tolist()
+        propeptide_coordinate_strings = self.data['propeptide_coordinates'].tolist()
         coordinates = [parse_coordinate_string(x, merge_overlaps=False) for x in coordinate_strings]
         propeptide_coordinates = [parse_coordinate_string(x, merge_overlaps=False) for x in propeptide_coordinate_strings]
 
         # NOTE we feed .data to our metrics fn. it expects some more columns.
+        # self.data = data[data.index.isin(emb_names)]
         self.data['true_peptides'] = coordinates
         self.data['true_propeptides'] = propeptide_coordinates
+        # self.names = data.index.tolist()
 
+        
+        
         self.peptides_only = coordinates
         self.propeptides = propeptide_coordinates
         self.peptides = [(x,y) for x,y, in zip(coordinates, propeptide_coordinates)] # data loading works exactly the same. only metrics computation needs to unpack this.
 
-
-        self.sequences = data['sequence'].tolist()
-        self.organism = data['organism'].tolist()
+        self.sequences = self.data['sequence'].tolist()
+        self.organism = self.data['organism'].tolist()
+        self.uniprot_ids = self.data.index.tolist()
         self.hashes = make_hashes(self.sequences)
         
 
@@ -531,10 +554,28 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
 
         seq_hash = self.hashes[index]
         seq_len = len(self.sequences[index])
+        prot_id = self.uniprot_ids[index]
         try:
-            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt')).to(torch.float32) #esm2 comes as half
+            embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), weights_only=False)
         except FileNotFoundError:
-            raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            # raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
+            try:
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+            except FileNotFoundError:
+                raise FileNotFoundError(f'Could not find embedding for {prot_id} in {self.embeddings_dir}.')
+            except Exception:
+                index = index -1
+                seq_hash = self.hashes[index]
+                seq_len = len(self.sequences[index])
+                prot_id = self.uniprot_ids[index]
+                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), weights_only=False)
+
+
+        try:
+            embeddings = torch.from_numpy(embeddings)
+        except Exception:
+            pass
+        
 
         peptides, propeptides = self.peptides[index]
         peptides, propeptides = self._sample_from_overlapping_peptides(peptides, propeptides)
@@ -558,5 +599,6 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True)
 
         labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-
+        # print(embeddings)
+        # print(embeddings.shape)
         return embeddings.permute(0,2,1), masks, labels, peptides
