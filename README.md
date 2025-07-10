@@ -1,7 +1,10 @@
-# DeepPeptide
+# DeepPeptide Advanced
 Predicting cleaved peptides in protein sequences.
+Fork of original DeepPeptide project with major changes: different embedding models added.
 
 [![DOI](https://zenodo.org/badge/593202385.svg)](https://zenodo.org/badge/latestdoi/593202385)
+
+Made by ChemAI team on Summer with AIRI school. 
 
 
 ### Environment
