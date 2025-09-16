@@ -19,7 +19,7 @@ Made by ChemAI team on Summer with AIRI school.
 
 #### Download AF2 structures
 ```bash
-python3 src/utils/download_af2_strucs.py ../data/protein_sequences.fasta ../data/structures/
+python3 src/utils/download_af2_strucs.py data/protein_sequences.fasta data/structures/
 ```
 
 
