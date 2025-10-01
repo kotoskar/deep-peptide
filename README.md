@@ -30,7 +30,7 @@ python3 src/utils/make_embeddings.py data/protein_sequences.fasta data/embedding
 ```
 ##### ProSST structure embeddings
 ```bash
-python3 src/utils/make_embeddings_prosst.py data/structrures
+python3 src/utils/make_embeddings_prosst.py data/structures
 ```
 
 #### Train
