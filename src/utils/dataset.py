@@ -488,11 +488,11 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         # self.data = data
         if restrict:
             data = data[data.index.isin(restrict)]
-        self.data = data[data.index.isin(emb_names)]
+        self.data = data[data.index.isin(emb_names)].copy()
         if not len(self.data):
             self.sequences = data['sequence'].tolist()
             data['hash'] = make_hashes(self.sequences)
-            self.data = data[data['hash'].isin(emb_names)]
+            self.data = data[data['hash'].isin(emb_names)].copy()
         self.names = self.data.index.tolist() # don't want to bother with pandas indexing here.
         
         # NOTE self.peptides is 1-based indexing straight from UniProt.
@@ -509,8 +509,8 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
 
         # NOTE we feed .data to our metrics fn. it expects some more columns.
         # self.data = data[data.index.isin(emb_names)]
-        self.data['true_peptides'] = coordinates
-        self.data['true_propeptides'] = propeptide_coordinates
+        self.data.loc[:, 'true_peptides'] = coordinates
+        self.data.loc[:, 'true_propeptides'] = propeptide_coordinates
         # self.names = data.index.tolist()
 
         

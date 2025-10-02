@@ -19,7 +19,7 @@ import numpy as np
 import argparse
 # from torch.utils.tensorboard import SummaryWriter
 
-import wandb
+# import wandb
 
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 from fairscale.nn.wrap import enable_wrap, wrap
@@ -30,11 +30,15 @@ from tqdm import tqdm
 global_step = 0
 
 
-def log_metrics(metrics: dict, filepath: str, prefix: str = ""):
+def log_metrics(metrics: dict, filepath: str, prefix: str = "", aim_run=None, epoch=None):
     """Log metrics from a dictionary to a file, one per line, sorted by key. Optionally add a prefix to each line."""
     with open(filepath, 'a') as f:
         for key in sorted(metrics.keys()):
             f.write(f"{prefix}{key}: {metrics[key]}\n")
+    # pref_metrics = {f'{prefix}{key}': metrics[key] for key in metrics.keys()}
+    if aim_run:
+        aim_run.track(metrics, epoch=epoch, context={'subset': prefix.lower()})
+
 
 
 def get_dataloaders(args: argparse.Namespace, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], restrict = None, device = None) -> Tuple[DataLoader, DataLoader, DataLoader]:
@@ -96,7 +100,7 @@ def get_model(args: argparse.Namespace):
     return model
 
 
-def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False, wandb_run = None):
+def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], is_initiated: bool = False, run = None):
     global global_step
     global_step = 0
     device = f'cuda:{args.device}'
@@ -108,7 +112,7 @@ def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partiti
     else:
         train_loader, valid_loader, test_loader = get_dataloaders(args, train_partitions, valid_partitions, test_partitions, device=device)
     
-    torch.serialization.safe_globals([np._core.multiarray._reconstruct])
+    # torch.serialization.safe_globals([np._core.multiarray._reconstruct])
 
     if not os.path.exists(args.checkpoints_dir):
         os.mkdir(args.checkpoints_dir)
@@ -142,34 +146,28 @@ def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partiti
     # writer = SummaryWriter(args.out_dir)
 
     previous_best = -100000000000
-    if wandb_run:
-        wandb_run.watch(model, log="all")
+
+    run['hparams'] = {
+        'num_epochs': args.epochs,
+        'batch_size': args.batch_size,
+        'learning_rate': args.lr,
+        'feature_extractor': args.feature_extractor,
+        'homo_only': args.homo_only
+    }
+
     for epoch in tqdm(range(args.epochs)):
         train_loss, train_probs, train_preds, train_peptides, train_labels = run_dataloader(train_loader, model, optimizer, do_train=True, device=device)
-        #train_metrics = compute_crf_metrics(train_probs, train_preds, train_peptides, train_labels)
-        #train_metrics = metrics_fn(train_peptides, train_preds)
-        #add_dict_to_writer(train_metrics, writer, global_step, prefix='Train')
-        if wandb_run:
-            wandb_run.log({'train loss': train_loss})
         valid_loss, valid_probs, valid_preds, valid_peptides, valid_labels = run_dataloader(valid_loader, model, optimizer, do_train=False, device=device)
-        #valid_metrics_old = compute_crf_metrics(valid_probs, valid_preds, valid_peptides, valid_labels)#, organism=valid_loader.dataset.data['organism'])
-        #valid_metrics = metrics_fn(valid_peptides, valid_preds, valid_loader.dataset.data['organism'])
         valid_metrics = compute_all_metrics(valid_probs, valid_preds, valid_labels, valid_loader.dataset.names, valid_loader.dataset.data, windows = [3])[0]
-        log_metrics(valid_metrics, f'metrics_{model_name}.txt', prefix='Valid')
+        log_metrics(valid_metrics, f'metrics_{model_name}.txt', prefix='Valid', aim_run=run, epoch=epoch)
         print(f'Metrics: {valid_metrics}')
-        # add_dict_to_writer(valid_metrics, writer, global_step, prefix='Valid')
-        # writer.add_scalar('Valid/loss', valid_loss, global_step=global_step)
-        if wandb_run:
-            wandb_run.log({'val loss': valid_loss})
-            wandb_run.log(valid_metrics)
-
         print(f'Epoch {epoch} completed. Validation loss {valid_loss:.2f}')
         if ((epoch + 1) % 10 == 0) or epoch == 0:
             torch.save(model.state_dict(), f'{args.checkpoints_dir}/model_{epoch}.pth')
-            if wandb_run:
-                artifact = wandb.Artifact(f"DeepPeptide_{model_name}_epoch{epoch}", type="model")
-                artifact.add_file(f'{args.checkpoints_dir}/model_{epoch}.pth')
-                wandb_run.log_artifact(artifact)
+            # if wandb_run:
+            #     artifact = wandb.Artifact(f"DeepPeptide_{model_name}_epoch{epoch}", type="model")
+            #     artifact.add_file(f'{args.checkpoints_dir}/model_{epoch}.pth')
+            #     wandb_run.log_artifact(artifact)
 
         stopping_metric = (valid_metrics['f1 peptides'] + valid_metrics['f1 propeptides'])/2#(valid_metrics['F1 +- 3 peptide'] + valid_metrics['F1 +- 3 propeptide'])/2
         if stopping_metric > previous_best:
@@ -189,7 +187,7 @@ def train(args, model_name, train_partitions: List[int] = [0,1,2], valid_partiti
     #test_metrics = compute_crf_metrics(test_probs, test_preds, test_peptides, test_labels, organism=test_loader.dataset.data['organism'])
     #test_metrics = metrics_fn(test_peptides, test_preds, test_loader.dataset.data['organism'])
     test_metrics = compute_all_metrics(test_probs, test_preds, test_labels, test_loader.dataset.names, test_loader.dataset.data, windows = [3])[0]
-    log_metrics(test_metrics, f'metrics_{model_name}.txt', prefix='Test')
+    log_metrics(test_metrics, run, f'metrics_{model_name}.txt', prefix='Test', aim_run=run, epoch=epoch)
     # add_dict_to_writer(test_metrics, writer, global_step, prefix='Test')
     # writer.add_scalar('Test/loss', test_loss, global_step=global_step)
     print('Test complete.')
