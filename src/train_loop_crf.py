@@ -24,6 +24,7 @@ from src.models import (
 )
 from src.utils.dataset import PrecomputedCSVForOverlapCRFDataset, OnlineESMCSVForOverlapCRFDataset
 from src.utils.manuscript_metrics import compute_all_metrics
+from src.utils.seeding import set_seed, seeded_generator, seed_worker
 from torch.optim import Adam
 import torch
 import numpy as np
@@ -100,10 +101,12 @@ def get_dataloaders(args: argparse.Namespace, train_partitions: List[int] = [0,1
             batch_size=args.batch_size,
             shuffle=True,
             collate_fn=train_set.collate_fn,
-            num_workers=0,        
+            num_workers=0,
             pin_memory=False,
-            persistent_workers=False,  
+            persistent_workers=False,
             prefetch_factor=None,
+            generator=seeded_generator(getattr(args, 'seed', 42)),  # fixed shuffle order
+            worker_init_fn=seed_worker,
         )
     
     valid_loader = DataLoader(
@@ -495,9 +498,11 @@ def train_homo_loo(args, run = None):
     return None
 
 def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[int] = [3], test_partitions: List[int] = [4], run = None):
-    
+
+    # Reproducibility: seed everything before any model / dataloader is built.
+    set_seed(getattr(args, 'seed', 42))
+
     # FOR 4060TI 16GB
-    torch.backends.cudnn.benchmark = False
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
     torch.set_float32_matmul_precision("high")
@@ -835,6 +840,7 @@ def parse_arguments():
     p.add_argument('--amp_dtype', type=str, default='bf16', choices=['fp16','bf16'])
 
     p.add_argument('--label_type', type=str, default='multistate_with_propeptides')
+    p.add_argument('--seed', type=int, default=42, help='Global RNG seed for reproducibility (python/numpy/torch + deterministic algorithms).')
 
     args = p.parse_args()
 

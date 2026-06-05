@@ -30,6 +30,7 @@ import numpy as np
 import torch
 
 from src.train_loop_crf import get_dataloaders, get_model, run_dataloader
+from src.utils.seeding import set_seed
 from src.utils.manuscript_metrics import (
     PEPTIDE_END_STATE,
     PEPTIDE_START_STATE,
@@ -178,6 +179,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="_infer",
         help="Suffix for generated files inside each run dir.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Global RNG seed for deterministic, reproducible inference.",
     )
     return parser.parse_args()
 
@@ -496,8 +503,11 @@ def evaluate_single_run(
     args = load_run_args(run_dir, cli_args)
     device = resolve_device(args.device, cli_args.device)
 
+    # Reproducibility: deterministic eval so fresh inference is repeatable
+    # (see memory note deeppeptide-infer-divergence). seed comes from CLI.
+    set_seed(getattr(cli_args, "seed", 42))
+
     if device.startswith("cuda"):
-        torch.backends.cudnn.benchmark = False
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
