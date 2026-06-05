@@ -1,5 +1,11 @@
 # Canonical Experiment Tables
 
+> ⚠️ **Metric note:** the P/R/F1 here come from the shipped ±3 peptide-finding
+> metric, which has a variable-shadowing bug (inherited from upstream DeepPeptide)
+> that understates recall by ~2–4 pp. These values are kept for comparability with
+> the paper. See `analysis/dual_reporting_metrics.md` for the original-vs-corrected
+> table, and `texs/error_analysis/report.md` §4 for the bug writeup.
+
 > **Methodology:** P/R/F1 values are authoritative train-time values from `test_metrics.json` (or `homo_test_metrics.json` for Table 3). MCC and AUC are from fresh inference (`test_metrics_infer.json` / `homo_test_metrics_infer.json`), accepted only when `drift = max|train-time P/R/F1 − fresh P/R/F1|` ≤ 0.015. Hard overrides (always N/A): `esm2_bond_loss_soft_l005_w5_tau15` and `esm2_aho_transition_bias_sparse_trainable_zero` (model unrecoverable for infer). Values rounded to 3 decimal places. **Bold** = best in column (N/A cells excluded).
 
 ## Table 1: Architectural Changes (TEST set)
