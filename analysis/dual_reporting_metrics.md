@@ -12,6 +12,18 @@ matcher. We report both rather than overwriting. Source:
 (`esm2_aho_transition_bias_sparse`, `esm2_bond_loss_soft`) are not re-inferable
 (model classes gone) — corrected = N/A, keep their published orig values.
 
+**Why no MCC/AUC here:** the bug lives only in the *segment-level* peptide-finding
+metric (the ±3 start/stop matching of whole peptides). MCC and AUC are computed at
+the **residue level** (per-position positive/negative), a completely separate code
+path that never calls `get_counts_for_protein` — so they are **unaffected by the
+bug** and identical to the values in `analysis/canonical_metrics.md` (where MCC/AUC
+already come from fresh inference). They are therefore not duplicated here; this
+table only shows the metric that actually changes (F1/precision/recall).
+
+Column legend: `F1 all` / `recall all` = the peptide-finding F1 / recall pooled
+over peptides+propeptides; `recall pep Δ` / `recall propep Δ` = the corr−orig recall
+gap for peptides and propeptides separately.
+
 | run | F1 all orig | F1 all corr | recall all orig | recall all corr | Δrec all | recall pep Δ | recall propep Δ |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | esm2_aho_emission_fusion | 0.615 | 0.631 | 0.558 | 0.579 | +0.021 | +0.031 | +0.013 |

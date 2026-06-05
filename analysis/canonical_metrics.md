@@ -10,7 +10,7 @@
 
 ## Table 1: Architectural Changes (TEST set)
 
-| Model | All |  |  |  |  | Peptides |  |  |  |  | Propeptides |  |  |  |  |
+| Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | ESM2 (baseline) | 0.607 | 0.640 | **0.578** | **0.752** | 0.717 | 0.604 | 0.649 | **0.565** | **0.696** | 0.860 | 0.610 | 0.633 | **0.588** | **0.746** | 0.509 |
 | ESM2 + telescopic CRF | 0.596 | 0.632 | 0.564 | 0.731 | 0.719 | **0.614** | 0.675 | 0.562 | 0.679 | **0.904** | 0.582 | 0.600 | 0.566 | 0.706 | 0.610 |
@@ -31,7 +31,7 @@
 
 ## Table 2: Embedding Generators (TEST set)
 
-| Model | All |  |  |  |  | Peptides |  |  |  |  | Propeptides |  |  |  |  |
+| Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | ESM2 | 0.607 | 0.640 | 0.578 | 0.752 | 0.717 | **0.604** | 0.649 | 0.565 | 0.696 | 0.860 | 0.610 | 0.633 | **0.588** | **0.746** | 0.509 |
 | ESM2+residue features (ESM2+ below) | 0.566 | 0.652 | 0.500 | 0.726 | 0.732 | 0.551 | 0.636 | 0.486 | 0.648 | 0.852 | 0.579 | 0.666 | 0.512 | 0.732 | 0.547 |
@@ -66,7 +66,7 @@
 
 ## Table 3: Homo sapiens Only (HOMO test set)
 
-| Model | All |  |  |  |  | Peptides |  |  |  |  | Propeptides |  |  |  |  |
+| Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | ESM2 | 0.460 | 0.487 | 0.435 | 0.697 | 0.608 | 0.339 | 0.370 | 0.312 | 0.576 | 0.884 | 0.529 | 0.551 | 0.509 | 0.743 | 0.428 |
 | ESM2+residue features (ESM2+ below) | **0.514** | 0.638 | 0.430 | N/A | N/A | 0.385 | **0.526** | 0.303 | N/A | N/A | 0.587 | 0.692 | 0.509 | N/A | N/A |
