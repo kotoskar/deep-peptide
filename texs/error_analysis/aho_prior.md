@@ -59,14 +59,49 @@ why the AHO rows never beat the ESM2 baseline in the architecture table. The pri
 helps precisely where it is least needed (peptides already easy because they resemble
 training data) and not where the model actually struggles (novel peptides).
 
+## Refinement: stratify by whether the dictionary actually FIRES
+
+Bucketing by similarity-to-train is a proxy — the dictionary also holds ~41k
+external AMP-DB peptides, so a peptide novel to train can still be a dictionary hit.
+The precise version reads the precomputed AHO feature `pep.inside` and buckets each
+true test peptide by whether the dictionary actually overlaps it (and by hit source:
+train uniprot vs external-DB-only). Reproduce: `analysis/aho_dictionary_hit.py` →
+`dictionary_hit_summary.md`.
+
+![AHO uplift by dictionary hit](figures/aho_uplift_by_dict_hit.png)
+
+| bucket | n | baseline recall | AHO recall | uplift |
+|---|---:|---:|---:|---:|
+| dictionary HIT | 226 | 0.668 | 0.748 | **+0.080** |
+| ↳ train hit | 19 | 0.842 | 0.895 | +0.053 |
+| ↳ external-only hit | 207 | 0.652 | 0.734 | **+0.082** |
+| NO hit | 915 | 0.570 | 0.516 | **−0.055** |
+
+This sharpens — and partly **revises** — the picture:
+
+1. **The dictionary covers ~20% of test peptides** (226/1141), and that coverage is
+   overwhelmingly from the **external** databases (207 external-only vs 19 train) —
+   the AMP DBs genuinely reach peptides that train does not.
+2. **Where the dictionary fires, AHO genuinely helps (+0.08 recall), and it helps
+   external-DB-only hits just as much as train hits** (+0.082 vs +0.053). So AHO is
+   *not* merely retrieving memorized train peptides — it successfully exploits the
+   external AMP knowledge base on peptides that are novel to the training set. That
+   is a real, useful signal.
+3. **But the dictionary is silent on the other ~80%, and there the AHO channel is
+   net noise (−0.055)** — the AHO-trained models do slightly worse than the pure
+   baseline on peptides with no hit.
+4. **Net:** the gain on the covered 20% cannot outweigh the penalty on the
+   uncovered 80%, so overall AHO ≤ baseline. The bottleneck is **dictionary
+   coverage**, not the idea itself.
+
+**Actionable implication.** A *gated* AHO (apply the prior only where `pep.inside>0`,
+leave no-hit residues untouched) would keep the +0.08 on hits and remove the −0.055
+penalty on misses — a concrete follow-up experiment. Broader/again-larger AMP
+dictionaries would raise the 20% coverage.
+
 ## Caveats
 
-- The bucket is similarity to **train**; the AHO dictionary also contains external
-  AMP databases, so a few "novel-to-train" peptides could still be dictionary hits.
-  The fact that AHO nonetheless *hurts* the novel bucket suggests external-DB
-  coverage of these segments is low and the AHO channel mostly adds noise there.
-- The similar bucket is small (n=73 unique peptides), so its +0.055 uplift is
-  noisy; the robust, direction-consistent signal across all three AHO models is the
-  novel-bucket non-benefit and the overall non-improvement.
+- `train hit` n=19 is tiny (noisy); the solid signal is external-only (n=207) and
+  no-hit (n=915), consistent across all three AHO models.
 - Peptides only (the AHO dictionaries are dominated by mature peptides, not
   propeptides), matching how the prior was designed.
