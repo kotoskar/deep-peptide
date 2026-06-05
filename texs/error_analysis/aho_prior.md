@@ -1,11 +1,21 @@
 # Does the AHO prior help — and on which peptides?
 
 **What AHO is.** An Aho–Corasick dictionary of known bioactive peptides; the model
-receives a per-residue feature marking substrings already known to be active. The
-dictionary is built **fold-aware** — only train folds (0,1,2) plus external AMP
-databases (DRAMP, AMPdb, dbAMP, APD6) — so test peptides are not in it directly.
+receives a per-residue feature marking substrings already known to be active.
 Supervisor's concern: part of any gain may be **retrieval of known peptides**
 rather than genuine generalization.
+
+**Dictionary actually used** (from `data/embeddings_aho_train012/config.json` +
+`summary.json`, the embedding these AHO models trained on) — **49,286 peptides**:
+- `dbamp_3` 25,271 · `dramp_general` 8,801 · `dramp_natural` 4,211 ·
+  `apd6_natural` 2,872 — four external AMP databases, included **in full**;
+- `uniprot_2022` 8,131 — **train folds (0,1,2) only** (of 13,510), so held-out test
+  peptides are NOT in the dictionary (no exact-match leakage).
+
+So this is the strong/"sad" version of the question: the dictionary is not merely
+"train peptides" — it contains ~41k external bioactive peptides from the major AMP
+databases. The result below therefore says AHO fails on novel peptides **despite** a
+49k-entry external dictionary, not because the dictionary was too small.
 
 **Method.** Run TEST inference for a no-AHO baseline (`train_run_esm2`) and three
 AHO-fusion models (`esm2_aho_emission_fusion`, `_h32`, `esm2_aho_mid_fusion_raw_m64`).
