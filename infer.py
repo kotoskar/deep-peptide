@@ -540,7 +540,22 @@ def evaluate_single_run(
             bilstm.flatten_parameters()
 
     state_dict = load_state_dict(model_path, device)
-    model.load_state_dict(state_dict, strict=True)
+    try:
+        model.load_state_dict(state_dict, strict=True)
+    except RuntimeError:
+        # Some older checkpoints predate non-learned buffers that were added to
+        # the model later (e.g. aho_label_scales, a no-op identity buffer).
+        # Allow strict=False ONLY when every missing key is a buffer (never a
+        # learned parameter) and nothing is unexpected, so we never silently
+        # init-fill a trained weight.
+        buffer_names = set(dict(model.named_buffers()).keys())
+        incompat = model.load_state_dict(state_dict, strict=False)
+        missing = set(incompat.missing_keys)
+        unexpected = set(incompat.unexpected_keys)
+        if not missing.issubset(buffer_names) or unexpected:
+            raise
+        print(f"[warn] {run_dir.name}: loaded with strict=False; "
+              f"defaulted missing buffer(s) {sorted(missing)}")
     model.eval()
 
     test_loss, test_metrics, test_outputs = evaluate_loader(test_loader, model, device, args)

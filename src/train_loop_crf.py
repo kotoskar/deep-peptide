@@ -20,6 +20,7 @@ from src.models import (
     LSTMCNNCRFAhoStateBias,
     LSTMCNNCRFBoundaryBondLoss,
     LSTMCNNCRFESM2LoRA,
+    LSTMCNNCRFTelescopingSegmental,
 )
 from src.utils.dataset import PrecomputedCSVForOverlapCRFDataset, OnlineESMCSVForOverlapCRFDataset
 from src.utils.manuscript_metrics import compute_all_metrics
@@ -410,6 +411,24 @@ def get_model(args: argparse.Namespace):
             filter_size=args.kernel_size,
             dropout_input=args.dropout,
             dropout_conv1=args.conv_dropout,
+        )
+    elif args.model == 'lstmcnncrf_telescoping_segmental':
+        model = LSTMCNNCRFTelescopingSegmental(
+            input_size=args.embedding_dim,
+            dropout_input=args.dropout,
+            n_filters=args.num_filters,
+            filter_size=args.kernel_size,
+            dropout_conv1=args.conv_dropout,
+            hidden_size=args.hidden_size,
+            num_labels=3 if 'with_propeptides' in args.label_type else 2,
+            feature_extractor=args.feature_extractor,
+            segmental_max_len=getattr(args, 'segmental_max_len', 50),
+            segmental_min_len=getattr(args, 'segmental_min_len', 1),
+            position_score_mode=getattr(args, 'position_score_mode', 'neg_abs'),
+            position_score_tau=getattr(args, 'position_score_tau', 0.25),
+            position_score_scale=getattr(args, 'position_score_scale', 0.25),
+            relative_position_loss_lambda=getattr(args, 'relative_position_loss_lambda', 0.0),
+            allow_same_label_segments=not getattr(args, 'disallow_same_label_segments', False),
         )
     else:
         raise NotImplementedError(args.model)

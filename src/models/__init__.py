@@ -15,5 +15,6 @@ from .crf_models import (
     LSTMCNNCRFAhoStateBias,
     LSTMCNNCRFBoundaryBondLoss,
     LSTMCNNCRFESM2LoRA,
+    LSTMCNNCRFTelescopingSegmental,
 )
 from .crf_models import LSTMCNNCRF, SimpleLSTMCNNCRF, SelfAttentionCRF
