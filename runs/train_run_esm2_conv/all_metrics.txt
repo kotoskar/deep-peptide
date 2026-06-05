@@ -1,0 +1,2020 @@
+Epoch: 0
+Valid/f1 all: 0.006322861094645326
+Valid/f1 peptides: 0.009122006841505131
+Valid/f1 propeptides: 0
+Valid/precision all: 0.006628003314001657
+Valid/precision peptides: 0.006628003314001657
+Valid/precision propeptides: 0
+Valid/recall all: 0.006044578768417076
+Valid/recall peptides: 0.014625228519195612
+Valid/recall propeptides: 0.0
+Epoch: 0
+Valid (Homo)/f1 all: 0.017094017094017096
+Valid (Homo)/f1 peptides: 0.03448275862068965
+Valid (Homo)/f1 propeptides: 0
+Valid (Homo)/precision all: 0.04
+Valid (Homo)/precision peptides: 0.04
+Valid (Homo)/precision propeptides: 0
+Valid (Homo)/recall all: 0.010869565217391304
+Valid (Homo)/recall peptides: 0.030303030303030304
+Valid (Homo)/recall propeptides: 0.0
+Epoch: 1
+Valid/f1 all: 0.026239323765078804
+Valid/f1 peptides: 0.02680303297478399
+Valid/f1 propeptides: 0.02567710165318326
+Valid/precision all: 0.016941444002274018
+Valid/precision peptides: 0.016302016302016303
+Valid/precision propeptides: 0.01766271473505928
+Valid/recall all: 0.05815768930523029
+Valid/recall peptides: 0.0753221010901883
+Valid/recall propeptides: 0.04700579523502898
+Epoch: 1
+Valid (Homo)/f1 all: 0.04013377926421405
+Valid (Homo)/f1 peptides: 0.08
+Valid (Homo)/f1 propeptides: 0.020100502512562814
+Valid (Homo)/precision all: 0.027649769585253458
+Valid (Homo)/precision peptides: 0.05194805194805195
+Valid (Homo)/precision propeptides: 0.014285714285714285
+Valid (Homo)/recall all: 0.07317073170731707
+Valid (Homo)/recall peptides: 0.17391304347826086
+Valid (Homo)/recall propeptides: 0.03389830508474576
+Epoch: 2
+Valid/f1 all: 0.10648196009511011
+Valid/f1 peptides: 0.029726300525647995
+Valid/f1 propeptides: 0.20837343599615013
+Valid/precision all: 0.07252499647936911
+Valid/precision peptides: 0.01823032458870609
+Valid/precision propeptides: 0.16634652324241261
+Valid/recall all: 0.20023328149300154
+Valid/recall peptides: 0.08047105004906771
+Valid/recall propeptides: 0.278815196394076
+Epoch: 2
+Valid (Homo)/f1 all: 0.08130081300813008
+Valid (Homo)/f1 peptides: 0.04494382022471911
+Valid (Homo)/f1 propeptides: 0.1019108280254777
+Valid (Homo)/precision all: 0.06097560975609756
+Valid (Homo)/precision peptides: 0.030303030303030304
+Valid (Homo)/precision propeptides: 0.08163265306122448
+Valid (Homo)/recall all: 0.12195121951219512
+Valid (Homo)/recall peptides: 0.08695652173913043
+Valid (Homo)/recall propeptides: 0.13559322033898305
+Epoch: 3
+Valid/f1 all: 0.14139389890892898
+Valid/f1 peptides: 0.0273972602739726
+Valid/f1 propeptides: 0.29183884297520657
+Valid/precision all: 0.0989867498051442
+Valid/precision peptides: 0.01708984375
+Valid/precision propeptides: 0.2436394997843898
+Valid/recall all: 0.24737047136735488
+Valid/recall peptides: 0.06903353057199212
+Valid/recall propeptides: 0.36381197681905986
+Epoch: 3
+Valid (Homo)/f1 all: 0.10389610389610389
+Valid (Homo)/f1 peptides: 0.07594936708860758
+Valid (Homo)/f1 propeptides: 0.11842105263157894
+Valid (Homo)/precision all: 0.08053691275167785
+Valid (Homo)/precision peptides: 0.05357142857142857
+Valid (Homo)/precision propeptides: 0.0967741935483871
+Valid (Homo)/recall all: 0.14634146341463414
+Valid (Homo)/recall peptides: 0.13043478260869565
+Valid (Homo)/recall propeptides: 0.15254237288135594
+Epoch: 4
+Valid/f1 all: 0.13035541715881027
+Valid/f1 peptides: 0.030303030303030304
+Valid/f1 propeptides: 0.2819335673778018
+Valid/precision all: 0.08985936343449297
+Valid/precision peptides: 0.018458197611292075
+Valid/precision propeptides: 0.2427906976744186
+Valid/recall all: 0.23729476153244722
+Valid/recall peptides: 0.0845771144278607
+Valid/recall propeptides: 0.33612363168061815
+Epoch: 4
+Valid (Homo)/f1 all: 0.09090909090909091
+Valid (Homo)/f1 peptides: 0.037383177570093455
+Valid (Homo)/f1 propeptides: 0.13333333333333333
+Valid (Homo)/precision all: 0.06832298136645963
+Valid (Homo)/precision peptides: 0.023529411764705882
+Valid (Homo)/precision propeptides: 0.11842105263157894
+Valid (Homo)/recall all: 0.13580246913580246
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.15254237288135594
+Epoch: 5
+Valid/f1 all: 0.13255690841715193
+Valid/f1 peptides: 0.03521258662670912
+Valid/f1 propeptides: 0.25913297613248903
+Valid/precision all: 0.09094871422344908
+Valid/precision peptides: 0.021709006928406466
+Valid/precision propeptides: 0.20838229533881708
+Valid/recall all: 0.24434035909445745
+Valid/recall peptides: 0.0931615460852329
+Valid/recall propeptides: 0.3425627817128139
+Epoch: 5
+Valid (Homo)/f1 all: 0.09848484848484848
+Valid (Homo)/f1 peptides: 0.03636363636363636
+Valid (Homo)/f1 propeptides: 0.14285714285714288
+Valid (Homo)/precision all: 0.07103825136612021
+Valid (Homo)/precision peptides: 0.022727272727272728
+Valid (Homo)/precision propeptides: 0.11578947368421053
+Valid (Homo)/recall all: 0.16049382716049382
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.1864406779661017
+Epoch: 6
+Valid/f1 all: 0.1361552028218695
+Valid/f1 peptides: 0.036939313984168866
+Valid/f1 propeptides: 0.2727780883174958
+Valid/precision all: 0.09739276703111859
+Valid/precision peptides: 0.023214285714285715
+Valid/precision propeptides: 0.24098765432098765
+Valid/recall all: 0.226171875
+Valid/recall peptides: 0.0903674280039722
+Valid/recall propeptides: 0.3142305215711526
+Epoch: 6
+Valid (Homo)/f1 all: 0.11818181818181817
+Valid (Homo)/f1 peptides: 0.0625
+Valid (Homo)/f1 propeptides: 0.16129032258064516
+Valid (Homo)/precision all: 0.09352517985611511
+Valid (Homo)/precision peptides: 0.04054054054054054
+Valid (Homo)/precision propeptides: 0.15384615384615385
+Valid (Homo)/recall all: 0.16049382716049382
+Valid (Homo)/recall peptides: 0.13636363636363635
+Valid (Homo)/recall propeptides: 0.1694915254237288
+Epoch: 7
+Valid/f1 all: 0.13568521031207598
+Valid/f1 peptides: 0.03391093720886902
+Valid/f1 propeptides: 0.2927811331607708
+Valid/precision all: 0.09548058561425843
+Valid/precision peptides: 0.020871559633027524
+Valid/precision propeptides: 0.26455301455301455
+Valid/recall all: 0.234375
+Valid/recall peptides: 0.0903674280039722
+Valid/recall propeptides: 0.3277527366387637
+Epoch: 7
+Valid (Homo)/f1 all: 0.11818181818181817
+Valid (Homo)/f1 peptides: 0.0631578947368421
+Valid (Homo)/f1 propeptides: 0.16
+Valid (Homo)/precision all: 0.09352517985611511
+Valid (Homo)/precision peptides: 0.0410958904109589
+Valid (Homo)/precision propeptides: 0.15151515151515152
+Valid (Homo)/recall all: 0.16049382716049382
+Valid (Homo)/recall peptides: 0.13636363636363635
+Valid (Homo)/recall propeptides: 0.1694915254237288
+Epoch: 8
+Valid/f1 all: 0.1342963548132265
+Valid/f1 peptides: 0.03329506314580941
+Valid/f1 propeptides: 0.2795048143053645
+Valid/precision all: 0.0945645263827082
+Valid/precision peptides: 0.020665083135391924
+Valid/precision propeptides: 0.24399615754082613
+Valid/recall all: 0.23160762942779292
+Valid/recall peptides: 0.08562992125984252
+Valid/recall propeptides: 0.3271088216355441
+Epoch: 8
+Valid (Homo)/f1 all: 0.1181434599156118
+Valid (Homo)/f1 peptides: 0.056603773584905655
+Valid (Homo)/f1 propeptides: 0.16793893129770993
+Valid (Homo)/precision all: 0.08974358974358974
+Valid (Homo)/precision peptides: 0.03571428571428571
+Valid (Homo)/precision propeptides: 0.1527777777777778
+Valid (Homo)/recall all: 0.1728395061728395
+Valid (Homo)/recall peptides: 0.13636363636363635
+Valid (Homo)/recall propeptides: 0.1864406779661017
+Epoch: 9
+Valid/f1 all: 0.13506270768571121
+Valid/f1 peptides: 0.025064377682403435
+Valid/f1 propeptides: 0.3179223744292238
+Valid/precision all: 0.09308510638297872
+Valid/precision peptides: 0.01515466057712269
+Valid/precision propeptides: 0.28549461814454125
+Valid/recall all: 0.24599765716516986
+Valid/recall peptides: 0.07242063492063493
+Valid/recall propeptides: 0.3586606567933033
+Epoch: 9
+Valid (Homo)/f1 all: 0.12056737588652482
+Valid (Homo)/f1 peptides: 0.04477611940298507
+Valid (Homo)/f1 propeptides: 0.1891891891891892
+Valid (Homo)/precision all: 0.0845771144278607
+Valid (Homo)/precision peptides: 0.026785714285714284
+Valid (Homo)/precision propeptides: 0.15730337078651685
+Valid (Homo)/recall all: 0.20987654320987653
+Valid (Homo)/recall peptides: 0.13636363636363635
+Valid (Homo)/recall propeptides: 0.23728813559322035
+Epoch: 10
+Valid/f1 all: 0.13547802446760307
+Valid/f1 peptides: 0.029540918163672655
+Valid/f1 propeptides: 0.2744892613933997
+Valid/precision all: 0.09542045635870433
+Valid/precision peptides: 0.018490754622688656
+Valid/precision propeptides: 0.23134657836644593
+Valid/recall all: 0.233502538071066
+Valid/recall peptides: 0.07341269841269842
+Valid/recall propeptides: 0.3374114616870573
+Epoch: 10
+Valid (Homo)/f1 all: 0.12403100775193798
+Valid (Homo)/f1 peptides: 0.034482758620689655
+Valid (Homo)/f1 propeptides: 0.19718309859154928
+Valid (Homo)/precision all: 0.0903954802259887
+Valid (Homo)/precision peptides: 0.02127659574468085
+Valid (Homo)/precision propeptides: 0.1686746987951807
+Valid (Homo)/recall all: 0.19753086419753085
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.23728813559322035
+Epoch: 11
+Valid/f1 all: 0.1378791677112058
+Valid/f1 peptides: 0.03204985533051413
+Valid/f1 propeptides: 0.27431850789096124
+Valid/precision all: 0.10156971375807941
+Valid/precision peptides: 0.020671834625323
+Valid/precision propeptides: 0.2474120082815735
+Valid/recall all: 0.2145922746781116
+Valid/recall peptides: 0.07128712871287128
+Valid/recall propeptides: 0.30779137153895686
+Epoch: 11
+Valid (Homo)/f1 all: 0.1278538812785388
+Valid (Homo)/f1 peptides: 0.061855670103092786
+Valid (Homo)/f1 propeptides: 0.18032786885245902
+Valid (Homo)/precision all: 0.10218978102189781
+Valid (Homo)/precision peptides: 0.04054054054054054
+Valid (Homo)/precision propeptides: 0.1746031746031746
+Valid (Homo)/recall all: 0.17073170731707318
+Valid (Homo)/recall peptides: 0.13043478260869565
+Valid (Homo)/recall propeptides: 0.1864406779661017
+Epoch: 12
+Valid/f1 all: 0.12873717090584558
+Valid/f1 peptides: 0.0284377923292797
+Valid/f1 propeptides: 0.27687206410610665
+Valid/precision all: 0.0901280849734458
+Valid/precision peptides: 0.017527675276752766
+Valid/precision propeptides: 0.2424975798644724
+Valid/recall all: 0.22521467603434817
+Valid/recall peptides: 0.0753221010901883
+Valid/recall propeptides: 0.32260141661300706
+Epoch: 12
+Valid (Homo)/f1 all: 0.14393939393939395
+Valid (Homo)/f1 peptides: 0.04838709677419355
+Valid (Homo)/f1 propeptides: 0.22857142857142856
+Valid (Homo)/precision all: 0.1043956043956044
+Valid (Homo)/precision peptides: 0.0297029702970297
+Valid (Homo)/precision propeptides: 0.19753086419753085
+Valid (Homo)/recall all: 0.23170731707317074
+Valid (Homo)/recall peptides: 0.13043478260869565
+Valid (Homo)/recall propeptides: 0.2711864406779661
+Epoch: 13
+Valid/f1 all: 0.147363573566659
+Valid/f1 peptides: 0.030983118172790466
+Valid/f1 propeptides: 0.30786086003834573
+Valid/precision all: 0.10448979591836735
+Valid/precision peptides: 0.01936925751179538
+Valid/precision propeptides: 0.2678741658722593
+Valid/recall all: 0.2499023818820773
+Valid/recall peptides: 0.07738095238095238
+Valid/recall propeptides: 0.36188023180940115
+Epoch: 13
+Valid (Homo)/f1 all: 0.12549019607843137
+Valid (Homo)/f1 peptides: 0.03669724770642202
+Valid (Homo)/f1 propeptides: 0.1917808219178082
+Valid (Homo)/precision all: 0.09195402298850575
+Valid (Homo)/precision peptides: 0.022988505747126436
+Valid (Homo)/precision propeptides: 0.16091954022988506
+Valid (Homo)/recall all: 0.19753086419753085
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.23728813559322035
+Epoch: 14
+Valid/f1 all: 0.17915774446823698
+Valid/f1 peptides: 0.027828191167574106
+Valid/f1 propeptides: 0.3968668407310705
+Valid/precision all: 0.12885010266940453
+Valid/precision peptides: 0.017468354430379748
+Valid/precision propeptides: 0.3611404435058078
+Valid/recall all: 0.2939110070257611
+Valid/recall peptides: 0.06838453914767097
+Valid/recall propeptides: 0.44043786220218933
+Epoch: 14
+Valid (Homo)/f1 all: 0.13584905660377358
+Valid (Homo)/f1 peptides: 0.014925373134328358
+Valid (Homo)/f1 propeptides: 0.25954198473282447
+Valid (Homo)/precision all: 0.09782608695652174
+Valid (Homo)/precision peptides: 0.008928571428571428
+Valid (Homo)/precision propeptides: 0.2361111111111111
+Valid (Homo)/recall all: 0.2222222222222222
+Valid (Homo)/recall peptides: 0.045454545454545456
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 15
+Valid/f1 all: 0.18781906684079308
+Valid/f1 peptides: 0.026049766718507
+Valid/f1 propeptides: 0.4415980481854224
+Valid/precision all: 0.134959904453165
+Valid/precision peptides: 0.016203143893591294
+Valid/precision propeptides: 0.41946697566628044
+Valid/recall all: 0.3087431693989071
+Valid/recall peptides: 0.06640237859266601
+Valid/recall propeptides: 0.46619446233097234
+Epoch: 15
+Valid (Homo)/f1 all: 0.18410041841004185
+Valid (Homo)/f1 peptides: 0.034482758620689655
+Valid (Homo)/f1 propeptides: 0.3252032520325203
+Valid (Homo)/precision all: 0.13924050632911392
+Valid (Homo)/precision peptides: 0.02127659574468085
+Valid (Homo)/precision propeptides: 0.3125
+Valid (Homo)/recall all: 0.2716049382716049
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3389830508474576
+Epoch: 16
+Valid/f1 all: 0.2156959526159921
+Valid/f1 peptides: 0.03679206283588259
+Valid/f1 propeptides: 0.48071034905082666
+Valid/precision all: 0.15781870711448176
+Valid/precision peptides: 0.02326797385620915
+Valid/precision propeptides: 0.45826036193812025
+Valid/recall all: 0.34060795011691347
+Valid/recall peptides: 0.087857847976308
+Valid/recall propeptides: 0.5054732775273664
+Epoch: 16
+Valid (Homo)/f1 all: 0.2026431718061674
+Valid (Homo)/f1 peptides: 0.0425531914893617
+Valid (Homo)/f1 propeptides: 0.3157894736842105
+Valid (Homo)/precision all: 0.15753424657534246
+Valid (Homo)/precision peptides: 0.027777777777777776
+Valid (Homo)/precision propeptides: 0.28378378378378377
+Valid (Homo)/recall all: 0.2839506172839506
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 17
+Valid/f1 all: 0.2085397499410238
+Valid/f1 peptides: 0.028081123244929798
+Valid/f1 propeptides: 0.48477611940298504
+Valid/precision all: 0.14940003380091263
+Valid/precision peptides: 0.017475728155339806
+Valid/precision propeptides: 0.4518642181413467
+Valid/recall all: 0.34517766497461927
+Valid/recall peptides: 0.07142857142857142
+Valid/recall propeptides: 0.5228589826142949
+Epoch: 17
+Valid (Homo)/f1 all: 0.1797752808988764
+Valid (Homo)/f1 peptides: 0.014705882352941176
+Valid (Homo)/f1 propeptides: 0.3511450381679389
+Valid (Homo)/precision all: 0.12903225806451613
+Valid (Homo)/precision peptides: 0.008771929824561403
+Valid (Homo)/precision propeptides: 0.3194444444444444
+Valid (Homo)/recall all: 0.2962962962962963
+Valid (Homo)/recall peptides: 0.045454545454545456
+Valid (Homo)/recall propeptides: 0.3898305084745763
+Epoch: 18
+Valid/f1 all: 0.21537024059799115
+Valid/f1 peptides: 0.0290519877675841
+Valid/f1 propeptides: 0.5081081081081081
+Valid/precision all: 0.15366666666666667
+Valid/precision peptides: 0.017996684821217145
+Valid/precision propeptides: 0.47608328643781656
+Valid/recall all: 0.3598750975800156
+Valid/recall peptides: 0.0753221010901883
+Valid/recall propeptides: 0.5447520927237605
+Epoch: 18
+Valid (Homo)/f1 all: 0.1561338289962825
+Valid (Homo)/f1 peptides: 0.02962962962962963
+Valid (Homo)/f1 propeptides: 0.2835820895522388
+Valid (Homo)/precision all: 0.11170212765957446
+Valid (Homo)/precision peptides: 0.017699115044247787
+Valid (Homo)/precision propeptides: 0.25333333333333335
+Valid (Homo)/recall all: 0.25925925925925924
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3220338983050847
+Epoch: 19
+Valid/f1 all: 0.21991404011461319
+Valid/f1 peptides: 0.03728679095596986
+Valid/f1 propeptides: 0.4961007798440312
+Valid/precision all: 0.1583834909716251
+Valid/precision peptides: 0.02330193356470005
+Valid/precision propeptides: 0.4643458731049972
+Valid/recall all: 0.3596251464271769
+Valid/recall peptides: 0.09325396825396826
+Valid/recall propeptides: 0.5325177076625885
+Epoch: 19
+Valid (Homo)/f1 all: 0.17573221757322177
+Valid (Homo)/f1 peptides: 0.04
+Valid (Homo)/f1 propeptides: 0.27338129496402874
+Valid (Homo)/precision all: 0.13291139240506328
+Valid (Homo)/precision peptides: 0.02564102564102564
+Valid (Homo)/precision propeptides: 0.2375
+Valid (Homo)/recall all: 0.25925925925925924
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3220338983050847
+Epoch: 20
+Valid/f1 all: 0.24509803921568626
+Valid/f1 peptides: 0.0539592015792937
+Valid/f1 propeptides: 0.518008142812402
+Valid/precision all: 0.1835039598222909
+Valid/precision peptides: 0.03477523324851569
+Valid/precision propeptides: 0.5042682926829268
+Valid/recall all: 0.36893203883495146
+Valid/recall peptides: 0.12035225048923678
+Valid/recall propeptides: 0.5325177076625885
+Epoch: 20
+Valid (Homo)/f1 all: 0.20087336244541484
+Valid (Homo)/f1 peptides: 0.038834951456310676
+Valid (Homo)/f1 propeptides: 0.33333333333333337
+Valid (Homo)/precision all: 0.1554054054054054
+Valid (Homo)/precision peptides: 0.024691358024691357
+Valid (Homo)/precision propeptides: 0.31343283582089554
+Valid (Homo)/recall all: 0.2839506172839506
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 21
+Valid/f1 all: 0.2785464890728049
+Valid/f1 peptides: 0.06109890109890111
+Valid/f1 propeptides: 0.5893810870248194
+Valid/precision all: 0.20823665893271462
+Valid/precision peptides: 0.039243365330321855
+Valid/precision propeptides: 0.5754601226993865
+Valid/recall all: 0.4205388520109332
+Valid/recall peptides: 0.1378968253968254
+Valid/recall propeptides: 0.6039922730199614
+Epoch: 21
+Valid (Homo)/f1 all: 0.20909090909090908
+Valid (Homo)/f1 peptides: 0.04081632653061224
+Valid (Homo)/f1 propeptides: 0.3442622950819672
+Valid (Homo)/precision all: 0.16546762589928057
+Valid (Homo)/precision peptides: 0.02631578947368421
+Valid (Homo)/precision propeptides: 0.3333333333333333
+Valid (Homo)/recall all: 0.2839506172839506
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 22
+Valid/f1 all: 0.3181947204087425
+Valid/f1 peptides: 0.09011857707509882
+Valid/f1 propeptides: 0.5844355582897571
+Valid/precision all: 0.24994425863991082
+Valid/precision peptides: 0.061356297093649086
+Valid/precision propeptides: 0.5594817432273262
+Valid/recall all: 0.43771964076532605
+Valid/recall peptides: 0.16964285714285715
+Valid/recall propeptides: 0.6117192530585963
+Epoch: 22
+Valid (Homo)/f1 all: 0.1795918367346939
+Valid (Homo)/f1 peptides: 0.018018018018018018
+Valid (Homo)/f1 propeptides: 0.3134328358208956
+Valid (Homo)/precision all: 0.13414634146341464
+Valid (Homo)/precision peptides: 0.011235955056179775
+Valid (Homo)/precision propeptides: 0.28
+Valid (Homo)/recall all: 0.2716049382716049
+Valid (Homo)/recall peptides: 0.045454545454545456
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 23
+Valid/f1 all: 0.34284846644397204
+Valid/f1 peptides: 0.12363636363636363
+Valid/f1 propeptides: 0.603121886416473
+Valid/precision all: 0.28056660039761433
+Valid/precision peptides: 0.08612626656274357
+Valid/precision propeptides: 0.6227709190672154
+Valid/recall all: 0.44067135050741607
+Valid/recall peptides: 0.21902874132804756
+Valid/recall propeptides: 0.5846748229233741
+Epoch: 23
+Valid (Homo)/f1 all: 0.24210526315789474
+Valid (Homo)/f1 peptides: 0.05128205128205128
+Valid (Homo)/f1 propeptides: 0.375
+Valid (Homo)/precision all: 0.21296296296296297
+Valid (Homo)/precision peptides: 0.03636363636363636
+Valid (Homo)/precision propeptides: 0.39622641509433965
+Valid (Homo)/recall all: 0.2804878048780488
+Valid (Homo)/recall peptides: 0.08695652173913043
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 24
+Valid/f1 all: 0.4113724113724114
+Valid/f1 peptides: 0.18893678160919541
+Valid/f1 propeptides: 0.6238846945778997
+Valid/precision all: 0.3737244897959184
+Valid/precision peptides: 0.14816901408450706
+Valid/precision propeptides: 0.6678912564290963
+Valid/recall all: 0.4574551131928181
+Valid/recall peptides: 0.2606541129831516
+Valid/recall propeptides: 0.5853187379265937
+Epoch: 24
+Valid (Homo)/f1 all: 0.2747252747252747
+Valid (Homo)/f1 peptides: 0.05405405405405406
+Valid (Homo)/f1 propeptides: 0.42592592592592593
+Valid (Homo)/precision all: 0.24752475247524752
+Valid (Homo)/precision peptides: 0.038461538461538464
+Valid (Homo)/precision propeptides: 0.46938775510204084
+Valid (Homo)/recall all: 0.30864197530864196
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.3898305084745763
+Epoch: 25
+Valid/f1 all: 0.40316338549554104
+Valid/f1 peptides: 0.19345955249569707
+Valid/f1 propeptides: 0.6036866359447005
+Valid/precision all: 0.35506816834617666
+Valid/precision peptides: 0.14875595553202753
+Valid/precision propeptides: 0.6175084175084176
+Valid/recall all: 0.46632931101595954
+Valid/recall peptides: 0.2765748031496063
+Valid/recall propeptides: 0.5904700579523503
+Epoch: 25
+Valid (Homo)/f1 all: 0.28272251308900526
+Valid (Homo)/f1 peptides: 0.05405405405405406
+Valid (Homo)/f1 propeptides: 0.4273504273504273
+Valid (Homo)/precision all: 0.24545454545454545
+Valid (Homo)/precision peptides: 0.038461538461538464
+Valid (Homo)/precision propeptides: 0.43103448275862066
+Valid (Homo)/recall all: 0.3333333333333333
+Valid (Homo)/recall peptides: 0.09090909090909091
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 26
+Valid/f1 all: 0.4513365318711446
+Valid/f1 peptides: 0.24049707602339176
+Valid/f1 propeptides: 0.6374193548387097
+Valid/precision all: 0.40238313473877174
+Valid/precision peptides: 0.19061413673232908
+Valid/precision propeptides: 0.6386554621848739
+Valid/recall all: 0.5138509559110418
+Valid/recall peptides: 0.32574257425742575
+Valid/recall propeptides: 0.6361880231809401
+Epoch: 26
+Valid (Homo)/f1 all: 0.3163841807909604
+Valid (Homo)/f1 peptides: 0.13333333333333333
+Valid (Homo)/f1 propeptides: 0.4102564102564103
+Valid (Homo)/precision all: 0.2916666666666667
+Valid (Homo)/precision peptides: 0.10526315789473684
+Valid (Homo)/precision propeptides: 0.41379310344827586
+Valid (Homo)/recall all: 0.345679012345679
+Valid (Homo)/recall peptides: 0.18181818181818182
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 27
+Valid/f1 all: 0.462298682284041
+Valid/f1 peptides: 0.2676973148901546
+Valid/f1 propeptides: 0.6214238190286094
+Valid/precision all: 0.43596824301001036
+Valid/precision peptides: 0.2278393351800554
+Valid/precision propeptides: 0.64280798348245
+Valid/recall all: 0.49201402415270745
+Valid/recall peptides: 0.3244575936883629
+Valid/recall propeptides: 0.601416613007083
+Epoch: 27
+Valid (Homo)/f1 all: 0.29508196721311475
+Valid (Homo)/f1 peptides: 0.1142857142857143
+Valid (Homo)/f1 propeptides: 0.40707964601769914
+Valid (Homo)/precision all: 0.2647058823529412
+Valid (Homo)/precision peptides: 0.08333333333333333
+Valid (Homo)/precision propeptides: 0.42592592592592593
+Valid (Homo)/recall all: 0.3333333333333333
+Valid (Homo)/recall peptides: 0.18181818181818182
+Valid (Homo)/recall propeptides: 0.3898305084745763
+Epoch: 28
+Valid/f1 all: 0.4687227740024395
+Valid/f1 peptides: 0.26686656671664166
+Valid/f1 propeptides: 0.6440898730055357
+Valid/precision all: 0.4248262792166772
+Valid/precision peptides: 0.21601941747572814
+Valid/precision propeptides: 0.6515151515151515
+Valid/recall all: 0.5227361057131753
+Valid/recall peptides: 0.34901960784313724
+Valid/recall propeptides: 0.6368319381841597
+Epoch: 28
+Valid (Homo)/f1 all: 0.3352601156069364
+Valid (Homo)/f1 peptides: 0.18518518518518515
+Valid (Homo)/f1 propeptides: 0.40336134453781514
+Valid (Homo)/precision all: 0.31521739130434784
+Valid (Homo)/precision peptides: 0.15625
+Valid (Homo)/precision propeptides: 0.4
+Valid (Homo)/recall all: 0.35802469135802467
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 29
+Valid/f1 all: 0.4715848923402754
+Valid/f1 peptides: 0.2922772277227723
+Valid/f1 propeptides: 0.6157274753263291
+Valid/precision all: 0.43180349062702006
+Valid/precision peptides: 0.2450199203187251
+Valid/precision propeptides: 0.6089420654911839
+Valid/recall all: 0.5194401244167963
+Valid/recall peptides: 0.3621197252208047
+Valid/recall propeptides: 0.6226658081133291
+Epoch: 29
+Valid (Homo)/f1 all: 0.3548387096774193
+Valid (Homo)/f1 peptides: 0.19999999999999998
+Valid (Homo)/f1 propeptides: 0.4285714285714286
+Valid (Homo)/precision all: 0.3142857142857143
+Valid (Homo)/precision peptides: 0.15789473684210525
+Valid (Homo)/precision propeptides: 0.40298507462686567
+Valid (Homo)/recall all: 0.4074074074074074
+Valid (Homo)/recall peptides: 0.2727272727272727
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 30
+Valid/f1 all: 0.4677930306230201
+Valid/f1 peptides: 0.28745247148288977
+Valid/f1 propeptides: 0.6231979030144167
+Valid/precision all: 0.4269193703822679
+Valid/precision peptides: 0.2342007434944238
+Valid/precision propeptides: 0.6344229486324217
+Valid/recall all: 0.5173219151420786
+Valid/recall peptides: 0.3720472440944882
+Valid/recall propeptides: 0.6123631680618158
+Epoch: 30
+Valid (Homo)/f1 all: 0.34831460674157305
+Valid (Homo)/f1 peptides: 0.16666666666666666
+Valid (Homo)/f1 propeptides: 0.4406779661016949
+Valid (Homo)/precision all: 0.31958762886597936
+Valid (Homo)/precision peptides: 0.13157894736842105
+Valid (Homo)/precision propeptides: 0.4406779661016949
+Valid (Homo)/recall all: 0.38271604938271603
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4406779661016949
+Epoch: 31
+Valid/f1 all: 0.4780094620641318
+Valid/f1 peptides: 0.28378884312991387
+Valid/f1 propeptides: 0.6488801054018446
+Valid/precision all: 0.4346717654557043
+Valid/precision peptides: 0.22900302114803625
+Valid/precision propeptides: 0.6641942009440324
+Valid/recall all: 0.5309458933437136
+Valid/recall peptides: 0.37303149606299213
+Valid/recall propeptides: 0.6342562781712814
+Epoch: 31
+Valid (Homo)/f1 all: 0.327683615819209
+Valid (Homo)/f1 peptides: 0.17543859649122806
+Valid (Homo)/f1 propeptides: 0.4
+Valid (Homo)/precision all: 0.3020833333333333
+Valid (Homo)/precision peptides: 0.14285714285714285
+Valid (Homo)/precision propeptides: 0.39344262295081966
+Valid (Homo)/recall all: 0.35802469135802467
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 32
+Valid/f1 all: 0.4744576627011896
+Valid/f1 peptides: 0.26999999999999996
+Valid/f1 propeptides: 0.6450577663671374
+Valid/precision all: 0.43088655862726405
+Valid/precision peptides: 0.2215909090909091
+Valid/precision propeptides: 0.6429942418426103
+Valid/recall all: 0.5278318411833398
+Valid/recall peptides: 0.3454724409448819
+Valid/recall propeptides: 0.6471345782356729
+Epoch: 32
+Valid (Homo)/f1 all: 0.3351351351351351
+Valid (Homo)/f1 peptides: 0.20338983050847456
+Valid (Homo)/f1 propeptides: 0.3968253968253968
+Valid (Homo)/precision all: 0.2980769230769231
+Valid (Homo)/precision peptides: 0.16216216216216217
+Valid (Homo)/precision propeptides: 0.373134328358209
+Valid (Homo)/recall all: 0.38271604938271603
+Valid (Homo)/recall peptides: 0.2727272727272727
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 33
+Valid/f1 all: 0.45837799214005004
+Valid/f1 peptides: 0.2812736921910538
+Valid/f1 propeptides: 0.6162162162162163
+Valid/precision all: 0.42231731402238315
+Valid/precision peptides: 0.22746781115879827
+Valid/precision propeptides: 0.6481876332622601
+Valid/recall all: 0.501171875
+Valid/recall peptides: 0.3684210526315789
+Valid/recall propeptides: 0.5872504829362524
+Epoch: 33
+Valid (Homo)/f1 all: 0.31111111111111106
+Valid (Homo)/f1 peptides: 0.14925373134328357
+Valid (Homo)/f1 propeptides: 0.40707964601769914
+Valid (Homo)/precision all: 0.2828282828282828
+Valid (Homo)/precision peptides: 0.1111111111111111
+Valid (Homo)/precision propeptides: 0.42592592592592593
+Valid (Homo)/recall all: 0.345679012345679
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.3898305084745763
+Epoch: 34
+Valid/f1 all: 0.48549458231387627
+Valid/f1 peptides: 0.2723621759766338
+Valid/f1 propeptides: 0.6811934294334563
+Valid/precision all: 0.44025356576862124
+Valid/precision peptides: 0.216231884057971
+Valid/precision propeptides: 0.7104895104895105
+Valid/recall all: 0.5410985586287496
+Valid/recall peptides: 0.3678500986193294
+Valid/recall propeptides: 0.6542176432710882
+Epoch: 34
+Valid (Homo)/f1 all: 0.35555555555555557
+Valid (Homo)/f1 peptides: 0.15151515151515152
+Valid (Homo)/f1 propeptides: 0.4736842105263158
+Valid (Homo)/precision all: 0.32323232323232326
+Valid (Homo)/precision peptides: 0.11363636363636363
+Valid (Homo)/precision propeptides: 0.4909090909090909
+Valid (Homo)/recall all: 0.3950617283950617
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 35
+Valid/f1 all: 0.4850786760716223
+Valid/f1 peptides: 0.2923508209851822
+Valid/f1 propeptides: 0.6437994722955145
+Valid/precision all: 0.4524291497975709
+Valid/precision peptides: 0.24579124579124578
+Valid/precision propeptides: 0.6599053414469236
+Valid/recall all: 0.5228070175438596
+Valid/recall peptides: 0.3606719367588933
+Valid/recall propeptides: 0.6284610431423052
+Epoch: 35
+Valid (Homo)/f1 all: 0.3626373626373626
+Valid (Homo)/f1 peptides: 0.1904761904761905
+Valid (Homo)/f1 propeptides: 0.45378151260504196
+Valid (Homo)/precision all: 0.32038834951456313
+Valid (Homo)/precision peptides: 0.13953488372093023
+Valid (Homo)/precision propeptides: 0.45
+Valid (Homo)/recall all: 0.4177215189873418
+Valid (Homo)/recall peptides: 0.3
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 36
+Valid/f1 all: 0.4823700472555434
+Valid/f1 peptides: 0.27338709677419354
+Valid/f1 propeptides: 0.6538716082064858
+Valid/precision all: 0.4527465029000341
+Valid/precision peptides: 0.23187414500683995
+Valid/precision propeptides: 0.672566371681416
+Valid/recall all: 0.5161415791520809
+Valid/recall peptides: 0.3330058939096267
+Valid/recall propeptides: 0.6361880231809401
+Epoch: 36
+Valid (Homo)/f1 all: 0.36571428571428566
+Valid (Homo)/f1 peptides: 0.1724137931034483
+Valid (Homo)/f1 propeptides: 0.4615384615384615
+Valid (Homo)/precision all: 0.3404255319148936
+Valid (Homo)/precision peptides: 0.1388888888888889
+Valid (Homo)/precision propeptides: 0.46551724137931033
+Valid (Homo)/recall all: 0.3950617283950617
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 37
+Valid/f1 all: 0.4995408631772268
+Valid/f1 peptides: 0.3054545454545455
+Valid/f1 propeptides: 0.6612794612794612
+Valid/precision all: 0.4727146332985749
+Valid/precision peptides: 0.2589041095890411
+Valid/precision propeptides: 0.6930134086097389
+Valid/recall all: 0.5295950155763239
+Valid/recall peptides: 0.3724137931034483
+Valid/recall propeptides: 0.6323245331616226
+Epoch: 37
+Valid (Homo)/f1 all: 0.39263803680981596
+Valid (Homo)/f1 peptides: 0.26415094339622636
+Valid (Homo)/f1 propeptides: 0.4545454545454545
+Valid (Homo)/precision all: 0.38095238095238093
+Valid (Homo)/precision peptides: 0.21212121212121213
+Valid (Homo)/precision propeptides: 0.49019607843137253
+Valid (Homo)/recall all: 0.4050632911392405
+Valid (Homo)/recall peptides: 0.35
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 38
+Valid/f1 all: 0.5277013752455796
+Valid/f1 peptides: 0.35170842824601367
+Valid/f1 propeptides: 0.661139896373057
+Valid/precision all: 0.5352730171383021
+Valid/precision peptides: 0.33076263924592975
+Valid/precision propeptides: 0.7131147540983607
+Valid/recall all: 0.5203409531189461
+Valid/recall peptides: 0.3754863813229572
+Valid/recall propeptides: 0.6162266580811333
+Epoch: 38
+Valid (Homo)/f1 all: 0.3773584905660377
+Valid (Homo)/f1 peptides: 0.19607843137254902
+Valid (Homo)/f1 propeptides: 0.46296296296296297
+Valid (Homo)/precision all: 0.38461538461538464
+Valid (Homo)/precision peptides: 0.1724137931034483
+Valid (Homo)/precision propeptides: 0.5102040816326531
+Valid (Homo)/recall all: 0.37037037037037035
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 39
+Valid/f1 all: 0.5069124423963134
+Valid/f1 peptides: 0.33622730860299915
+Valid/f1 propeptides: 0.6565202352127292
+Valid/precision all: 0.4824561403508772
+Valid/precision peptides: 0.28174603174603174
+Valid/precision propeptides: 0.7092675635276532
+Valid/recall all: 0.5339805825242718
+Valid/recall peptides: 0.41682974559686886
+Valid/recall propeptides: 0.6110753380553767
+Epoch: 39
+Valid (Homo)/f1 all: 0.35802469135802467
+Valid (Homo)/f1 peptides: 0.19607843137254902
+Valid (Homo)/f1 propeptides: 0.43243243243243246
+Valid (Homo)/precision all: 0.35802469135802467
+Valid (Homo)/precision peptides: 0.1724137931034483
+Valid (Homo)/precision propeptides: 0.46153846153846156
+Valid (Homo)/recall all: 0.35802469135802467
+Valid (Homo)/recall peptides: 0.22727272727272727
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 40
+Valid/f1 all: 0.5487433358720487
+Valid/f1 peptides: 0.3757791629563668
+Valid/f1 propeptides: 0.677977378576181
+Valid/precision all: 0.536685288640596
+Valid/precision peptides: 0.3425324675324675
+Valid/precision propeptides: 0.7013076393668273
+Valid/recall all: 0.5613556680950526
+Valid/recall peptides: 0.4161735700197239
+Valid/recall propeptides: 0.656149388280747
+Epoch: 40
+Valid (Homo)/f1 all: 0.40476190476190477
+Valid (Homo)/f1 peptides: 0.24561403508771934
+Valid (Homo)/f1 propeptides: 0.4864864864864865
+Valid (Homo)/precision all: 0.38202247191011235
+Valid (Homo)/precision peptides: 0.1891891891891892
+Valid (Homo)/precision propeptides: 0.5192307692307693
+Valid (Homo)/recall all: 0.43037974683544306
+Valid (Homo)/recall peptides: 0.35
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 41
+Valid/f1 all: 0.5421315890727203
+Valid/f1 peptides: 0.37592673353685124
+Valid/f1 propeptides: 0.6733218588640275
+Valid/precision all: 0.5373760488176964
+Valid/precision peptides: 0.33937007874015745
+Valid/precision propeptides: 0.7233727810650887
+Valid/recall all: 0.546972049689441
+Valid/recall peptides: 0.42130987292277616
+Valid/recall propeptides: 0.6297488731487444
+Epoch: 41
+Valid (Homo)/f1 all: 0.3780487804878049
+Valid (Homo)/f1 peptides: 0.22222222222222224
+Valid (Homo)/f1 propeptides: 0.4545454545454545
+Valid (Homo)/precision all: 0.36470588235294116
+Valid (Homo)/precision peptides: 0.17647058823529413
+Valid (Homo)/precision propeptides: 0.49019607843137253
+Valid (Homo)/recall all: 0.3924050632911392
+Valid (Homo)/recall peptides: 0.3
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 42
+Valid/f1 all: 0.5391722099039172
+Valid/f1 peptides: 0.3915171288743882
+Valid/f1 propeptides: 0.6614864864864866
+Valid/precision all: 0.5133708655876144
+Valid/precision peptides: 0.3344947735191638
+Valid/precision propeptides: 0.6958066808813077
+Valid/recall all: 0.567704280155642
+Valid/recall peptides: 0.471976401179941
+Valid/recall propeptides: 0.630392788151964
+Epoch: 42
+Valid (Homo)/f1 all: 0.3950617283950617
+Valid (Homo)/f1 peptides: 0.25
+Valid (Homo)/f1 propeptides: 0.4716981132075472
+Valid (Homo)/precision all: 0.3855421686746988
+Valid (Homo)/precision peptides: 0.19444444444444445
+Valid (Homo)/precision propeptides: 0.5319148936170213
+Valid (Homo)/recall all: 0.4050632911392405
+Valid (Homo)/recall peptides: 0.35
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 43
+Valid/f1 all: 0.5511627906976744
+Valid/f1 peptides: 0.41617977528089883
+Valid/f1 propeptides: 0.6534923339011925
+Valid/precision all: 0.5494590417310664
+Valid/precision peptides: 0.3839137645107794
+Valid/precision propeptides: 0.6939218523878437
+Valid/recall all: 0.5528771384136858
+Valid/recall peptides: 0.45436702649656524
+Valid/recall propeptides: 0.6175144880875725
+Epoch: 43
+Valid (Homo)/f1 all: 0.4
+Valid (Homo)/f1 peptides: 0.3404255319148936
+Valid (Homo)/f1 propeptides: 0.4247787610619469
+Valid (Homo)/precision all: 0.3950617283950617
+Valid (Homo)/precision peptides: 0.2962962962962963
+Valid (Homo)/precision propeptides: 0.4444444444444444
+Valid (Homo)/recall all: 0.4050632911392405
+Valid (Homo)/recall peptides: 0.4
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 44
+Valid/f1 all: 0.5505011565150346
+Valid/f1 peptides: 0.4005247048535198
+Valid/f1 propeptides: 0.6687349189934506
+Valid/precision all: 0.5454545454545454
+Valid/precision peptides: 0.3606299212598425
+Valid/precision propeptides: 0.7195845697329377
+Valid/recall all: 0.5556420233463035
+Valid/recall peptides: 0.4503441494591937
+Valid/recall propeptides: 0.6245975531229878
+Epoch: 44
+Valid (Homo)/f1 all: 0.38509316770186336
+Valid (Homo)/f1 peptides: 0.2692307692307692
+Valid (Homo)/f1 propeptides: 0.44036697247706424
+Valid (Homo)/precision all: 0.3780487804878049
+Valid (Homo)/precision peptides: 0.21875
+Valid (Homo)/precision propeptides: 0.48
+Valid (Homo)/recall all: 0.3924050632911392
+Valid (Homo)/recall peptides: 0.35
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 45
+Valid/f1 all: 0.5691148775894538
+Valid/f1 peptides: 0.44463742943986106
+Valid/f1 propeptides: 0.664449617559029
+Valid/precision all: 0.5530746705710102
+Valid/precision peptides: 0.40062597809076683
+Valid/precision propeptides: 0.68707015130674
+Valid/recall all: 0.5861132660977502
+Valid/recall peptides: 0.4995121951219512
+Valid/recall propeptides: 0.6432710882163555
+Epoch: 45
+Valid (Homo)/f1 all: 0.4025157232704402
+Valid (Homo)/f1 peptides: 0.29787234042553196
+Valid (Homo)/f1 propeptides: 0.4464285714285714
+Valid (Homo)/precision all: 0.4
+Valid (Homo)/precision peptides: 0.25925925925925924
+Valid (Homo)/precision propeptides: 0.4716981132075472
+Valid (Homo)/recall all: 0.4050632911392405
+Valid (Homo)/recall peptides: 0.35
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 46
+Valid/f1 all: 0.578354647833556
+Valid/f1 peptides: 0.46528403967538323
+Valid/f1 propeptides: 0.6613704071499504
+Valid/precision all: 0.5693348365276212
+Valid/precision peptides: 0.432523051131601
+Valid/precision propeptides: 0.6805177111716622
+Valid/recall all: 0.5876648564778898
+Valid/recall peptides: 0.5034146341463415
+Valid/recall propeptides: 0.6432710882163555
+Epoch: 46
+Valid (Homo)/f1 all: 0.43037974683544306
+Valid (Homo)/f1 peptides: 0.39999999999999997
+Valid (Homo)/f1 propeptides: 0.44247787610619466
+Valid (Homo)/precision all: 0.43037974683544306
+Valid (Homo)/precision peptides: 0.36
+Valid (Homo)/precision propeptides: 0.46296296296296297
+Valid (Homo)/recall all: 0.43037974683544306
+Valid (Homo)/recall peptides: 0.45
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 47
+Valid/f1 all: 0.5849020726373836
+Valid/f1 peptides: 0.4592274678111588
+Valid/f1 propeptides: 0.6848753840901332
+Valid/precision all: 0.5736665423349496
+Valid/precision peptides: 0.4099616858237548
+Valid/precision propeptides: 0.7289244186046512
+Valid/recall all: 0.5965865011636928
+Valid/recall peptides: 0.5219512195121951
+Valid/recall propeptides: 0.6458467482292337
+Epoch: 47
+Valid (Homo)/f1 all: 0.40993788819875776
+Valid (Homo)/f1 peptides: 0.23076923076923075
+Valid (Homo)/f1 propeptides: 0.4954128440366973
+Valid (Homo)/precision all: 0.4125
+Valid (Homo)/precision peptides: 0.2
+Valid (Homo)/precision propeptides: 0.54
+Valid (Homo)/recall all: 0.4074074074074074
+Valid (Homo)/recall peptides: 0.2727272727272727
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 48
+Valid/f1 all: 0.6035061544199924
+Valid/f1 peptides: 0.5213638325420803
+Valid/f1 propeptides: 0.6660098522167487
+Valid/precision all: 0.5799283154121864
+Valid/precision peptides: 0.46533127889060094
+Valid/precision propeptides: 0.6796246648793566
+Valid/recall all: 0.6290824261275272
+Valid/recall peptides: 0.592737978410206
+Valid/recall propeptides: 0.652929813264649
+Epoch: 48
+Valid (Homo)/f1 all: 0.40697674418604646
+Valid (Homo)/f1 peptides: 0.35714285714285715
+Valid (Homo)/f1 propeptides: 0.43103448275862066
+Valid (Homo)/precision all: 0.3763440860215054
+Valid (Homo)/precision peptides: 0.2777777777777778
+Valid (Homo)/precision propeptides: 0.43859649122807015
+Valid (Homo)/recall all: 0.4430379746835443
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 49
+Valid/f1 all: 0.611658133123277
+Valid/f1 peptides: 0.5311475409836066
+Valid/f1 propeptides: 0.6700645599728168
+Valid/precision all: 0.620455453455853
+Valid/precision peptides: 0.5094339622641509
+Valid/precision propeptides: 0.7093525179856115
+Valid/recall all: 0.6031067961165049
+Valid/recall peptides: 0.5547945205479452
+Valid/recall propeptides: 0.634900193174501
+Epoch: 49
+Valid (Homo)/f1 all: 0.4458598726114649
+Valid (Homo)/f1 peptides: 0.45454545454545453
+Valid (Homo)/f1 propeptides: 0.44247787610619466
+Valid (Homo)/precision all: 0.44871794871794873
+Valid (Homo)/precision peptides: 0.4166666666666667
+Valid (Homo)/precision propeptides: 0.46296296296296297
+Valid (Homo)/recall all: 0.4430379746835443
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 50
+Valid/f1 all: 0.5915205870362822
+Valid/f1 peptides: 0.4957774465971187
+Valid/f1 propeptides: 0.6581403387487038
+Valid/precision all: 0.6232817869415808
+Valid/precision peptides: 0.5050607287449392
+Valid/precision propeptides: 0.7104477611940299
+Valid/recall all: 0.5628394103956555
+Valid/recall peptides: 0.4868292682926829
+Valid/recall propeptides: 0.6130070830650354
+Epoch: 50
+Valid (Homo)/f1 all: 0.46357615894039733
+Valid (Homo)/f1 peptides: 0.48888888888888893
+Valid (Homo)/f1 propeptides: 0.4528301886792453
+Valid (Homo)/precision all: 0.4861111111111111
+Valid (Homo)/precision peptides: 0.44
+Valid (Homo)/precision propeptides: 0.5106382978723404
+Valid (Homo)/recall all: 0.4430379746835443
+Valid (Homo)/recall peptides: 0.55
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 51
+Valid/f1 all: 0.6729745712596097
+Valid/f1 peptides: 0.66251795117281
+Valid/f1 propeptides: 0.6802949061662198
+Valid/precision all: 0.6841683366733466
+Valid/precision peptides: 0.650375939849624
+Valid/precision propeptides: 0.7092941998602376
+Valid/recall all: 0.6621411947245927
+Valid/recall peptides: 0.6751219512195122
+Valid/recall propeptides: 0.6535737282678686
+Epoch: 51
+Valid (Homo)/f1 all: 0.42580645161290326
+Valid (Homo)/f1 peptides: 0.31111111111111117
+Valid (Homo)/f1 propeptides: 0.4727272727272727
+Valid (Homo)/precision all: 0.44594594594594594
+Valid (Homo)/precision peptides: 0.30434782608695654
+Valid (Homo)/precision propeptides: 0.5098039215686274
+Valid (Homo)/recall all: 0.4074074074074074
+Valid (Homo)/recall peptides: 0.3181818181818182
+Valid (Homo)/recall propeptides: 0.4406779661016949
+Epoch: 52
+Valid/f1 all: 0.6500874295706237
+Valid/f1 peptides: 0.6295767950546838
+Valid/f1 propeptides: 0.6642575558475691
+Valid/precision all: 0.6509727626459144
+Valid/precision peptides: 0.6135310472659871
+Valid/precision propeptides: 0.6780684104627767
+Valid/recall all: 0.6492045013581684
+Valid/recall peptides: 0.646484375
+Valid/recall propeptides: 0.6509980682549903
+Epoch: 52
+Valid (Homo)/f1 all: 0.46341463414634143
+Valid (Homo)/f1 peptides: 0.46808510638297873
+Valid (Homo)/f1 propeptides: 0.4615384615384615
+Valid (Homo)/precision all: 0.4578313253012048
+Valid (Homo)/precision peptides: 0.44
+Valid (Homo)/precision propeptides: 0.46551724137931033
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 53
+Valid/f1 all: 0.6543084131187615
+Valid/f1 peptides: 0.6443148688046647
+Valid/f1 propeptides: 0.6615222728867064
+Valid/precision all: 0.6889746889746889
+Valid/precision peptides: 0.6418199419167473
+Valid/precision propeptides: 0.726502311248074
+Valid/recall all: 0.6229635376260667
+Valid/recall peptides: 0.646829268292683
+Valid/recall propeptides: 0.6072118480360592
+Epoch: 53
+Valid (Homo)/f1 all: 0.45517241379310347
+Valid (Homo)/f1 peptides: 0.45454545454545453
+Valid (Homo)/f1 propeptides: 0.45544554455445546
+Valid (Homo)/precision all: 0.5
+Valid (Homo)/precision peptides: 0.4166666666666667
+Valid (Homo)/precision propeptides: 0.5476190476190477
+Valid (Homo)/recall all: 0.4177215189873418
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.3898305084745763
+Epoch: 54
+Valid/f1 all: 0.6432633849774465
+Valid/f1 peptides: 0.6471698113207547
+Valid/f1 propeptides: 0.6404833836858005
+Valid/precision all: 0.6497622820919176
+Valid/precision peptides: 0.6247723132969034
+Valid/precision propeptides: 0.6690042075736325
+Valid/recall all: 0.6368932038834951
+Valid/recall peptides: 0.6712328767123288
+Valid/recall propeptides: 0.6142949130714745
+Epoch: 54
+Valid (Homo)/f1 all: 0.4487179487179487
+Valid (Homo)/f1 peptides: 0.45454545454545453
+Valid (Homo)/f1 propeptides: 0.4464285714285714
+Valid (Homo)/precision all: 0.45454545454545453
+Valid (Homo)/precision peptides: 0.4166666666666667
+Valid (Homo)/precision propeptides: 0.4716981132075472
+Valid (Homo)/recall all: 0.4430379746835443
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 55
+Valid/f1 all: 0.6677252878126241
+Valid/f1 peptides: 0.6579075425790755
+Valid/f1 propeptides: 0.6744887696949379
+Valid/precision all: 0.6823529411764706
+Valid/precision peptides: 0.6531400966183575
+Valid/precision propeptides: 0.7034965034965035
+Valid/recall all: 0.6537116206762534
+Valid/recall peptides: 0.6627450980392157
+Valid/recall propeptides: 0.6477784932388925
+Epoch: 55
+Valid (Homo)/f1 all: 0.46060606060606063
+Valid (Homo)/f1 peptides: 0.4489795918367347
+Valid (Homo)/f1 propeptides: 0.4655172413793103
+Valid (Homo)/precision all: 0.4418604651162791
+Valid (Homo)/precision peptides: 0.3793103448275862
+Valid (Homo)/precision propeptides: 0.47368421052631576
+Valid (Homo)/recall all: 0.4810126582278481
+Valid (Homo)/recall peptides: 0.55
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 56
+Valid/f1 all: 0.6679968076616121
+Valid/f1 peptides: 0.652489125181247
+Valid/f1 propeptides: 0.6788990825688074
+Valid/precision all: 0.6855036855036855
+Valid/precision peptides: 0.6416349809885932
+Valid/precision propeptides: 0.718705035971223
+Valid/recall all: 0.6513618677042802
+Valid/recall peptides: 0.6637168141592921
+Valid/recall propeptides: 0.6432710882163555
+Epoch: 56
+Valid (Homo)/f1 all: 0.48051948051948046
+Valid (Homo)/f1 peptides: 0.5
+Valid (Homo)/f1 propeptides: 0.4727272727272727
+Valid (Homo)/precision all: 0.5068493150684932
+Valid (Homo)/precision peptides: 0.5
+Valid (Homo)/precision propeptides: 0.5098039215686274
+Valid (Homo)/recall all: 0.4567901234567901
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4406779661016949
+Epoch: 57
+Valid/f1 all: 0.6754020250148899
+Valid/f1 peptides: 0.6653992395437263
+Valid/f1 propeptides: 0.6825775656324582
+Valid/precision all: 0.6920260374288039
+Valid/precision peptides: 0.6493506493506493
+Valid/precision propeptides: 0.7253623188405797
+Valid/recall all: 0.6595579682047306
+Valid/recall peptides: 0.682261208576998
+Valid/recall propeptides: 0.6445589182227945
+Epoch: 57
+Valid (Homo)/f1 all: 0.4933333333333334
+Valid (Homo)/f1 peptides: 0.4186046511627907
+Valid (Homo)/f1 propeptides: 0.5233644859813085
+Valid (Homo)/precision all: 0.5362318840579711
+Valid (Homo)/precision peptides: 0.42857142857142855
+Valid (Homo)/precision propeptides: 0.5833333333333334
+Valid (Homo)/recall all: 0.4567901234567901
+Valid (Homo)/recall peptides: 0.4090909090909091
+Valid (Homo)/recall propeptides: 0.4745762711864407
+Epoch: 58
+Valid/f1 all: 0.6716951171099642
+Valid/f1 peptides: 0.672147001934236
+Valid/f1 propeptides: 0.6713804713804714
+Valid/precision all: 0.6886446886446886
+Valid/precision peptides: 0.6682692307692307
+Valid/precision propeptides: 0.7035991531404375
+Valid/recall all: 0.6555598605191786
+Valid/recall peptides: 0.6760700389105059
+Valid/recall propeptides: 0.6419832582099163
+Epoch: 58
+Valid (Homo)/f1 all: 0.48366013071895414
+Valid (Homo)/f1 peptides: 0.4878048780487805
+Valid (Homo)/f1 propeptides: 0.48214285714285715
+Valid (Homo)/precision all: 0.5138888888888888
+Valid (Homo)/precision peptides: 0.5263157894736842
+Valid (Homo)/precision propeptides: 0.5094339622641509
+Valid (Homo)/recall all: 0.4567901234567901
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 59
+Valid/f1 all: 0.6674655482324746
+Valid/f1 peptides: 0.6609743847312908
+Valid/f1 propeptides: 0.6717506631299733
+Valid/precision all: 0.6879374228077398
+Valid/precision peptides: 0.6811594202898551
+Valid/precision propeptides: 0.6924128503075871
+Valid/recall all: 0.648176881303336
+Valid/recall peptides: 0.6419512195121951
+Valid/recall propeptides: 0.6522858982614295
+Epoch: 59
+Valid (Homo)/f1 all: 0.5
+Valid (Homo)/f1 peptides: 0.5853658536585366
+Valid (Homo)/f1 propeptides: 0.46956521739130436
+Valid (Homo)/precision all: 0.5064935064935064
+Valid (Homo)/precision peptides: 0.5714285714285714
+Valid (Homo)/precision propeptides: 0.48214285714285715
+Valid (Homo)/recall all: 0.4936708860759494
+Valid (Homo)/recall peptides: 0.6
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 60
+Valid/f1 all: 0.6755121951219512
+Valid/f1 peptides: 0.6657210401891254
+Valid/f1 propeptides: 0.6823920265780731
+Valid/precision all: 0.6793563579277865
+Valid/precision peptides: 0.6452795600366636
+Valid/precision propeptides: 0.7048730267673301
+Valid/recall all: 0.6717112922002328
+Valid/recall peptides: 0.6875
+Valid/recall propeptides: 0.6613007083065036
+Epoch: 60
+Valid (Homo)/f1 all: 0.4779874213836478
+Valid (Homo)/f1 peptides: 0.4782608695652174
+Valid (Homo)/f1 propeptides: 0.4778761061946903
+Valid (Homo)/precision all: 0.48717948717948717
+Valid (Homo)/precision peptides: 0.4583333333333333
+Valid (Homo)/precision propeptides: 0.5
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 61
+Valid/f1 all: 0.7013601419278532
+Valid/f1 peptides: 0.7035128805620608
+Valid/f1 propeptides: 0.6997957794417972
+Valid/precision all: 0.7130260521042084
+Valid/precision peptides: 0.6765765765765765
+Valid/precision propeptides: 0.7422382671480144
+Valid/recall all: 0.6900698215671063
+Valid/recall peptides: 0.7326829268292683
+Valid/recall propeptides: 0.6619446233097231
+Epoch: 61
+Valid (Homo)/f1 all: 0.4935064935064935
+Valid (Homo)/f1 peptides: 0.5116279069767442
+Valid (Homo)/f1 propeptides: 0.4864864864864865
+Valid (Homo)/precision all: 0.5205479452054794
+Valid (Homo)/precision peptides: 0.5238095238095238
+Valid (Homo)/precision propeptides: 0.5192307692307693
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 62
+Valid/f1 all: 0.6842105263157894
+Valid/f1 peptides: 0.6979166666666667
+Valid/f1 propeptides: 0.6744966442953021
+Valid/precision all: 0.6945773524720893
+Valid/precision peptides: 0.6817761332099908
+Valid/precision propeptides: 0.7042747021723896
+Valid/recall all: 0.6741486068111455
+Valid/recall peptides: 0.7148399612027158
+Valid/recall propeptides: 0.6471345782356729
+Epoch: 62
+Valid (Homo)/f1 all: 0.48684210526315785
+Valid (Homo)/f1 peptides: 0.4878048780487805
+Valid (Homo)/f1 propeptides: 0.4864864864864865
+Valid (Homo)/precision all: 0.5211267605633803
+Valid (Homo)/precision peptides: 0.5263157894736842
+Valid (Homo)/precision propeptides: 0.5192307692307693
+Valid (Homo)/recall all: 0.4567901234567901
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 63
+Valid/f1 all: 0.6874877234335102
+Valid/f1 peptides: 0.6900141978230004
+Valid/f1 propeptides: 0.6856950973807924
+Valid/precision all: 0.6961018297533811
+Valid/precision peptides: 0.6694214876033058
+Valid/precision propeptides: 0.7164912280701754
+Valid/recall all: 0.6790842064415987
+Valid/recall peptides: 0.7119140625
+Valid/recall propeptides: 0.657437218287186
+Epoch: 63
+Valid (Homo)/f1 all: 0.475
+Valid (Homo)/f1 peptides: 0.4782608695652174
+Valid (Homo)/f1 propeptides: 0.4736842105263158
+Valid (Homo)/precision all: 0.4810126582278481
+Valid (Homo)/precision peptides: 0.4583333333333333
+Valid (Homo)/precision propeptides: 0.4909090909090909
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 64
+Valid/f1 all: 0.6674509803921569
+Valid/f1 peptides: 0.6599808978032473
+Valid/f1 propeptides: 0.6726546906187625
+Valid/precision all: 0.675933280381255
+Valid/precision peptides: 0.6488262910798122
+Valid/precision propeptides: 0.6958017894012388
+Valid/recall all: 0.6591789310611929
+Valid/recall peptides: 0.6715257531584062
+Valid/recall propeptides: 0.6509980682549903
+Epoch: 64
+Valid (Homo)/f1 all: 0.475
+Valid (Homo)/f1 peptides: 0.4
+Valid (Homo)/f1 propeptides: 0.5043478260869566
+Valid (Homo)/precision all: 0.4810126582278481
+Valid (Homo)/precision peptides: 0.391304347826087
+Valid (Homo)/precision propeptides: 0.5178571428571429
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.4090909090909091
+Valid (Homo)/recall propeptides: 0.4915254237288136
+Epoch: 65
+Valid/f1 all: 0.6744639376218323
+Valid/f1 peptides: 0.6644736842105263
+Valid/f1 propeptides: 0.6815456362425051
+Valid/precision all: 0.6778996865203761
+Valid/precision peptides: 0.6409791477787852
+Valid/precision propeptides: 0.7060041407867494
+Valid/recall all: 0.6710628394103957
+Valid/recall peptides: 0.6897560975609756
+Valid/recall propeptides: 0.6587250482936252
+Epoch: 65
+Valid (Homo)/f1 all: 0.49681528662420377
+Valid (Homo)/f1 peptides: 0.4444444444444445
+Valid (Homo)/f1 propeptides: 0.5178571428571428
+Valid (Homo)/precision all: 0.5131578947368421
+Valid (Homo)/precision peptides: 0.43478260869565216
+Valid (Homo)/precision propeptides: 0.5471698113207547
+Valid (Homo)/recall all: 0.48148148148148145
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.4915254237288136
+Epoch: 66
+Valid/f1 all: 0.6466548950362958
+Valid/f1 peptides: 0.6143851508120649
+Valid/f1 propeptides: 0.6702923181509177
+Valid/precision all: 0.6534496431403648
+Valid/precision peptides: 0.5842894969108562
+Valid/precision propeptides: 0.7098632109431245
+Valid/recall all: 0.64
+Valid/recall peptides: 0.6477495107632094
+Valid/recall propeptides: 0.634900193174501
+Epoch: 66
+Valid (Homo)/f1 all: 0.4698795180722892
+Valid (Homo)/f1 peptides: 0.47058823529411764
+Valid (Homo)/f1 propeptides: 0.46956521739130436
+Valid (Homo)/precision all: 0.4482758620689655
+Valid (Homo)/precision peptides: 0.3870967741935484
+Valid (Homo)/precision propeptides: 0.48214285714285715
+Valid (Homo)/recall all: 0.4936708860759494
+Valid (Homo)/recall peptides: 0.6
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 67
+Valid/f1 all: 0.6697584541062802
+Valid/f1 peptides: 0.6577243293246995
+Valid/f1 propeptides: 0.6783936276136739
+Valid/precision all: 0.6670515781370285
+Valid/precision peptides: 0.624780316344464
+Valid/precision propeptides: 0.7
+Valid/recall all: 0.6724873884361661
+Valid/recall peptides: 0.6943359375
+Valid/recall propeptides: 0.6580811332904056
+Epoch: 67
+Valid (Homo)/f1 all: 0.5030674846625767
+Valid (Homo)/f1 peptides: 0.4255319148936171
+Valid (Homo)/f1 propeptides: 0.5344827586206897
+Valid (Homo)/precision all: 0.5
+Valid (Homo)/precision peptides: 0.4
+Valid (Homo)/precision propeptides: 0.543859649122807
+Valid (Homo)/recall all: 0.5061728395061729
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.5254237288135594
+Epoch: 68
+Valid/f1 all: 0.6671847678259181
+Valid/f1 peptides: 0.6666666666666667
+Valid/f1 propeptides: 0.6675603217158177
+Valid/precision all: 0.6657619232260567
+Valid/precision peptides: 0.6280487804878049
+Valid/precision propeptides: 0.6960167714884696
+Valid/recall all: 0.668613707165109
+Valid/recall peptides: 0.7103448275862069
+Valid/recall propeptides: 0.6413393432066967
+Epoch: 68
+Valid (Homo)/f1 all: 0.4431137724550898
+Valid (Homo)/f1 peptides: 0.4313725490196078
+Valid (Homo)/f1 propeptides: 0.44827586206896547
+Valid (Homo)/precision all: 0.43023255813953487
+Valid (Homo)/precision peptides: 0.3793103448275862
+Valid (Homo)/precision propeptides: 0.45614035087719296
+Valid (Homo)/recall all: 0.4567901234567901
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.4406779661016949
+Epoch: 69
+Valid/f1 all: 0.6700428515777171
+Valid/f1 peptides: 0.6691484411354117
+Valid/f1 propeptides: 0.6706867671691793
+Valid/precision all: 0.671875
+Valid/precision peptides: 0.6374113475177305
+Valid/precision propeptides: 0.6990223463687151
+Valid/recall all: 0.6682206682206682
+Valid/recall peptides: 0.7042115572967679
+Valid/recall propeptides: 0.6445589182227945
+Epoch: 69
+Valid (Homo)/f1 all: 0.4615384615384615
+Valid (Homo)/f1 peptides: 0.4444444444444445
+Valid (Homo)/f1 propeptides: 0.4684684684684685
+Valid (Homo)/precision all: 0.48
+Valid (Homo)/precision peptides: 0.43478260869565216
+Valid (Homo)/precision propeptides: 0.5
+Valid (Homo)/recall all: 0.4444444444444444
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.4406779661016949
+Epoch: 70
+Valid/f1 all: 0.670717365738926
+Valid/f1 peptides: 0.6688555347091932
+Valid/f1 propeptides: 0.672053872053872
+Valid/precision all: 0.6784298176050754
+Valid/precision peptides: 0.6452488687782806
+Valid/precision propeptides: 0.7043048694424842
+Valid/recall all: 0.6631782945736434
+Valid/recall peptides: 0.6942551119766309
+Valid/recall propeptides: 0.6426271732131359
+Epoch: 70
+Valid (Homo)/f1 all: 0.45751633986928103
+Valid (Homo)/f1 peptides: 0.46511627906976744
+Valid (Homo)/f1 propeptides: 0.4545454545454545
+Valid (Homo)/precision all: 0.4861111111111111
+Valid (Homo)/precision peptides: 0.47619047619047616
+Valid (Homo)/precision propeptides: 0.49019607843137253
+Valid (Homo)/recall all: 0.43209876543209874
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 71
+Valid/f1 all: 0.6362563900904443
+Valid/f1 peptides: 0.6181305777360262
+Valid/f1 propeptides: 0.6493067297937098
+Valid/precision all: 0.6446215139442231
+Valid/precision peptides: 0.5949367088607594
+Valid/precision propeptides: 0.6837606837606838
+Valid/recall all: 0.6281055900621118
+Valid/recall peptides: 0.6432062561094819
+Valid/recall propeptides: 0.6181584030907921
+Epoch: 71
+Valid (Homo)/f1 all: 0.43209876543209874
+Valid (Homo)/f1 peptides: 0.4489795918367347
+Valid (Homo)/f1 propeptides: 0.4247787610619469
+Valid (Homo)/precision all: 0.42168674698795183
+Valid (Homo)/precision peptides: 0.3793103448275862
+Valid (Homo)/precision propeptides: 0.4444444444444444
+Valid (Homo)/recall all: 0.4430379746835443
+Valid (Homo)/recall peptides: 0.55
+Valid (Homo)/recall propeptides: 0.4067796610169492
+Epoch: 72
+Valid/f1 all: 0.6615027110766848
+Valid/f1 peptides: 0.668786915038619
+Valid/f1 propeptides: 0.6560917988525142
+Valid/precision all: 0.6586964905514847
+Valid/precision peptides: 0.6221470836855453
+Valid/precision propeptides: 0.6893617021276596
+Valid/recall all: 0.6643329443796189
+Valid/recall peptides: 0.7229862475442044
+Valid/recall propeptides: 0.6258853831294269
+Epoch: 72
+Valid (Homo)/f1 all: 0.43749999999999994
+Valid (Homo)/f1 peptides: 0.40816326530612246
+Valid (Homo)/f1 propeptides: 0.45045045045045046
+Valid (Homo)/precision all: 0.4430379746835443
+Valid (Homo)/precision peptides: 0.37037037037037035
+Valid (Homo)/precision propeptides: 0.4807692307692308
+Valid (Homo)/recall all: 0.43209876543209874
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 73
+Valid/f1 all: 0.6648373186985496
+Valid/f1 peptides: 0.667878237164925
+Valid/f1 propeptides: 0.6625301620130989
+Valid/precision all: 0.6711515631183221
+Valid/precision peptides: 0.6234096692111959
+Valid/precision propeptides: 0.7129080118694362
+Valid/recall all: 0.6586407766990291
+Valid/recall peptides: 0.7191780821917808
+Valid/recall propeptides: 0.6188023180940115
+Epoch: 73
+Valid (Homo)/f1 all: 0.43243243243243235
+Valid (Homo)/f1 peptides: 0.4444444444444445
+Valid (Homo)/f1 propeptides: 0.42718446601941745
+Valid (Homo)/precision all: 0.47761194029850745
+Valid (Homo)/precision peptides: 0.43478260869565216
+Valid (Homo)/precision propeptides: 0.5
+Valid (Homo)/recall all: 0.3950617283950617
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 74
+Valid/f1 all: 0.6684899394412972
+Valid/f1 peptides: 0.671889400921659
+Valid/f1 propeptides: 0.665988470668023
+Valid/precision all: 0.6701919310614963
+Valid/precision peptides: 0.6300777873811582
+Valid/precision propeptides: 0.7034383954154728
+Valid/recall all: 0.6667965705378021
+Valid/recall peptides: 0.71964461994077
+Valid/recall propeptides: 0.6323245331616226
+Epoch: 74
+Valid (Homo)/f1 all: 0.4050632911392405
+Valid (Homo)/f1 peptides: 0.40816326530612246
+Valid (Homo)/f1 propeptides: 0.40366972477064217
+Valid (Homo)/precision all: 0.4155844155844156
+Valid (Homo)/precision peptides: 0.37037037037037035
+Valid (Homo)/precision propeptides: 0.44
+Valid (Homo)/recall all: 0.3950617283950617
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 75
+Valid/f1 all: 0.6662712534598655
+Valid/f1 peptides: 0.6666666666666667
+Valid/f1 propeptides: 0.6659743856005538
+Valid/precision all: 0.6761637239165329
+Valid/precision peptides: 0.6254325259515571
+Valid/precision propeptides: 0.7200598802395209
+Valid/recall all: 0.656664068589244
+Valid/recall peptides: 0.7137216189536032
+Valid/recall propeptides: 0.6194462330972311
+Epoch: 75
+Valid (Homo)/f1 all: 0.4313725490196078
+Valid (Homo)/f1 peptides: 0.46808510638297873
+Valid (Homo)/f1 propeptides: 0.41509433962264153
+Valid (Homo)/precision all: 0.4583333333333333
+Valid (Homo)/precision peptides: 0.44
+Valid (Homo)/precision propeptides: 0.46808510638297873
+Valid (Homo)/recall all: 0.4074074074074074
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 76
+Valid/f1 all: 0.635901299679789
+Valid/f1 peptides: 0.6557666813963764
+Valid/f1 propeptides: 0.6211424819435325
+Valid/precision all: 0.6174103877103145
+Valid/precision peptides: 0.5979049153908138
+Valid/precision propeptides: 0.6336235766912257
+Valid/recall all: 0.6555339805825243
+Valid/recall peptides: 0.726027397260274
+Valid/recall propeptides: 0.609143593045718
+Epoch: 76
+Valid (Homo)/f1 all: 0.3956043956043956
+Valid (Homo)/f1 peptides: 0.3666666666666667
+Valid (Homo)/f1 propeptides: 0.4098360655737705
+Valid (Homo)/precision all: 0.3564356435643564
+Valid (Homo)/precision peptides: 0.2894736842105263
+Valid (Homo)/precision propeptides: 0.3968253968253968
+Valid (Homo)/recall all: 0.4444444444444444
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.423728813559322
+Epoch: 77
+Valid/f1 all: 0.6497441146366427
+Valid/f1 peptides: 0.6433915211970074
+Valid/f1 propeptides: 0.6541666666666667
+Valid/precision all: 0.6876083188908145
+Valid/precision peptides: 0.6574923547400612
+Valid/precision propeptides: 0.7098718914845517
+Valid/recall all: 0.6158323632130385
+Valid/recall peptides: 0.6298828125
+Valid/recall propeptides: 0.6065679330328396
+Epoch: 77
+Valid (Homo)/f1 all: 0.4246575342465753
+Valid (Homo)/f1 peptides: 0.46511627906976744
+Valid (Homo)/f1 propeptides: 0.4077669902912622
+Valid (Homo)/precision all: 0.47692307692307695
+Valid (Homo)/precision peptides: 0.47619047619047616
+Valid (Homo)/precision propeptides: 0.4772727272727273
+Valid (Homo)/recall all: 0.38271604938271603
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 78
+Valid/f1 all: 0.6350999131190269
+Valid/f1 peptides: 0.6434599156118144
+Valid/f1 propeptides: 0.6292466765140325
+Valid/precision all: 0.7259185700099305
+Valid/precision peptides: 0.710128055878929
+Valid/precision propeptides: 0.7376623376623377
+Valid/recall all: 0.5644787644787644
+Valid/recall peptides: 0.5882352941176471
+Valid/recall propeptides: 0.5486155827430779
+Epoch: 78
+Valid (Homo)/f1 all: 0.32
+Valid (Homo)/f1 peptides: 0.4736842105263159
+Valid (Homo)/f1 propeptides: 0.25287356321839083
+Valid (Homo)/precision all: 0.47619047619047616
+Valid (Homo)/precision peptides: 0.6428571428571429
+Valid (Homo)/precision propeptides: 0.39285714285714285
+Valid (Homo)/recall all: 0.24096385542168675
+Valid (Homo)/recall peptides: 0.375
+Valid (Homo)/recall propeptides: 0.1864406779661017
+Epoch: 79
+Valid/f1 all: 0.6615415739429495
+Valid/f1 peptides: 0.6772872098315886
+Valid/f1 propeptides: 0.6489439184268025
+Valid/precision all: 0.6890012642225032
+Valid/precision peptides: 0.6305084745762712
+Valid/precision propeptides: 0.7468566638725901
+Valid/recall all: 0.6361867704280155
+Valid/recall peptides: 0.7315634218289085
+Valid/recall propeptides: 0.5737282678686413
+Epoch: 79
+Valid (Homo)/f1 all: 0.4580152671755725
+Valid (Homo)/f1 peptides: 0.55
+Valid (Homo)/f1 propeptides: 0.41758241758241754
+Valid (Homo)/precision all: 0.6
+Valid (Homo)/precision peptides: 0.6111111111111112
+Valid (Homo)/precision propeptides: 0.59375
+Valid (Homo)/recall all: 0.37037037037037035
+Valid (Homo)/recall peptides: 0.5
+Valid (Homo)/recall propeptides: 0.3220338983050847
+Epoch: 80
+Valid/f1 all: 0.6769605851279967
+Valid/f1 peptides: 0.710727969348659
+Valid/f1 propeptides: 0.6520818630910374
+Valid/precision all: 0.7080322991925202
+Valid/precision peptides: 0.6921641791044776
+Valid/precision propeptides: 0.7213114754098361
+Valid/recall all: 0.6485013623978202
+Valid/recall peptides: 0.7303149606299213
+Valid/recall propeptides: 0.5949774629748873
+Epoch: 80
+Valid (Homo)/f1 all: 0.36986301369863017
+Valid (Homo)/f1 peptides: 0.4255319148936171
+Valid (Homo)/f1 propeptides: 0.3434343434343435
+Valid (Homo)/precision all: 0.4153846153846154
+Valid (Homo)/precision peptides: 0.4
+Valid (Homo)/precision propeptides: 0.425
+Valid (Homo)/recall all: 0.3333333333333333
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 81
+Valid/f1 all: 0.6481653939281059
+Valid/f1 peptides: 0.6552462526766595
+Valid/f1 propeptides: 0.6427158866183256
+Valid/precision all: 0.6214285714285714
+Valid/precision peptides: 0.5799848369977255
+Valid/precision propeptides: 0.6583389601620526
+Valid/recall all: 0.6773063448812767
+Valid/recall peptides: 0.7529527559055118
+Valid/recall propeptides: 0.6278171281390856
+Epoch: 81
+Valid (Homo)/f1 all: 0.3726708074534162
+Valid (Homo)/f1 peptides: 0.36363636363636365
+Valid (Homo)/f1 propeptides: 0.3773584905660377
+Valid (Homo)/precision all: 0.375
+Valid (Homo)/precision peptides: 0.30303030303030304
+Valid (Homo)/precision propeptides: 0.425531914893617
+Valid (Homo)/recall all: 0.37037037037037035
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.3389830508474576
+Epoch: 82
+Valid/f1 all: 0.6250000000000001
+Valid/f1 peptides: 0.6031894934333958
+Valid/f1 propeptides: 0.6411682892906815
+Valid/precision all: 0.6448290070045324
+Valid/precision peptides: 0.582427536231884
+Valid/precision propeptides: 0.6969009826152683
+Valid/recall all: 0.6063541263076327
+Valid/recall peptides: 0.6254863813229572
+Valid/recall propeptides: 0.5936896329684481
+Epoch: 82
+Valid (Homo)/f1 all: 0.29239766081871343
+Valid (Homo)/f1 peptides: 0.3333333333333333
+Valid (Homo)/f1 propeptides: 0.26666666666666666
+Valid (Homo)/precision all: 0.27472527472527475
+Valid (Homo)/precision peptides: 0.24444444444444444
+Valid (Homo)/precision propeptides: 0.30434782608695654
+Valid (Homo)/recall all: 0.3125
+Valid (Homo)/recall peptides: 0.5238095238095238
+Valid (Homo)/recall propeptides: 0.23728813559322035
+Epoch: 83
+Valid/f1 all: 0.6202853234316983
+Valid/f1 peptides: 0.5947682423129875
+Valid/f1 propeptides: 0.6392103471749488
+Valid/precision all: 0.6230859835100118
+Valid/precision peptides: 0.5576592082616179
+Valid/precision propeptides: 0.6779783393501805
+Valid/recall all: 0.6175097276264592
+Valid/recall peptides: 0.6371681415929203
+Valid/recall propeptides: 0.604636188023181
+Epoch: 83
+Valid (Homo)/f1 all: 0.3563218390804598
+Valid (Homo)/f1 peptides: 0.3508771929824561
+Valid (Homo)/f1 propeptides: 0.358974358974359
+Valid (Homo)/precision all: 0.32978723404255317
+Valid (Homo)/precision peptides: 0.2777777777777778
+Valid (Homo)/precision propeptides: 0.3620689655172414
+Valid (Homo)/recall all: 0.3875
+Valid (Homo)/recall peptides: 0.47619047619047616
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 84
+Valid/f1 all: 0.6717588769611891
+Valid/f1 peptides: 0.6609605325725154
+Valid/f1 propeptides: 0.6800437796424663
+Valid/precision all: 0.7180052956751986
+Valid/precision peptides: 0.6447124304267161
+Valid/precision propeptides: 0.7845117845117845
+Valid/recall all: 0.6311093871217999
+Valid/recall peptides: 0.6780487804878049
+Valid/recall propeptides: 0.6001287830006439
+Epoch: 84
+Valid (Homo)/f1 all: 0.4782608695652174
+Valid (Homo)/f1 peptides: 0.5116279069767442
+Valid (Homo)/f1 propeptides: 0.4631578947368421
+Valid (Homo)/precision all: 0.5892857142857143
+Valid (Homo)/precision peptides: 0.55
+Valid (Homo)/precision propeptides: 0.6111111111111112
+Valid (Homo)/recall all: 0.4024390243902439
+Valid (Homo)/recall peptides: 0.4782608695652174
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 85
+Valid/f1 all: 0.6569072164948453
+Valid/f1 peptides: 0.6342393896041965
+Valid/f1 propeptides: 0.6741736287686161
+Valid/precision all: 0.7005277044854882
+Valid/precision peptides: 0.6191806331471136
+Valid/precision propeptides: 0.7733333333333333
+Valid/recall all: 0.6184006211180124
+Valid/recall peptides: 0.6500488758553274
+Valid/recall propeptides: 0.5975531229877656
+Epoch: 85
+Valid (Homo)/f1 all: 0.4166666666666667
+Valid (Homo)/f1 peptides: 0.4186046511627907
+Valid (Homo)/f1 propeptides: 0.4158415841584159
+Valid (Homo)/precision all: 0.4838709677419355
+Valid (Homo)/precision peptides: 0.45
+Valid (Homo)/precision propeptides: 0.5
+Valid (Homo)/recall all: 0.36585365853658536
+Valid (Homo)/recall peptides: 0.391304347826087
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 86
+Valid/f1 all: 0.6596326690113326
+Valid/f1 peptides: 0.6560218978102189
+Valid/f1 propeptides: 0.6623376623376623
+Valid/precision all: 0.6648286727057897
+Valid/precision peptides: 0.6166380789022299
+Valid/precision propeptides: 0.705753823743627
+Valid/recall all: 0.6545172547499031
+Valid/recall peptides: 0.7007797270955166
+Valid/recall propeptides: 0.6239536381197682
+Epoch: 86
+Valid (Homo)/f1 all: 0.378698224852071
+Valid (Homo)/f1 peptides: 0.4313725490196078
+Valid (Homo)/f1 propeptides: 0.3559322033898305
+Valid (Homo)/precision all: 0.367816091954023
+Valid (Homo)/precision peptides: 0.39285714285714285
+Valid (Homo)/precision propeptides: 0.3559322033898305
+Valid (Homo)/recall all: 0.3902439024390244
+Valid (Homo)/recall peptides: 0.4782608695652174
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 87
+Valid/f1 all: 0.6901294498381877
+Valid/f1 peptides: 0.7011494252873564
+Valid/f1 propeptides: 0.6820728291316526
+Valid/precision all: 0.718921196797303
+Valid/precision peptides: 0.6841121495327103
+Valid/precision propeptides: 0.7475057559478128
+Valid/recall all: 0.6635550369506029
+Valid/recall peptides: 0.7190569744597249
+Valid/recall propeptides: 0.627173213135866
+Epoch: 87
+Valid (Homo)/f1 all: 0.5
+Valid (Homo)/f1 peptides: 0.43478260869565216
+Valid (Homo)/f1 propeptides: 0.5294117647058824
+Valid (Homo)/precision all: 0.5606060606060606
+Valid (Homo)/precision peptides: 0.43478260869565216
+Valid (Homo)/precision propeptides: 0.627906976744186
+Valid (Homo)/recall all: 0.45121951219512196
+Valid (Homo)/recall peptides: 0.43478260869565216
+Valid (Homo)/recall propeptides: 0.4576271186440678
+Epoch: 88
+Valid/f1 all: 0.6625024399765762
+Valid/f1 peptides: 0.6536856745479833
+Valid/f1 propeptides: 0.6689143627781524
+Valid/precision all: 0.6644479248238058
+Valid/precision peptides: 0.6178790534618755
+Valid/precision propeptides: 0.7020523708421798
+Valid/recall all: 0.6605683145192682
+Valid/recall peptides: 0.6938976377952756
+Valid/recall propeptides: 0.6387636831938184
+Epoch: 88
+Valid (Homo)/f1 all: 0.5100671140939597
+Valid (Homo)/f1 peptides: 0.47619047619047616
+Valid (Homo)/f1 propeptides: 0.5233644859813085
+Valid (Homo)/precision all: 0.5588235294117647
+Valid (Homo)/precision peptides: 0.5
+Valid (Homo)/precision propeptides: 0.5833333333333334
+Valid (Homo)/recall all: 0.4691358024691358
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.4745762711864407
+Epoch: 89
+Valid/f1 all: 0.6405662464056625
+Valid/f1 peptides: 0.6425094645754461
+Valid/f1 propeptides: 0.6392215568862275
+Valid/precision all: 0.7522077922077922
+Valid/precision peptides: 0.7369727047146402
+Valid/precision propeptides: 0.7631814119749777
+Valid/recall all: 0.5577812018489985
+Valid/recall peptides: 0.5695110258868649
+Valid/recall propeptides: 0.549903412749517
+Epoch: 89
+Valid (Homo)/f1 all: 0.36065573770491804
+Valid (Homo)/f1 peptides: 0.2777777777777778
+Valid (Homo)/f1 propeptides: 0.3953488372093023
+Valid (Homo)/precision all: 0.6111111111111112
+Valid (Homo)/precision peptides: 0.5555555555555556
+Valid (Homo)/precision propeptides: 0.6296296296296297
+Valid (Homo)/recall all: 0.2558139534883721
+Valid (Homo)/recall peptides: 0.18518518518518517
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 90
+Valid/f1 all: 0.6004112405757368
+Valid/f1 peptides: 0.5504484304932735
+Valid/f1 propeptides: 0.634785962205939
+Valid/precision all: 0.7491448118586089
+Valid/precision peptides: 0.6876750700280112
+Valid/precision propeptides: 0.7913461538461538
+Valid/recall all: 0.5009531071292413
+Valid/recall peptides: 0.4588785046728972
+Valid/recall propeptides: 0.5299420476497102
+Epoch: 90
+Valid (Homo)/f1 all: 0.3064516129032258
+Valid (Homo)/f1 peptides: 0.15789473684210525
+Valid (Homo)/f1 propeptides: 0.37209302325581395
+Valid (Homo)/precision all: 0.5757575757575758
+Valid (Homo)/precision peptides: 0.5
+Valid (Homo)/precision propeptides: 0.5925925925925926
+Valid (Homo)/recall all: 0.2087912087912088
+Valid (Homo)/recall peptides: 0.09375
+Valid (Homo)/recall propeptides: 0.2711864406779661
+Epoch: 91
+Valid/f1 all: 0.6381830447492691
+Valid/f1 peptides: 0.6123348017621145
+Valid/f1 propeptides: 0.6560243253515773
+Valid/precision all: 0.7633136094674556
+Valid/precision peptides: 0.7119078104993598
+Valid/precision propeptides: 0.800556586270872
+Valid/recall all: 0.5482998454404946
+Valid/recall peptides: 0.5371980676328503
+Valid/recall propeptides: 0.5556986477784932
+Epoch: 91
+Valid (Homo)/f1 all: 0.34108527131782945
+Valid (Homo)/f1 peptides: 0.2926829268292683
+Valid (Homo)/f1 propeptides: 0.36363636363636365
+Valid (Homo)/precision all: 0.5641025641025641
+Valid (Homo)/precision peptides: 0.6
+Valid (Homo)/precision propeptides: 0.5517241379310345
+Valid (Homo)/recall all: 0.24444444444444444
+Valid (Homo)/recall peptides: 0.1935483870967742
+Valid (Homo)/recall propeptides: 0.2711864406779661
+Epoch: 92
+Valid/f1 all: 0.6747359154929577
+Valid/f1 peptides: 0.6946484784889821
+Valid/f1 propeptides: 0.6603487490523124
+Valid/precision all: 0.7750252780586451
+Valid/precision peptides: 0.7413213885778276
+Valid/precision propeptides: 0.8027649769585253
+Valid/recall all: 0.5974279033515199
+Valid/recall peptides: 0.6535044422507403
+Valid/recall propeptides: 0.5608499678042499
+Epoch: 92
+Valid (Homo)/f1 all: 0.4285714285714286
+Valid (Homo)/f1 peptides: 0.5263157894736841
+Valid (Homo)/f1 propeptides: 0.38636363636363635
+Valid (Homo)/precision all: 0.6136363636363636
+Valid (Homo)/precision peptides: 0.6666666666666666
+Valid (Homo)/precision propeptides: 0.5862068965517241
+Valid (Homo)/recall all: 0.32926829268292684
+Valid (Homo)/recall peptides: 0.43478260869565216
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 93
+Valid/f1 all: 0.6602641056422569
+Valid/f1 peptides: 0.6509769094138543
+Valid/f1 propeptides: 0.6678805535324107
+Valid/precision all: 0.6773399014778325
+Valid/precision peptides: 0.589702333065165
+Valid/precision propeptides: 0.768650461022632
+Valid/recall all: 0.6440281030444965
+Valid/recall peptides: 0.7264618434093162
+Valid/recall propeptides: 0.5904700579523503
+Epoch: 93
+Valid (Homo)/f1 all: 0.44285714285714284
+Valid (Homo)/f1 peptides: 0.4255319148936171
+Valid (Homo)/f1 propeptides: 0.4516129032258065
+Valid (Homo)/precision all: 0.5254237288135594
+Valid (Homo)/precision peptides: 0.4
+Valid (Homo)/precision propeptides: 0.6176470588235294
+Valid (Homo)/recall all: 0.38271604938271603
+Valid (Homo)/recall peptides: 0.45454545454545453
+Valid (Homo)/recall propeptides: 0.3559322033898305
+Epoch: 94
+Valid/f1 all: 0.648757016840417
+Valid/f1 peptides: 0.6299911268855367
+Valid/f1 propeptides: 0.664228237015362
+Valid/precision all: 0.6724854530340815
+Valid/precision peptides: 0.5795918367346938
+Valid/precision propeptides: 0.768839966130398
+Valid/recall all: 0.6266460108443067
+Valid/recall peptides: 0.6899902818270165
+Valid/recall propeptides: 0.5846748229233741
+Epoch: 94
+Valid (Homo)/f1 all: 0.46153846153846156
+Valid (Homo)/f1 peptides: 0.4230769230769231
+Valid (Homo)/f1 propeptides: 0.4835164835164835
+Valid (Homo)/precision all: 0.5409836065573771
+Valid (Homo)/precision peptides: 0.3793103448275862
+Valid (Homo)/precision propeptides: 0.6875
+Valid (Homo)/recall all: 0.4024390243902439
+Valid (Homo)/recall peptides: 0.4782608695652174
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 95
+Valid/f1 all: 0.6654127481713689
+Valid/f1 peptides: 0.6568677141409022
+Valid/f1 propeptides: 0.6714082503556187
+Valid/precision all: 0.7239654388358344
+Valid/precision peptides: 0.6893617021276596
+Valid/precision propeptides: 0.749801429706116
+Valid/recall all: 0.6156225831399845
+Valid/recall peptides: 0.6272991287512101
+Valid/recall propeptides: 0.6078557630392788
+Epoch: 95
+Valid (Homo)/f1 all: 0.4217687074829932
+Valid (Homo)/f1 peptides: 0.391304347826087
+Valid (Homo)/f1 propeptides: 0.43564356435643564
+Valid (Homo)/precision all: 0.47692307692307695
+Valid (Homo)/precision peptides: 0.391304347826087
+Valid (Homo)/precision propeptides: 0.5238095238095238
+Valid (Homo)/recall all: 0.3780487804878049
+Valid (Homo)/recall peptides: 0.391304347826087
+Valid (Homo)/recall propeptides: 0.3728813559322034
+Epoch: 96
+Valid/f1 all: 0.4965517241379311
+Valid/f1 peptides: 0.37004950495049505
+Valid/f1 propeptides: 0.5801963993453355
+Valid/precision all: 0.7189728958630528
+Valid/precision peptides: 0.5851272015655578
+Valid/precision propeptides: 0.7957351290684624
+Valid/recall all: 0.3792325056433409
+Valid/recall peptides: 0.27058823529411763
+Valid/recall propeptides: 0.4565357372826787
+Epoch: 96
+Valid (Homo)/f1 all: 0.18333333333333338
+Valid (Homo)/f1 peptides: 0.09999999999999999
+Valid (Homo)/f1 propeptides: 0.22500000000000003
+Valid (Homo)/precision all: 0.4230769230769231
+Valid (Homo)/precision peptides: 0.4
+Valid (Homo)/precision propeptides: 0.42857142857142855
+Valid (Homo)/recall all: 0.11702127659574468
+Valid (Homo)/recall peptides: 0.05714285714285714
+Valid (Homo)/recall propeptides: 0.15254237288135594
+Epoch: 97
+Valid/f1 all: 0.6108397301698069
+Valid/f1 peptides: 0.5267958950969213
+Valid/f1 propeptides: 0.668762278978389
+Valid/precision all: 0.8065110565110565
+Valid/precision peptides: 0.7264150943396226
+Valid/precision propeptides: 0.8578629032258065
+Valid/recall all: 0.4915761886933733
+Valid/recall peptides: 0.41323792486583183
+Valid/recall propeptides: 0.5479716677398584
+Epoch: 97
+Valid (Homo)/f1 all: 0.3225806451612903
+Valid (Homo)/f1 peptides: 0.15
+Valid (Homo)/f1 propeptides: 0.40476190476190477
+Valid (Homo)/precision all: 0.6896551724137931
+Valid (Homo)/precision peptides: 0.75
+Valid (Homo)/precision propeptides: 0.68
+Valid (Homo)/recall all: 0.21052631578947367
+Valid (Homo)/recall peptides: 0.08333333333333333
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 98
+Valid/f1 all: 0.6607222469906375
+Valid/f1 peptides: 0.6588859416445624
+Valid/f1 propeptides: 0.6620530565167243
+Valid/precision all: 0.7832980972515856
+Valid/precision peptides: 0.735781990521327
+Valid/precision propeptides: 0.8215648854961832
+Valid/recall all: 0.5713184271395528
+Valid/recall peptides: 0.5965417867435159
+Valid/recall propeptides: 0.5544108177720541
+Epoch: 98
+Valid (Homo)/f1 all: 0.37500000000000006
+Valid (Homo)/f1 peptides: 0.35
+Valid (Homo)/f1 propeptides: 0.38636363636363635
+Valid (Homo)/precision all: 0.6486486486486487
+Valid (Homo)/precision peptides: 0.875
+Valid (Homo)/precision propeptides: 0.5862068965517241
+Valid (Homo)/recall all: 0.26373626373626374
+Valid (Homo)/recall peptides: 0.21875
+Valid (Homo)/recall propeptides: 0.288135593220339
+Epoch: 99
+Valid/f1 all: 0.6596445029624755
+Valid/f1 peptides: 0.6690391459074734
+Valid/f1 propeptides: 0.6525096525096525
+Valid/precision all: 0.7545180722891566
+Valid/precision peptides: 0.6890052356020943
+Valid/precision propeptides: 0.8148505303760849
+Valid/recall all: 0.5859649122807018
+Valid/recall peptides: 0.650197628458498
+Valid/recall propeptides: 0.5441081777205409
+Epoch: 99
+Valid (Homo)/f1 all: 0.31746031746031744
+Valid (Homo)/f1 peptides: 0.3
+Valid (Homo)/f1 propeptides: 0.3255813953488372
+Valid (Homo)/precision all: 0.45454545454545453
+Valid (Homo)/precision peptides: 0.35294117647058826
+Valid (Homo)/precision propeptides: 0.5185185185185185
+Valid (Homo)/recall all: 0.24390243902439024
+Valid (Homo)/recall peptides: 0.2608695652173913
+Valid (Homo)/recall propeptides: 0.23728813559322035
+Epoch: 99
+Test/f1 all: 0.5666530778638401
+Test/f1 peptides: 0.5504347826086957
+Test/f1 propeptides: 0.5809669992325402
+Test/precision all: 0.5869932432432432
+Test/precision peptides: 0.5518744551002616
+Test/precision propeptides: 0.61998361998362
+Test/recall all: 0.5476753349093775
+Test/recall peptides: 0.5490026019080659
+Test/recall propeptides: 0.5465703971119134
+Epoch: 99
+Test (Homo)/f1 all: 0.4605263157894737
+Test (Homo)/f1 peptides: 0.3157894736842105
+Test (Homo)/f1 propeptides: 0.5473684210526316
+Test (Homo)/precision all: 0.5223880597014925
+Test (Homo)/precision peptides: 0.36
+Test (Homo)/precision propeptides: 0.6190476190476191
+Test (Homo)/recall all: 0.4117647058823529
+Test (Homo)/recall peptides: 0.28125
+Test (Homo)/recall propeptides: 0.49056603773584906

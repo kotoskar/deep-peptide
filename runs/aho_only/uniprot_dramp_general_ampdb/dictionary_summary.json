@@ -1,0 +1,37 @@
+{
+  "external_gold_policy": "keep",
+  "source_weight_overrides": {},
+  "test": {
+    "allowed_folds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_entries": 16387,
+    "n_patterns": 16387,
+    "n_rows_kept": 21276,
+    "n_rows_loaded": 23894,
+    "sources": [
+      "ampdb",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  },
+  "validation": {
+    "allowed_folds": [
+      0,
+      1,
+      2
+    ],
+    "n_entries": 14690,
+    "n_patterns": 14690,
+    "n_rows_kept": 18515,
+    "n_rows_loaded": 23894,
+    "sources": [
+      "ampdb",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  }
+}

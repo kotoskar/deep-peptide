@@ -1,6 +1,6 @@
 __version__ = '0.7.2'
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Union
 
 import torch
 import torch.nn as nn
@@ -105,15 +105,132 @@ class CRF(nn.Module):
         inf = torch.as_tensor(-10000000000, dtype=self.transitions.dtype)
         # TODO could make this a buffer instead of recomputing.
         inf_matrix = torch.empty(self.transitions.shape).fill_(inf).to(self.transitions.dtype).to(self.transitions.device)
-        self.transitions.data = torch.where(self._constraint_mask.byte(), self.transitions, inf_matrix)
+        self.transitions.data = torch.where(self._constraint_mask.bool(), self.transitions, inf_matrix)
 
         if self.include_start_end_transitions:
             inf_vector = torch.empty(self.start_transitions.shape).fill_(inf).to(self.transitions.dtype).to(self.start_transitions.device)
-            self.start_transitions.data = torch.where(self._constraint_start_mask.byte(), self.start_transitions, inf_vector)
-            self.end_transitions.data = torch.where(self._constraint_end_mask.byte(), self.end_transitions, inf_vector)
+            self.start_transitions.data = torch.where(self._constraint_start_mask.bool(), self.start_transitions, inf_vector)
+            self.end_transitions.data = torch.where(self._constraint_end_mask.bool(), self.end_transitions, inf_vector)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(num_tags={self.num_tags})'
+
+
+    @staticmethod
+    def _is_sparse_transition_bias(transition_bias) -> bool:
+        return isinstance(transition_bias, dict)
+
+    def _transpose_transition_bias_batch_first(self, transition_bias):
+        """Convert transition bias from batch-first to time-first when needed.
+
+        Dense format:  [B, L, S, S] -> [L, B, S, S]
+        Sparse format: {values: [B, L, K], from_states: [K], to_states: [K]}
+                       -> {values: [L, B, K], ...}
+        """
+        if transition_bias is None:
+            return None
+        if self._is_sparse_transition_bias(transition_bias):
+            out = dict(transition_bias)
+            out["values"] = out["values"].transpose(0, 1)
+            return out
+        return transition_bias.transpose(0, 1)
+
+    def _validate_transition_bias(self, transition_bias, emissions: torch.Tensor) -> None:
+        if transition_bias is None:
+            return
+        if self._is_sparse_transition_bias(transition_bias):
+            required = {"values", "from_states", "to_states"}
+            missing = required.difference(transition_bias.keys())
+            if missing:
+                raise ValueError(f"sparse transition_bias missing keys: {sorted(missing)}")
+            values = transition_bias["values"]
+            from_states = transition_bias["from_states"]
+            to_states = transition_bias["to_states"]
+            if values.dim() != 3:
+                raise ValueError(f"sparse transition_bias['values'] must have dimension 3 [L,B,K], got {values.dim()}")
+            if values.shape[:2] != emissions.shape[:2]:
+                raise ValueError(
+                    f"sparse transition_bias['values'] first dims must match emissions {tuple(emissions.shape[:2])}, "
+                    f"got {tuple(values.shape[:2])}"
+                )
+            if from_states.dim() != 1 or to_states.dim() != 1:
+                raise ValueError("sparse transition_bias from_states/to_states must be 1D tensors")
+            if from_states.numel() != to_states.numel() or values.size(2) != from_states.numel():
+                raise ValueError(
+                    "sparse transition_bias K mismatch: "
+                    f"values K={values.size(2)}, from={from_states.numel()}, to={to_states.numel()}"
+                )
+            if from_states.numel() > 0:
+                if int(from_states.min()) < 0 or int(to_states.min()) < 0 or int(from_states.max()) >= self.num_tags or int(to_states.max()) >= self.num_tags:
+                    raise ValueError("sparse transition_bias state index out of range")
+            return
+        if transition_bias.dim() != 4:
+            raise ValueError(f'transition_bias must have dimension 4, got {transition_bias.dim()}')
+        if transition_bias.shape[:2] != emissions.shape[:2] or transition_bias.shape[2:] != (self.num_tags, self.num_tags):
+            raise ValueError(
+                f'transition_bias must have shape {tuple(emissions.shape[:2]) + (self.num_tags, self.num_tags)}, '
+                f'got {tuple(transition_bias.shape)}'
+            )
+
+    def _sparse_transition_bias_for_tags(
+        self,
+        transition_bias: Dict[str, torch.Tensor],
+        timestep: int,
+        prev_tags: torch.LongTensor,
+        next_tags: torch.LongTensor,
+    ) -> torch.Tensor:
+        """Return [B] sparse transition bias for the realized prev->next transitions."""
+        values = transition_bias["values"][timestep]  # [B, K]
+        from_states = transition_bias["from_states"].to(device=values.device)
+        to_states = transition_bias["to_states"].to(device=values.device)
+        if from_states.numel() == 0:
+            return values.new_zeros(values.size(0))
+        matches = (prev_tags.unsqueeze(1) == from_states.view(1, -1)) & (next_tags.unsqueeze(1) == to_states.view(1, -1))
+        return (values * matches.to(values.dtype)).sum(dim=1)
+
+    def _add_sparse_transition_bias_to_scores(
+        self,
+        scores: torch.Tensor,
+        transition_bias: Dict[str, torch.Tensor],
+        timestep: int,
+        transpose: bool = False,
+    ) -> torch.Tensor:
+        """Add sparse input-dependent transition bias to a [B,S,S] pairwise score tensor.
+
+        transition_bias values are stored for original prev->next transitions.
+        If transpose=True, add them as next->prev, matching the backward algorithm.
+        """
+        values = transition_bias["values"][timestep]  # [B, K]
+        from_states = transition_bias["from_states"].to(device=scores.device)
+        to_states = transition_bias["to_states"].to(device=scores.device)
+        if from_states.numel() == 0:
+            return scores
+        if transpose:
+            from_states, to_states = to_states, from_states
+        B, K = values.shape
+        batch_idx = torch.arange(B, device=scores.device).view(B, 1).expand(B, K).reshape(-1)
+        f = from_states.view(1, K).expand(B, K).reshape(-1)
+        t = to_states.view(1, K).expand(B, K).reshape(-1)
+        out = scores.clone()
+        out.index_put_((batch_idx, f, t), values.reshape(-1), accumulate=True)
+        return out
+
+    def _add_transition_bias_to_pair_scores(
+        self,
+        pair_scores: torch.Tensor,
+        transition_bias,
+        timestep: int,
+        transpose: bool = False,
+    ) -> torch.Tensor:
+        """Add dense or sparse transition bias to [B,S,S] pair scores."""
+        if transition_bias is None:
+            return pair_scores
+        if self._is_sparse_transition_bias(transition_bias):
+            return self._add_sparse_transition_bias_to_scores(pair_scores, transition_bias, timestep, transpose=transpose)
+        step_bias = transition_bias[timestep]
+        if transpose:
+            step_bias = step_bias.transpose(1, 2)
+        return pair_scores + step_bias
 
     def forward(
             self,
@@ -121,7 +238,8 @@ class CRF(nn.Module):
             tags: Optional[torch.LongTensor] = None,
             tag_bitmap: Optional[torch.LongTensor] = None,
             mask: Optional[torch.ByteTensor] = None,
-            reduction: str = 'sum'
+            reduction: str = 'sum',
+            transition_bias: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Compute the conditional log likelihood of a sequence of tags given emission scores.
         Args:
@@ -164,6 +282,11 @@ class CRF(nn.Module):
             else:
                 tags = tags.transpose(0, 1)
             mask = mask.transpose(0, 1)
+            if transition_bias is not None:
+                # Dense: [B,L,T,T]->[L,B,T,T]; sparse values: [B,L,K]->[L,B,K].
+                transition_bias = self._transpose_transition_bias_batch_first(transition_bias)
+
+        self._validate_transition_bias(transition_bias, emissions)
 
         if self.constrain_every:
             self.do_transition_constraint()
@@ -173,11 +296,11 @@ class CRF(nn.Module):
 
         # shape: (batch_size,)
         if tag_bitmap is not None: # if true then tags is tag_bitmap
-            log_numerator = self._compute_seq_score_multi_tag(emissions, tag_bitmap, mask)
+            log_numerator = self._compute_seq_score_multi_tag(emissions, tag_bitmap, mask, transition_bias=transition_bias)
         else:
-            log_numerator = self._compute_seq_score(emissions, tags, mask) # aka. sequence scores TODO: unary + binary scores
+            log_numerator = self._compute_seq_score(emissions, tags, mask, transition_bias=transition_bias) # aka. sequence scores TODO: unary + binary scores
         # shape: (batch_size,)
-        log_denominator = self._compute_log_normalizer(emissions, mask) # log norm normalization constant
+        log_denominator = self._compute_log_normalizer(emissions, mask, transition_bias=transition_bias) # log norm normalization constant
         # shape: (batch_size,)
         llh = log_numerator - log_denominator
 
@@ -197,7 +320,8 @@ class CRF(nn.Module):
                init_state_vector: Optional[torch.LongTensor] = None,
                forced_steps: int = 2,
                no_mask_label: int = 0,
-               top_k: int = 1) -> Tuple[List[List[int]], List[float]]:
+               top_k: int = 1,
+               transition_bias: Optional[torch.Tensor] = None) -> Tuple[List[List[int]], List[float]]:
         """Find the most likely tag sequence using Viterbi algorithm.
         Args:
             emissions (`~torch.Tensor`): Emission score tensor of size
@@ -217,16 +341,23 @@ class CRF(nn.Module):
         if self.batch_first:
             emissions = emissions.transpose(0, 1)
             mask = mask.transpose(0, 1)
+            if transition_bias is not None:
+                transition_bias = self._transpose_transition_bias_batch_first(transition_bias)
+
+        self._validate_transition_bias(transition_bias, emissions)
 
         if init_state_vector is not None and top_k==1:
             paths =  self._viterbi_decode_force_states(emissions, mask, init_state_vector, forced_steps, no_mask_label)
         elif init_state_vector is not None and top_k>1:
             raise NotImplementedError
         elif top_k>1:
+            
+            if transition_bias is not None:
+                raise NotImplementedError('top_k decode with transition_bias is not implemented')
             paths, likelihoods = self._topk_viterbi_decode(emissions, mask, top_k=top_k)
             return paths, likelihoods
         else:
-            paths, likelihoods = self._viterbi_decode(emissions, mask)
+            paths, likelihoods = self._viterbi_decode(emissions, mask, transition_bias=transition_bias)
 
         return paths, likelihoods
 
@@ -260,7 +391,7 @@ class CRF(nn.Module):
 
     def _compute_seq_score( # input likelihood
             self, emissions: torch.Tensor, tags: torch.LongTensor,
-            mask: torch.ByteTensor) -> torch.Tensor:
+            mask: torch.ByteTensor, transition_bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         # emissions: (seq_length, batch_size, num_tags) logits
         # tags: (seq_length, batch_size) y labels
         # mask: (seq_length, batch_size)
@@ -284,7 +415,15 @@ class CRF(nn.Module):
         for i in range(1, seq_length):
             # Transition score to next tag, only added if next timestep is valid (mask == 1)
             # shape: (batch_size,)
-            score += self.transitions[tags[i - 1], tags[i]] * mask[i] # TODO binary score
+            transition_score = self.transitions[tags[i - 1], tags[i]]
+            if transition_bias is not None:
+                if self._is_sparse_transition_bias(transition_bias):
+                    transition_score = transition_score + self._sparse_transition_bias_for_tags(
+                        transition_bias, i, tags[i - 1], tags[i]
+                    )
+                else:
+                    transition_score = transition_score + transition_bias[i, torch.arange(batch_size), tags[i - 1], tags[i]]
+            score += transition_score * mask[i] # TODO binary score
 
             # Emission score for next tag, only added if next timestep is valid (mask == 1)
             # shape: (batch_size,)
@@ -302,7 +441,7 @@ class CRF(nn.Module):
 
     def _compute_seq_score_multi_tag(
             self, emissions: torch.Tensor, tag_bitmap: torch.LongTensor,
-            mask: torch.ByteTensor) -> torch.Tensor:
+            mask: torch.ByteTensor, transition_bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         # emissions: (seq_length, batch_size, num_tags)
         # tags: (seq_length, batch_size)
         # mask: (seq_length, batch_size)
@@ -331,13 +470,13 @@ class CRF(nn.Module):
         # inf_matrix = torch.empty(emissions.shape).fill_(torch.as_tensor(-30.0)).to(emissions.device)
         filtered_inputs = torch.where(tag_bitmap.byte(), emissions, inf_matrix)
 
-        seq_score = self._compute_log_normalizer(filtered_inputs, mask)
+        seq_score = self._compute_log_normalizer(filtered_inputs, mask, transition_bias=transition_bias)
         # torch.index_fill(emissions, )
 
         return seq_score
 
     def _compute_log_normalizer(
-            self, emissions: torch.Tensor, mask: torch.ByteTensor) -> torch.Tensor:
+            self, emissions: torch.Tensor, mask: torch.ByteTensor, transition_bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         # emissions: (seq_length, batch_size, num_tags) logits
         # mask: (seq_length, batch_size)
         assert emissions.dim() == 3 and mask.dim() == 2
@@ -371,6 +510,7 @@ class CRF(nn.Module):
             # and emitting
             # shape: (batch_size, num_tags, num_tags)
             next_score = broadcast_score + self.transitions + broadcast_emissions
+            next_score = self._add_transition_bias_to_pair_scores(next_score, transition_bias, i)
 
             # Sum over all possible current tags, but we're in score space, so a sum
             # becomes a log-sum-exp: for each sample, entry i stores the sum of scores of
@@ -392,7 +532,7 @@ class CRF(nn.Module):
         return torch.logsumexp(score, dim=1)
 
     def _viterbi_decode(self, emissions: torch.FloatTensor,
-                        mask: torch.ByteTensor) -> List[List[int]]:
+                        mask: torch.ByteTensor, transition_bias: Optional[torch.Tensor] = None) -> List[List[int]]:
         # emissions: (seq_length, batch_size, num_tags) logits
         # mask: (seq_length, batch_size)
         assert emissions.dim() == 3 and mask.dim() == 2
@@ -438,6 +578,7 @@ class CRF(nn.Module):
             # tag sequence so far that ends with transitioning from tag i to tag j and emitting
             # shape: (batch_size, num_tags, num_tags)
             next_score = broadcast_score + self.transitions + broadcast_emission
+            next_score = self._add_transition_bias_to_pair_scores(next_score, transition_bias, i)
 
             # Find the maximum score over all possible current tag
             # shape: (batch_size, num_tags)
@@ -483,7 +624,7 @@ class CRF(nn.Module):
             self.transitions.data = transitions_temp
 
         
-        log_denominator = self._compute_log_normalizer(emissions, mask) # log norm normalization constant (batch_size,)
+        log_denominator = self._compute_log_normalizer(emissions, mask, transition_bias=transition_bias) # log norm normalization constant (batch_size,)
         llhs = []
         for idx, s in enumerate(best_score_list):
             llhs.append((s-log_denominator[idx]).detach().cpu().numpy().item())
@@ -516,7 +657,7 @@ class CRF(nn.Module):
             paths.append(paths_i)
             scores.append(scores_i)
         
-        log_denominator = self._compute_log_normalizer(emissions, mask) # log norm normalization constant (batch_size,)
+        log_denominator = self._compute_log_normalizer(emissions, mask, transition_bias=transition_bias) # log norm normalization constant (batch_size,)
         # shape: (batch_size,)
         #llh = log_numerator - log_denominator
         llhs = []
@@ -605,7 +746,8 @@ class CRF(nn.Module):
     def _compute_log_alpha(self,
                            emissions: torch.FloatTensor,
                            mask: torch.ByteTensor,
-                           run_backwards: bool) -> torch.FloatTensor:
+                           run_backwards: bool,
+                           transition_bias: Optional[torch.Tensor] = None) -> torch.FloatTensor:
         # emissions: (seq_length, batch_size, num_tags)
         # mask: (seq_length, batch_size)
         assert emissions.dim() == 3 and mask.dim() == 2
@@ -648,8 +790,9 @@ class CRF(nn.Module):
         for i in seq_iterator:
             # Broadcast log_prob over all possible next tags
             broadcast_log_prob = log_prob[-1].unsqueeze(2)  # (batch_size, num_tags, 1)
-            # Sum current log probability, transition, and emission scores
+            # Sum current log probability, transition, optional input-dependent transition bias, and emission scores
             score = broadcast_log_prob + broadcast_transitions + emissions_broadcast[i]  # (batch_size, num_tags, num_tags)
+            score = self._add_transition_bias_to_pair_scores(score, transition_bias, i, transpose=run_backwards)
             # Sum over all possible current tags, but we're in log prob space, so a sum
             # becomes a log-sum-exp
             score = self._log_sum_exp(score, dim=1)
@@ -664,13 +807,16 @@ class CRF(nn.Module):
 
     def compute_marginal_probabilities(self,
                                        emissions: torch.FloatTensor,
-                                       mask: torch.ByteTensor) -> torch.FloatTensor:
+                                       mask: torch.ByteTensor,
+                                       transition_bias: Optional[torch.Tensor] = None) -> torch.FloatTensor:
         if self.batch_first:
             emissions = emissions.transpose(0, 1)
             mask = mask.transpose(0, 1)
+            if transition_bias is not None:
+                transition_bias = self._transpose_transition_bias_batch_first(transition_bias)
 
-        alpha = self._compute_log_alpha(emissions, mask, run_backwards=False)
-        beta = self._compute_log_alpha(emissions, mask, run_backwards=True)
+        alpha = self._compute_log_alpha(emissions, mask, run_backwards=False, transition_bias=transition_bias)
+        beta = self._compute_log_alpha(emissions, mask, run_backwards=True, transition_bias=transition_bias)
         if self.include_start_end_transitions:
             z = torch.logsumexp(alpha[alpha.size(0)-1] + self.end_transitions, dim=1)
         else:

@@ -1,0 +1,37 @@
+{
+  "external_gold_policy": "drop_eval_exact",
+  "source_weight_overrides": {},
+  "test": {
+    "allowed_folds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_entries": 33476,
+    "n_patterns": 33471,
+    "n_rows_kept": 44668,
+    "n_rows_loaded": 47582,
+    "sources": [
+      "dbamp_3",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  },
+  "validation": {
+    "allowed_folds": [
+      0,
+      1,
+      2
+    ],
+    "n_entries": 31710,
+    "n_patterns": 31705,
+    "n_rows_kept": 41614,
+    "n_rows_loaded": 47582,
+    "sources": [
+      "dbamp_3",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  }
+}

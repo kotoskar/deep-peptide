@@ -1,0 +1,33 @@
+{
+  "external_gold_policy": "keep",
+  "source_weight_overrides": {},
+  "test": {
+    "allowed_folds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_entries": 4041,
+    "n_patterns": 4041,
+    "n_rows_kept": 4211,
+    "n_rows_loaded": 4211,
+    "sources": [
+      "dramp_natural"
+    ]
+  },
+  "validation": {
+    "allowed_folds": [
+      0,
+      1,
+      2
+    ],
+    "n_entries": 4041,
+    "n_patterns": 4041,
+    "n_rows_kept": 4211,
+    "n_rows_loaded": 4211,
+    "sources": [
+      "dramp_natural"
+    ]
+  }
+}

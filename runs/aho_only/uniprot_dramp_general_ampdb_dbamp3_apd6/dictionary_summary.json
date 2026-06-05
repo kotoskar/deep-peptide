@@ -1,0 +1,41 @@
+{
+  "external_gold_policy": "keep",
+  "source_weight_overrides": {},
+  "test": {
+    "allowed_folds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_entries": 34540,
+    "n_patterns": 34535,
+    "n_rows_kept": 49419,
+    "n_rows_loaded": 52037,
+    "sources": [
+      "ampdb",
+      "apd6_natural",
+      "dbamp_3",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  },
+  "validation": {
+    "allowed_folds": [
+      0,
+      1,
+      2
+    ],
+    "n_entries": 32973,
+    "n_patterns": 32968,
+    "n_rows_kept": 46658,
+    "n_rows_loaded": 52037,
+    "sources": [
+      "ampdb",
+      "apd6_natural",
+      "dbamp_3",
+      "dramp_general",
+      "uniprot_2022"
+    ]
+  }
+}

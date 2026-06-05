@@ -1,14 +1,56 @@
-notebooks/
-data/embeddings/
-data/
+# ============================================================
+# DeepPeptide .gitignore
+# Goal: keep all CODE + small, hard-to-reproduce inputs
+# (labels, splits, metrics, configs). Ignore everything that
+# is large and either reproducible (retrain / recompute) or
+# re-downloadable (raw data dumps).
+# ============================================================
+
+# ---- Python / environments / tooling ----
+env/
+venv/
+.venv/
 __pycache__/
-metrics.txt
-src/utils/ProSST/
-src/utils/SaProt/
-src/utils/Foldseek/
-src/utils/SaProt_650M_AF2/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.aim/
 wandb/
+
+# ---- Model checkpoints (reproducible by retraining) ----
+*.pt
+*.pth
+*.ckpt
+*.safetensors
 checkpoints/
-metrics*
-*/*.pickle
+
+# ---- Precomputed embeddings / cached tensors (~180G; recompute via src/utils/embedding_generators) ----
+# Matches dirs named embeddings, embeddings_esm2, .../embeddings/, etc. at any depth.
+embeddings*/
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# ---- Raw / re-downloadable data dumps ----
+data/raw/
+data/**/raw/
+*.parquet
+# Large graphpart intermediate edge lists (regenerable from sequences)
+graphpart_edges*.csv
+
+# ---- Misc large / generated artifacts ----
+*.zip
+*.pickle
+*.error
+old_runs/
+metrics.txt
 *.env
+
+# NOTE: runs/ is intentionally NOT ignored wholesale — per-experiment
+# config.json and *_metrics*.json are kept (checkpoints there are caught
+# by *.pt / *.pth above). Same for data/: labeled_sequences*.csv,
+# graphpart_assignments*.csv, protein_sequences.fasta and the small
+# *_report.json files are kept; only bulk artifacts above are ignored.

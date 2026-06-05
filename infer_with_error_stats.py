@@ -1,0 +1,1281 @@
+#!/usr/bin/env python3
+"""Batch inference over saved runs/ experiments.
+
+This script is meant to live next to run.py. It scans subdirectories in runs/,
+loads config.json + model.pt for each experiment, rebuilds the model in the same
+way training does, runs evaluation on the test split, and saves metrics.
+
+It also computes extra residue-level metrics (MCC and ROC AUC) on top of the
+existing manuscript metrics.
+
+Usage:
+    python infer.py
+    python infer.py --runs_dir runs --device 0
+    python infer.py --runs_dir runs --batch_size 32 --only my_run another_run
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import math
+import pickle
+import traceback
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+import numpy as np
+import pandas as pd
+import torch
+
+from src.train_loop_crf import get_dataloaders, get_model, run_dataloader
+from src.utils.manuscript_metrics import (
+    PEPTIDE_END_STATE,
+    PEPTIDE_START_STATE,
+    PROPEPTIDE_END_STATE,
+    PROPEPTIDE_START_STATE,
+    compute_all_metrics,
+)
+
+
+TRAIN_DEFAULTS: Dict[str, Any] = {
+    "embeddings_dir": "/data3/fegt_data/embeddings/",
+    "checkpoints_dir": "./checkpoints",
+    "data_file": "data/labeled_sequences.csv",
+    "partitioning_file": "data/graphpart_assignments.csv",
+    "embedding": "precomputed",
+    "embedding_dim": 1280,
+    "seq_input_size": 1280,
+    "struct_input_size": 20,
+    "seq_proj_size": 256,
+    "residue_proj_size": 16,
+    "struct_proj_size": 64,
+    "projector_dropout": 0.4,
+    "struct_conv_kernel": 5,
+    "multiscale_kernels": "3,7,15",
+    "multiscale_dropout": 0.1,
+    "residue_input_size": 10,
+    "gated_residual_scale": 0.2,
+    "residue_residual_scale": 0.05,
+    "struct_residual_scale": 0.10,
+    "residue_branch_dropout": 0.2,
+    "struct_branch_dropout": 0.3,
+    "residue_gate_bias": -2.5,
+    "struct_gate_bias": -2.5,
+    "model": "lstmcnncrf",
+    "out_dir": "runs/train_run",
+    "epochs": 100,
+    "batch_size": 48,
+    "lr": 1e-4,
+    "dropout": 0.1,
+    "conv_dropout": 0.1,
+    "kernel_size": 3,
+    "num_filters": 32,
+    "hidden_size": 64,
+    "device": 0,
+    "port": 12355,
+    "feature_extractor": "LSTMCNN",
+    "homo_only": False,
+    "K": 10,
+    "amp": False,
+    "amp_dtype": "bf16",
+    "label_type": "multistate_with_propeptides",
+}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--runs_dir", type=str, default="runs", help="Directory with experiment subfolders.")
+    parser.add_argument(
+        "--device",
+        type=int,
+        default=None,
+        help="Override device id from configs. If CUDA is unavailable, CPU is used automatically.",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=None,
+        help="Override batch size from configs for inference only.",
+    )
+    parser.add_argument(
+        "--only",
+        nargs="*",
+        default=None,
+        help="Optional list of run folder names to evaluate. By default evaluates all subfolders in runs_dir.",
+    )
+    parser.add_argument(
+        "--test_partitions",
+        type=int,
+        nargs="*",
+        default=[4],
+        help="Test partitions to use. Default mirrors training: partition 4.",
+    )
+    parser.add_argument(
+        "--valid_partitions",
+        type=int,
+        nargs="*",
+        default=[3],
+        help="Validation partitions. Kept only to mirror training API defaults.",
+    )
+    parser.add_argument(
+        "--train_partitions",
+        type=int,
+        nargs="*",
+        default=[0, 1, 2],
+        help="Train partitions. Kept only to mirror training API defaults.",
+    )
+    parser.add_argument(
+        "--output_suffix",
+        type=str,
+        default="_infer",
+        help="Suffix for generated files inside each run dir.",
+    )
+    parser.add_argument(
+        "--no_error_stats",
+        action="store_true",
+        help="Disable saving per-protein/per-feature/per-predicted-segment error analysis tables.",
+    )
+    parser.add_argument(
+        "--error_iou_threshold",
+        type=float,
+        default=0.5,
+        help="IoU threshold used to mark a true/predicted segment as segment-level TP in error analysis.",
+    )
+    parser.add_argument(
+        "--error_stats_dir_name",
+        type=str,
+        default="error_stats",
+        help="Directory name prefix for error analysis tables inside every run dir.",
+    )
+    return parser.parse_args()
+
+
+def resolve_device(config_device: int, override_device: Optional[int]) -> str:
+    if torch.cuda.is_available():
+        device_idx = config_device if override_device is None else override_device
+        return f"cuda:{device_idx}"
+    return "cpu"
+
+
+def load_run_args(run_dir: Path, cli_args: argparse.Namespace) -> SimpleNamespace:
+    config_path = run_dir / "config.json"
+    if not config_path.exists():
+        raise FileNotFoundError(f"Missing config.json in {run_dir}")
+
+    with config_path.open("r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    merged = dict(TRAIN_DEFAULTS)
+    merged.update(config)
+
+    # Force the current run directory as output dir. This matters because train.py
+    # saved model.pt to args.out_dir/model.pt and we want inference artifacts there too.
+    merged["out_dir"] = str(run_dir)
+
+    if cli_args.batch_size is not None:
+        merged["batch_size"] = cli_args.batch_size
+    if cli_args.device is not None:
+        merged["device"] = cli_args.device
+
+    return SimpleNamespace(**merged)
+
+
+def squeeze_prob_array(x: np.ndarray) -> np.ndarray:
+    arr = np.asarray(x)
+    if arr.ndim >= 1 and arr.shape[-1] == 1:
+        arr = np.squeeze(arr, axis=-1)
+    return arr
+
+
+def state_in_ranges(values: np.ndarray, ranges: Sequence[Tuple[int, int]]) -> np.ndarray:
+    values = np.asarray(values)
+    mask = np.zeros(values.shape, dtype=bool)
+    for start, end in ranges:
+        mask |= (values >= start) & (values <= end)
+    return mask
+
+
+PEPTIDE_RANGES = [(PEPTIDE_START_STATE, PEPTIDE_END_STATE)]
+PROPEPTIDE_RANGES = [(PROPEPTIDE_START_STATE, PROPEPTIDE_END_STATE)]
+ALL_POSITIVE_RANGES = PEPTIDE_RANGES + PROPEPTIDE_RANGES
+
+
+class TaskSpec(Tuple[str, Sequence[Tuple[int, int]], str]):
+    pass
+
+
+TASKS: List[Tuple[str, Sequence[Tuple[int, int]], str]] = [
+    ("peptides", PEPTIDE_RANGES, "peptide"),
+    ("propeptides", PROPEPTIDE_RANGES, "propeptide"),
+    ("all", ALL_POSITIVE_RANGES, "all"),
+]
+
+
+def get_task_scores(prob_seq: np.ndarray, task_name: str, label_type: str) -> Optional[np.ndarray]:
+    arr = squeeze_prob_array(np.asarray(prob_seq))
+
+    # Most likely cases:
+    #   (L,)   -> one positive class probability (binary peptide case)
+    #   (L, 2) -> [peptide_prob, propeptide_prob]
+    #   (L, C) -> positive channels only or logits-like positive channels.
+    if arr.ndim == 1:
+        if task_name in {"peptides", "all"}:
+            return arr.astype(float)
+        return None
+
+    if arr.ndim != 2:
+        return None
+
+    num_cols = arr.shape[1]
+    if num_cols == 0:
+        return None
+    if num_cols == 1:
+        if task_name in {"peptides", "all"}:
+            return arr[:, 0].astype(float)
+        return None
+
+    with_propeptides = "with_propeptides" in label_type
+
+    if with_propeptides:
+        if num_cols >= 3:
+            peptide_col = 1
+            propeptide_col = 2
+        else:
+            peptide_col = 0
+            propeptide_col = 1
+
+        if task_name == "peptides":
+            return arr[:, peptide_col].astype(float)
+        if task_name == "propeptides":
+            return arr[:, propeptide_col].astype(float)
+        if task_name == "all":
+            return np.clip(arr[:, [peptide_col, propeptide_col]].sum(axis=1), 0.0, 1.0).astype(float)
+        return None
+
+    # Binary peptide-only case. If two columns are present, assume [background, peptide].
+    peptide_col = 1 if num_cols >= 2 else 0
+    if task_name in {"peptides", "all"}:
+        return arr[:, peptide_col].astype(float)
+    return None
+
+
+def binary_mcc(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_pred = np.asarray(y_pred, dtype=np.int64)
+
+    tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+    tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+    fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+    fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+
+    denom = math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    if denom == 0:
+        return float("nan")
+    return float((tp * tn - fp * fn) / denom)
+
+
+try:
+    from sklearn.metrics import roc_auc_score as sklearn_roc_auc_score
+except Exception:  # pragma: no cover
+    sklearn_roc_auc_score = None
+
+
+def binary_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_score = np.asarray(y_score, dtype=np.float64)
+
+    finite_mask = np.isfinite(y_score)
+    y_true = y_true[finite_mask]
+    y_score = y_score[finite_mask]
+
+    if y_true.size == 0 or np.unique(y_true).size < 2:
+        return float("nan")
+
+    if sklearn_roc_auc_score is not None:
+        return float(sklearn_roc_auc_score(y_true, y_score))
+
+    # Fallback: rank-based AUC with average ranks for ties.
+    order = np.argsort(y_score)
+    ranks = np.empty_like(order, dtype=np.float64)
+    sorted_scores = y_score[order]
+
+    i = 0
+    n = len(sorted_scores)
+    while i < n:
+        j = i + 1
+        while j < n and sorted_scores[j] == sorted_scores[i]:
+            j += 1
+        avg_rank = (i + j - 1) / 2.0 + 1.0
+        ranks[order[i:j]] = avg_rank
+        i = j
+
+    pos = y_true == 1
+    n_pos = int(np.sum(pos))
+    n_neg = int(np.sum(~pos))
+    if n_pos == 0 or n_neg == 0:
+        return float("nan")
+
+    rank_sum_pos = float(np.sum(ranks[pos]))
+    u = rank_sum_pos - (n_pos * (n_pos + 1)) / 2.0
+    return float(u / (n_pos * n_neg))
+
+
+def compute_residue_level_metrics(
+    probs: Sequence[np.ndarray],
+    preds: Sequence[Sequence[int]],
+    labels: Sequence[np.ndarray],
+    label_type: str,
+) -> Dict[str, float]:
+    pred_cursor = 0
+    collected: Dict[str, Dict[str, List[float]]] = {
+        task_name: {"y_true": [], "y_pred": [], "y_score": []}
+        for task_name, _, _ in TASKS
+    }
+
+    for batch_probs, batch_labels in zip(probs, labels):
+        batch_probs = np.asarray(batch_probs)
+        batch_labels = np.asarray(batch_labels)
+        batch_size = batch_labels.shape[0]
+
+        for row_idx in range(batch_size):
+            if pred_cursor >= len(preds):
+                raise RuntimeError("Mismatch between preds and labels while reconstructing sequences.")
+
+            pred_seq = np.asarray(preds[pred_cursor])
+            pred_cursor += 1
+            seq_len = len(pred_seq)
+
+            true_seq = np.asarray(batch_labels[row_idx])[:seq_len]
+            prob_seq = np.asarray(batch_probs[row_idx])[:seq_len]
+
+            for task_name, positive_ranges, _ in TASKS:
+                y_true = state_in_ranges(true_seq, positive_ranges).astype(np.int64)
+                y_pred = state_in_ranges(pred_seq, positive_ranges).astype(np.int64)
+                y_score = get_task_scores(prob_seq, task_name, label_type)
+
+                collected[task_name]["y_true"].append(y_true)
+                collected[task_name]["y_pred"].append(y_pred)
+                if y_score is not None:
+                    collected[task_name]["y_score"].append(np.asarray(y_score, dtype=np.float64))
+
+    if pred_cursor != len(preds):
+        raise RuntimeError("Not all decoded predictions were consumed while reconstructing sequences.")
+
+    metrics: Dict[str, float] = {}
+    for task_name, _, _ in TASKS:
+        y_true_chunks = collected[task_name]["y_true"]
+        y_pred_chunks = collected[task_name]["y_pred"]
+        y_score_chunks = collected[task_name]["y_score"]
+
+        if not y_true_chunks:
+            metrics[f"residue mcc {task_name}"] = float("nan")
+            metrics[f"residue roc_auc {task_name}"] = float("nan")
+            metrics[f"residue positives {task_name}"] = 0
+            metrics[f"residue total {task_name}"] = 0
+            continue
+
+        y_true = np.concatenate(y_true_chunks)
+        y_pred = np.concatenate(y_pred_chunks)
+        metrics[f"residue mcc {task_name}"] = binary_mcc(y_true, y_pred)
+        metrics[f"residue positives {task_name}"] = int(y_true.sum())
+        metrics[f"residue total {task_name}"] = int(y_true.size)
+
+        if y_score_chunks and sum(len(chunk) for chunk in y_score_chunks) == y_true.size:
+            y_score = np.concatenate(y_score_chunks)
+            metrics[f"residue roc_auc {task_name}"] = binary_roc_auc(y_true, y_score)
+        else:
+            metrics[f"residue roc_auc {task_name}"] = float("nan")
+
+    return metrics
+
+
+def to_jsonable(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: to_jsonable(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [to_jsonable(v) for v in value]
+    if isinstance(value, tuple):
+        return [to_jsonable(v) for v in value]
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    return value
+
+
+def load_state_dict(model_path: Path, device: str) -> Dict[str, Any]:
+    state = torch.load(model_path, map_location=device)
+    if isinstance(state, dict) and "state_dict" in state and isinstance(state["state_dict"], dict):
+        return state["state_dict"]
+    if isinstance(state, dict):
+        return state
+    raise ValueError(f"Unexpected checkpoint format in {model_path}")
+
+
+
+POSITIVE_LABELS = ("PEPTIDE", "PROPEP")
+
+
+def crf_state_to_label(state: int) -> str:
+    """Map a CRF state id to a coarse residue label."""
+    state = int(state)
+    if PEPTIDE_START_STATE <= state <= PEPTIDE_END_STATE:
+        return "PEPTIDE"
+    if PROPEPTIDE_START_STATE <= state <= PROPEPTIDE_END_STATE:
+        return "PROPEP"
+    return "OTHER"
+
+
+
+def _is_missing_value(value: Any) -> bool:
+    if value is None:
+        return True
+    try:
+        if isinstance(value, float) and math.isnan(value):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def parse_coordinate_value(value: Any) -> List[Tuple[int, int]]:
+    """Parse DeepPeptide coordinate values without merging intervals.
+
+    Accepts:
+      - list/tuple of (start, end)
+      - strings like "(97-101),(104-108)" or "97-101,104-108"
+
+    Coordinates are returned as 1-based inclusive pairs.
+    """
+    if _is_missing_value(value):
+        return []
+
+    if isinstance(value, np.ndarray):
+        value = value.tolist()
+
+    if isinstance(value, (list, tuple)):
+        out: List[Tuple[int, int]] = []
+        for item in value:
+            if _is_missing_value(item):
+                continue
+            if isinstance(item, np.ndarray):
+                item = item.tolist()
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                start, end = int(item[0]), int(item[1])
+                out.append((start, end))
+            elif isinstance(item, str):
+                out.extend(parse_coordinate_value(item))
+        return out
+
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return []
+
+    out: List[Tuple[int, int]] = []
+    for part in text.split(","):
+        part = part.strip().lstrip("(").rstrip(")")
+        if not part:
+            continue
+        if "-" not in part:
+            continue
+        start_s, end_s = part.split("-", 1)
+        out.append((int(start_s), int(end_s)))
+    return out
+
+
+def coordinate_pairs_to_segments(
+    pairs: Sequence[Tuple[int, int]],
+    label: str,
+    seq_len: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Convert unmerged coordinate pairs to segment dictionaries."""
+    segments: List[Dict[str, Any]] = []
+    for start, end in pairs:
+        start = int(start)
+        end = int(end)
+        if start < 1 or end < start:
+            continue
+        if seq_len is not None and end > seq_len:
+            continue
+        segments.append({
+            "label": label,
+            "start": start,
+            "end": end,
+            "length": end - start + 1,
+        })
+    return segments
+
+
+def true_segments_from_dataset_row(row: Dict[str, Any], seq_len: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Read true PEPTIDE/PROPEP features from the dataset row.
+
+    This intentionally uses the original CSV coordinates / dataset metadata,
+    not the dense CRF label sequence.  The dense sequence can merge adjacent
+    same-class features into one long positive run, which is wrong for
+    feature-level error analysis and can create artificial >50 aa true features.
+    """
+    peptide_pairs: List[Tuple[int, int]] = []
+    propeptide_pairs: List[Tuple[int, int]] = []
+
+    if "true_peptides" in row:
+        peptide_pairs = parse_coordinate_value(row.get("true_peptides"))
+    if "true_propeptides" in row:
+        propeptide_pairs = parse_coordinate_value(row.get("true_propeptides"))
+
+    # Fallback for datasets that do not create true_peptides/true_propeptides columns.
+    if not peptide_pairs and "coordinates" in row:
+        peptide_pairs = parse_coordinate_value(row.get("coordinates"))
+    if not propeptide_pairs and "propeptide_coordinates" in row:
+        propeptide_pairs = parse_coordinate_value(row.get("propeptide_coordinates"))
+
+    segments = []
+    segments.extend(coordinate_pairs_to_segments(peptide_pairs, "PEPTIDE", seq_len=seq_len))
+    segments.extend(coordinate_pairs_to_segments(propeptide_pairs, "PROPEP", seq_len=seq_len))
+    segments.sort(key=lambda x: (x["start"], x["end"], x["label"]))
+    return segments
+
+
+
+def states_to_segments(states: Sequence[int]) -> List[Dict[str, Any]]:
+    """Convert a CRF state path to positive PEPTIDE/PROPEP segments.
+
+    Returned coordinates are 1-based inclusive, matching UniProt/DeepPeptide CSVs.
+    """
+    segments: List[Dict[str, Any]] = []
+    current_label: Optional[str] = None
+    current_start: Optional[int] = None
+
+    for pos0, state in enumerate(states):
+        label = crf_state_to_label(int(state))
+        pos1 = pos0 + 1
+
+        if label not in POSITIVE_LABELS:
+            if current_label is not None and current_start is not None:
+                segments.append({
+                    "label": current_label,
+                    "start": current_start,
+                    "end": pos1 - 1,
+                    "length": pos1 - current_start,
+                })
+                current_label = None
+                current_start = None
+            continue
+
+        if current_label is None:
+            current_label = label
+            current_start = pos1
+        elif label != current_label:
+            segments.append({
+                "label": current_label,
+                "start": current_start,
+                "end": pos1 - 1,
+                "length": pos1 - current_start,
+            })
+            current_label = label
+            current_start = pos1
+
+    if current_label is not None and current_start is not None:
+        end = len(states)
+        segments.append({
+            "label": current_label,
+            "start": current_start,
+            "end": end,
+            "length": end - current_start + 1,
+        })
+
+    return segments
+
+
+def interval_overlap(a_start: int, a_end: int, b_start: int, b_end: int) -> int:
+    return max(0, min(int(a_end), int(b_end)) - max(int(a_start), int(b_start)) + 1)
+
+
+def interval_distance(a_start: int, a_end: int, b_start: int, b_end: int) -> int:
+    """Distance between intervals. Returns 0 when they overlap/touch."""
+    a_start, a_end, b_start, b_end = map(int, (a_start, a_end, b_start, b_end))
+    if interval_overlap(a_start, a_end, b_start, b_end) > 0:
+        return 0
+    if a_end < b_start:
+        return b_start - a_end
+    return a_start - b_end
+
+
+def segment_pair_stats(true_seg: Dict[str, Any], pred_seg: Dict[str, Any]) -> Dict[str, Any]:
+    overlap = interval_overlap(true_seg["start"], true_seg["end"], pred_seg["start"], pred_seg["end"])
+    union = int(true_seg["length"]) + int(pred_seg["length"]) - overlap
+    iou = overlap / union if union > 0 else 0.0
+    coverage_true = overlap / int(true_seg["length"]) if int(true_seg["length"]) > 0 else 0.0
+    coverage_pred = overlap / int(pred_seg["length"]) if int(pred_seg["length"]) > 0 else 0.0
+    return {
+        "overlap_len": int(overlap),
+        "iou": float(iou),
+        "coverage_true": float(coverage_true),
+        "coverage_pred": float(coverage_pred),
+        "start_error": int(pred_seg["start"]) - int(true_seg["start"]),
+        "end_error": int(pred_seg["end"]) - int(true_seg["end"]),
+        "abs_start_error": abs(int(pred_seg["start"]) - int(true_seg["start"])),
+        "abs_end_error": abs(int(pred_seg["end"]) - int(true_seg["end"])),
+    }
+
+
+def greedy_match_segments(
+    true_segments: Sequence[Dict[str, Any]],
+    pred_segments: Sequence[Dict[str, Any]],
+    same_label_only: bool = True,
+    min_iou: float = 0.0,
+) -> List[Tuple[int, int, float]]:
+    """One-to-one greedy matching by descending IoU."""
+    candidates: List[Tuple[float, int, int]] = []
+    for ti, true_seg in enumerate(true_segments):
+        for pi, pred_seg in enumerate(pred_segments):
+            if same_label_only and true_seg["label"] != pred_seg["label"]:
+                continue
+            stats = segment_pair_stats(true_seg, pred_seg)
+            if stats["iou"] > min_iou:
+                candidates.append((float(stats["iou"]), ti, pi))
+
+    candidates.sort(reverse=True, key=lambda x: x[0])
+    used_true = set()
+    used_pred = set()
+    matches: List[Tuple[int, int, float]] = []
+    for iou, ti, pi in candidates:
+        if ti in used_true or pi in used_pred:
+            continue
+        used_true.add(ti)
+        used_pred.add(pi)
+        matches.append((ti, pi, iou))
+    return matches
+
+
+def find_best_segment(
+    target: Dict[str, Any],
+    candidates: Sequence[Dict[str, Any]],
+    same_label_only: bool = False,
+) -> Tuple[Optional[int], Optional[Dict[str, Any]], Dict[str, Any]]:
+    best_idx: Optional[int] = None
+    best_seg: Optional[Dict[str, Any]] = None
+    best_stats: Dict[str, Any] = {
+        "overlap_len": 0,
+        "iou": 0.0,
+        "coverage_true": 0.0,
+        "coverage_pred": 0.0,
+        "start_error": None,
+        "end_error": None,
+        "abs_start_error": None,
+        "abs_end_error": None,
+    }
+    for idx, seg in enumerate(candidates):
+        if same_label_only and target["label"] != seg["label"]:
+            continue
+        stats = segment_pair_stats(target, seg)
+        if stats["iou"] > float(best_stats["iou"]):
+            best_idx = idx
+            best_seg = seg
+            best_stats = stats
+    return best_idx, best_seg, best_stats
+
+
+def safe_div(num: float, den: float) -> float:
+    return float(num / den) if den else float("nan")
+
+
+def f1_from_counts(tp: int, fp: int, fn: int) -> float:
+    precision = safe_div(tp, tp + fp)
+    recall = safe_div(tp, tp + fn)
+    if math.isnan(precision) or math.isnan(recall) or precision + recall == 0:
+        return float("nan")
+    return float(2 * precision * recall / (precision + recall))
+
+
+def get_dataset_row(dataset_data: Any, protein_id: str) -> Dict[str, Any]:
+    """Return metadata row from loader.dataset.data as a plain dict."""
+    if dataset_data is None:
+        return {}
+    try:
+        if hasattr(dataset_data, "loc") and protein_id in dataset_data.index:
+            row = dataset_data.loc[protein_id]
+            if hasattr(row, "to_dict"):
+                return row.to_dict()
+    except Exception:
+        pass
+    try:
+        if hasattr(dataset_data, "columns"):
+            for col in ["protein_id", "AC", "accession"]:
+                if col in dataset_data.columns:
+                    sub = dataset_data[dataset_data[col] == protein_id]
+                    if len(sub) > 0:
+                        return sub.iloc[0].to_dict()
+    except Exception:
+        pass
+    return {}
+
+
+def extract_sequences_for_outputs(
+    outputs: Tuple[Any, Any, Any, Any],
+    loader,
+) -> List[Dict[str, Any]]:
+    """Reconstruct one item per evaluated sequence from batched outputs."""
+    probs, preds, labels, names = outputs
+    del probs  # probabilities are not needed for segment/protein-level error stats here
+
+    seq_items: List[Dict[str, Any]] = []
+    pred_cursor = 0
+    dataset_data = getattr(loader.dataset, "data", None)
+
+    for batch_labels in labels:
+        batch_labels = np.asarray(batch_labels)
+        batch_size = batch_labels.shape[0]
+
+        for row_idx in range(batch_size):
+            if pred_cursor >= len(preds):
+                raise RuntimeError("Mismatch between preds and labels while building error stats.")
+
+            protein_id = str(names[pred_cursor])
+            pred_seq = np.asarray(preds[pred_cursor], dtype=np.int64)
+            seq_len = len(pred_seq)
+            true_seq = np.asarray(batch_labels[row_idx], dtype=np.int64)[:seq_len]
+            row = get_dataset_row(dataset_data, protein_id)
+
+            sequence = row.get("sequence")
+            if not isinstance(sequence, str):
+                sequence = "" * seq_len
+            organism = row.get("organism")
+            cluster = row.get("cluster")
+
+            true_segments = true_segments_from_dataset_row(row, seq_len=seq_len)
+
+            seq_items.append({
+                "protein_id": protein_id,
+                "sequence": sequence,
+                "organism": organism,
+                "cluster": cluster,
+                "true_states": true_seq,
+                "pred_states": pred_seq,
+                "true_segments": true_segments,
+            })
+            pred_cursor += 1
+
+    if pred_cursor != len(preds):
+        raise RuntimeError("Not all predictions were consumed while building error stats.")
+
+    return seq_items
+
+
+def classify_true_feature_error(
+    same_label_stats: Dict[str, Any],
+    any_label_seg: Optional[Dict[str, Any]],
+    any_label_stats: Dict[str, Any],
+    iou_threshold: float,
+) -> str:
+    if float(same_label_stats.get("iou", 0.0)) >= iou_threshold:
+        if int(same_label_stats.get("abs_start_error") or 0) == 0 and int(same_label_stats.get("abs_end_error") or 0) == 0:
+            return "tp_exact"
+        return "tp_iou50_boundary_shift"
+    if float(same_label_stats.get("iou", 0.0)) > 0:
+        return "partial_overlap_same_label"
+    if any_label_seg is not None and any_label_seg.get("label") != None and float(any_label_stats.get("iou", 0.0)) >= iou_threshold:
+        return "wrong_label_iou50"
+    if any_label_seg is not None and float(any_label_stats.get("iou", 0.0)) > 0:
+        return "wrong_label_partial_overlap"
+    return "missed_no_overlap"
+
+
+def classify_pred_segment_error(
+    same_label_stats: Dict[str, Any],
+    any_label_seg: Optional[Dict[str, Any]],
+    any_label_stats: Dict[str, Any],
+    iou_threshold: float,
+) -> str:
+    if float(same_label_stats.get("iou", 0.0)) >= iou_threshold:
+        if int(same_label_stats.get("abs_start_error") or 0) == 0 and int(same_label_stats.get("abs_end_error") or 0) == 0:
+            return "tp_exact"
+        return "tp_iou50_boundary_shift"
+    if float(same_label_stats.get("iou", 0.0)) > 0:
+        return "partial_false_positive_same_label"
+    if any_label_seg is not None and float(any_label_stats.get("iou", 0.0)) >= iou_threshold:
+        return "wrong_label_false_positive_iou50"
+    if any_label_seg is not None and float(any_label_stats.get("iou", 0.0)) > 0:
+        return "wrong_label_false_positive_partial"
+    return "spurious_false_positive"
+
+
+def compute_error_analysis_tables(
+    outputs: Tuple[Any, Any, Any, Any],
+    loader,
+    iou_threshold: float = 0.5,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, Any]]:
+    """Build per-protein, per-true-feature and per-predicted-segment error tables."""
+    seq_items = extract_sequences_for_outputs(outputs, loader)
+    protein_rows: List[Dict[str, Any]] = []
+    true_feature_rows: List[Dict[str, Any]] = []
+    pred_segment_rows: List[Dict[str, Any]] = []
+
+    for item in seq_items:
+        protein_id = item["protein_id"]
+        sequence = item.get("sequence") or ""
+        true_states = np.asarray(item["true_states"], dtype=np.int64)
+        pred_states = np.asarray(item["pred_states"], dtype=np.int64)
+        seq_len = int(len(pred_states))
+
+        # For feature-level analysis, use original CSV coordinates when available.
+        # Do not reconstruct true features from the dense CRF state path: adjacent
+        # same-label features can collapse into artificial long segments.
+        true_segments = item.get("true_segments") or states_to_segments(true_states)
+        pred_segments = states_to_segments(pred_states)
+
+        for idx, seg in enumerate(true_segments):
+            seg["true_feature_id"] = f"{protein_id}::{seg['label']}:{seg['start']}-{seg['end']}"
+            seg["true_index"] = idx
+        for idx, seg in enumerate(pred_segments):
+            seg["pred_segment_id"] = f"{protein_id}::PRED:{idx}:{seg['label']}:{seg['start']}-{seg['end']}"
+            seg["pred_index"] = idx
+
+        greedy_pairs = greedy_match_segments(true_segments, pred_segments, same_label_only=True, min_iou=0.0)
+        true_to_pred = {ti: pi for ti, pi, _ in greedy_pairs}
+        pred_to_true = {pi: ti for ti, pi, _ in greedy_pairs}
+
+        true_coarse = np.array([crf_state_to_label(x) for x in true_states], dtype=object)
+        pred_coarse = np.array([crf_state_to_label(x) for x in pred_states], dtype=object)
+
+        residue_counts: Dict[str, Dict[str, int]] = {}
+        for label in ["OTHER", "PEPTIDE", "PROPEP"]:
+            tp = int(np.sum((true_coarse == label) & (pred_coarse == label)))
+            fp = int(np.sum((true_coarse != label) & (pred_coarse == label)))
+            fn = int(np.sum((true_coarse == label) & (pred_coarse != label)))
+            residue_counts[label] = {"tp": tp, "fp": fp, "fn": fn, "f1": f1_from_counts(tp, fp, fn)}
+
+        segment_counts = {}
+        for label in POSITIVE_LABELS:
+            n_true = sum(seg["label"] == label for seg in true_segments)
+            n_pred = sum(seg["label"] == label for seg in pred_segments)
+            n_tp = 0
+            for ti, pi, _ in greedy_pairs:
+                if true_segments[ti]["label"] != label:
+                    continue
+                stats = segment_pair_stats(true_segments[ti], pred_segments[pi])
+                if stats["iou"] >= iou_threshold:
+                    n_tp += 1
+            segment_counts[label] = {
+                "n_true": int(n_true),
+                "n_pred": int(n_pred),
+                "tp": int(n_tp),
+                "fp": int(n_pred - n_tp),
+                "fn": int(n_true - n_tp),
+                "precision": safe_div(n_tp, n_pred),
+                "recall": safe_div(n_tp, n_true),
+                "f1": f1_from_counts(n_tp, n_pred - n_tp, n_true - n_tp),
+            }
+
+        macro_f1_no_other_values = [residue_counts[label]["f1"] for label in POSITIVE_LABELS]
+        macro_f1_no_other_values = [x for x in macro_f1_no_other_values if not math.isnan(x)]
+        macro_f1_no_other = float(np.mean(macro_f1_no_other_values)) if macro_f1_no_other_values else float("nan")
+
+        protein_rows.append({
+            "protein_id": protein_id,
+            "organism": item.get("organism"),
+            "cluster": item.get("cluster"),
+            "sequence_length": seq_len,
+            "residue_accuracy": float(np.mean(true_coarse == pred_coarse)) if seq_len else float("nan"),
+            "macro_f1_no_other": macro_f1_no_other,
+            "peptide_residue_f1": residue_counts["PEPTIDE"]["f1"],
+            "propeptide_residue_f1": residue_counts["PROPEP"]["f1"],
+            "true_n_peptide_segments": segment_counts["PEPTIDE"]["n_true"],
+            "true_n_propeptide_segments": segment_counts["PROPEP"]["n_true"],
+            "pred_n_peptide_segments": segment_counts["PEPTIDE"]["n_pred"],
+            "pred_n_propeptide_segments": segment_counts["PROPEP"]["n_pred"],
+            "peptide_segment_precision_iou50": segment_counts["PEPTIDE"]["precision"],
+            "peptide_segment_recall_iou50": segment_counts["PEPTIDE"]["recall"],
+            "peptide_segment_f1_iou50": segment_counts["PEPTIDE"]["f1"],
+            "propeptide_segment_precision_iou50": segment_counts["PROPEP"]["precision"],
+            "propeptide_segment_recall_iou50": segment_counts["PROPEP"]["recall"],
+            "propeptide_segment_f1_iou50": segment_counts["PROPEP"]["f1"],
+            "missed_peptide_segments_iou50": segment_counts["PEPTIDE"]["fn"],
+            "missed_propeptide_segments_iou50": segment_counts["PROPEP"]["fn"],
+            "false_positive_peptide_segments_iou50": segment_counts["PEPTIDE"]["fp"],
+            "false_positive_propeptide_segments_iou50": segment_counts["PROPEP"]["fp"],
+            "n_true_segments": len(true_segments),
+            "n_pred_segments": len(pred_segments),
+        })
+
+        for ti, true_seg in enumerate(true_segments):
+            same_idx, same_seg, same_stats = find_best_segment(true_seg, pred_segments, same_label_only=True)
+            any_idx, any_seg, any_stats = find_best_segment(true_seg, pred_segments, same_label_only=False)
+            greedy_pred_idx = true_to_pred.get(ti)
+            greedy_seg = pred_segments[greedy_pred_idx] if greedy_pred_idx is not None else None
+            greedy_stats = segment_pair_stats(true_seg, greedy_seg) if greedy_seg is not None else None
+
+            true_sequence = sequence[int(true_seg["start"]) - 1:int(true_seg["end"])] if sequence else None
+            row = {
+                "protein_id": protein_id,
+                "organism": item.get("organism"),
+                "cluster": item.get("cluster"),
+                "sequence_length": seq_len,
+                "true_feature_id": true_seg["true_feature_id"],
+                "true_label": true_seg["label"],
+                "true_start": true_seg["start"],
+                "true_end": true_seg["end"],
+                "true_length": true_seg["length"],
+                "true_sequence": true_sequence,
+                "greedy_matched_pred_id": greedy_seg.get("pred_segment_id") if greedy_seg is not None else None,
+                "greedy_iou": greedy_stats.get("iou") if greedy_stats is not None else 0.0,
+                "greedy_tp_iou50": bool(greedy_stats is not None and greedy_stats.get("iou", 0.0) >= iou_threshold),
+                "best_same_label_pred_id": same_seg.get("pred_segment_id") if same_seg is not None else None,
+                "best_same_label_start": same_seg.get("start") if same_seg is not None else None,
+                "best_same_label_end": same_seg.get("end") if same_seg is not None else None,
+                "best_same_label_iou": same_stats["iou"],
+                "best_same_label_overlap_len": same_stats["overlap_len"],
+                "best_same_label_coverage_true": same_stats["coverage_true"],
+                "best_same_label_coverage_pred": same_stats["coverage_pred"],
+                "best_same_label_start_error": same_stats["start_error"],
+                "best_same_label_end_error": same_stats["end_error"],
+                "best_same_label_abs_start_error": same_stats["abs_start_error"],
+                "best_same_label_abs_end_error": same_stats["abs_end_error"],
+                "best_any_label": any_seg.get("label") if any_seg is not None else None,
+                "best_any_start": any_seg.get("start") if any_seg is not None else None,
+                "best_any_end": any_seg.get("end") if any_seg is not None else None,
+                "best_any_iou": any_stats["iou"],
+                "best_any_overlap_len": any_stats["overlap_len"],
+                "error_type": classify_true_feature_error(same_stats, any_seg, any_stats, iou_threshold),
+            }
+            true_feature_rows.append(row)
+
+        for pi, pred_seg in enumerate(pred_segments):
+            same_idx, same_seg, same_stats = find_best_segment(pred_seg, true_segments, same_label_only=True)
+            any_idx, any_seg, any_stats = find_best_segment(pred_seg, true_segments, same_label_only=False)
+            greedy_true_idx = pred_to_true.get(pi)
+            greedy_seg = true_segments[greedy_true_idx] if greedy_true_idx is not None else None
+            greedy_stats = segment_pair_stats(greedy_seg, pred_seg) if greedy_seg is not None else None
+
+            min_dist_any = None
+            min_dist_same = None
+            if true_segments:
+                min_dist_any = min(interval_distance(pred_seg["start"], pred_seg["end"], t["start"], t["end"]) for t in true_segments)
+                same_true_segments = [t for t in true_segments if t["label"] == pred_seg["label"]]
+                if same_true_segments:
+                    min_dist_same = min(interval_distance(pred_seg["start"], pred_seg["end"], t["start"], t["end"]) for t in same_true_segments)
+
+            pred_sequence = sequence[int(pred_seg["start"]) - 1:int(pred_seg["end"])] if sequence else None
+            pred_segment_rows.append({
+                "protein_id": protein_id,
+                "organism": item.get("organism"),
+                "cluster": item.get("cluster"),
+                "sequence_length": seq_len,
+                "pred_segment_id": pred_seg["pred_segment_id"],
+                "pred_label": pred_seg["label"],
+                "pred_start": pred_seg["start"],
+                "pred_end": pred_seg["end"],
+                "pred_length": pred_seg["length"],
+                "pred_sequence": pred_sequence,
+                "greedy_matched_true_id": greedy_seg.get("true_feature_id") if greedy_seg is not None else None,
+                "greedy_iou": greedy_stats.get("iou") if greedy_stats is not None else 0.0,
+                "greedy_tp_iou50": bool(greedy_stats is not None and greedy_stats.get("iou", 0.0) >= iou_threshold),
+                "best_same_label_true_id": same_seg.get("true_feature_id") if same_seg is not None else None,
+                "best_same_label_start": same_seg.get("start") if same_seg is not None else None,
+                "best_same_label_end": same_seg.get("end") if same_seg is not None else None,
+                "best_same_label_iou": same_stats["iou"],
+                "best_same_label_overlap_len": same_stats["overlap_len"],
+                "best_same_label_coverage_true": same_stats["coverage_true"],
+                "best_same_label_coverage_pred": same_stats["coverage_pred"],
+                "best_same_label_start_error": same_stats["start_error"],
+                "best_same_label_end_error": same_stats["end_error"],
+                "best_same_label_abs_start_error": same_stats["abs_start_error"],
+                "best_same_label_abs_end_error": same_stats["abs_end_error"],
+                "best_any_label": any_seg.get("label") if any_seg is not None else None,
+                "best_any_start": any_seg.get("start") if any_seg is not None else None,
+                "best_any_end": any_seg.get("end") if any_seg is not None else None,
+                "best_any_iou": any_stats["iou"],
+                "best_any_overlap_len": any_stats["overlap_len"],
+                "min_distance_to_true_any": min_dist_any,
+                "min_distance_to_true_same_label": min_dist_same,
+                "error_type": classify_pred_segment_error(same_stats, any_seg, any_stats, iou_threshold),
+            })
+
+    protein_df = pd.DataFrame(protein_rows)
+    true_feature_df = pd.DataFrame(true_feature_rows)
+    pred_segment_df = pd.DataFrame(pred_segment_rows)
+
+    summary = {
+        "n_proteins": int(len(protein_df)),
+        "n_true_features": int(len(true_feature_df)),
+        "n_pred_segments": int(len(pred_segment_df)),
+        "iou_threshold": float(iou_threshold),
+    }
+    if not true_feature_df.empty:
+        summary["true_feature_error_type_counts"] = true_feature_df["error_type"].value_counts().to_dict()
+        summary["true_feature_label_counts"] = true_feature_df["true_label"].value_counts().to_dict()
+    if not pred_segment_df.empty:
+        summary["pred_segment_error_type_counts"] = pred_segment_df["error_type"].value_counts().to_dict()
+        summary["pred_segment_label_counts"] = pred_segment_df["pred_label"].value_counts().to_dict()
+    if not protein_df.empty:
+        summary["mean_macro_f1_no_other"] = float(protein_df["macro_f1_no_other"].mean())
+
+    return protein_df, true_feature_df, pred_segment_df, summary
+
+
+def save_error_analysis_stats(
+    run_dir: Path,
+    split_name: str,
+    outputs: Tuple[Any, Any, Any, Any],
+    loader,
+    cli_args: argparse.Namespace,
+) -> None:
+    stats_root = run_dir / f"{cli_args.error_stats_dir_name}{cli_args.output_suffix}"
+    stats_root.mkdir(parents=True, exist_ok=True)
+
+    protein_df, true_feature_df, pred_segment_df, summary = compute_error_analysis_tables(
+        outputs=outputs,
+        loader=loader,
+        iou_threshold=cli_args.error_iou_threshold,
+    )
+
+    protein_path = stats_root / f"{split_name}_protein_metrics.csv"
+    true_feature_path = stats_root / f"{split_name}_true_feature_metrics.csv"
+    pred_segment_path = stats_root / f"{split_name}_pred_segment_metrics.csv"
+    summary_path = stats_root / f"{split_name}_summary.json"
+
+    protein_df.to_csv(protein_path, index=False)
+    true_feature_df.to_csv(true_feature_path, index=False)
+    pred_segment_df.to_csv(pred_segment_path, index=False)
+    with summary_path.open("w", encoding="utf-8") as f:
+        json.dump(to_jsonable(summary), f, indent=2, ensure_ascii=False)
+
+    print(f"[stats] saved {split_name} error stats to {stats_root}")
+
+
+def evaluate_loader(
+    loader,
+    model: torch.nn.Module,
+    device: str,
+    args: SimpleNamespace,
+) -> Tuple[float, Dict[str, Any], Tuple[Any, Any, Any, Any]]:
+    use_amp = bool(getattr(args, "amp", False) and device.startswith("cuda"))
+    amp_dtype = torch.bfloat16 if getattr(args, "amp_dtype", "bf16") == "bf16" else torch.float16
+
+    loss, probs, preds, _, labels = run_dataloader(
+        loader,
+        model,
+        optimizer=None,
+        do_train=False,
+        device=device,
+        scaler=None,
+        use_amp=use_amp,
+        amp_dtype=amp_dtype,
+        collect_outputs=True,
+    )
+
+    metrics = compute_all_metrics(
+        probs,
+        preds,
+        labels,
+        loader.dataset.names,
+        loader.dataset.data,
+        windows=[3],
+    )[0]
+    metrics.update(compute_residue_level_metrics(probs, preds, labels, args.label_type))
+    metrics["loss"] = float(loss)
+
+    outputs = (probs, preds, labels, loader.dataset.names)
+    return loss, metrics, outputs
+
+
+def evaluate_single_run(
+    run_dir: Path,
+    cli_args: argparse.Namespace,
+) -> Dict[str, Any]:
+    args = load_run_args(run_dir, cli_args)
+    device = resolve_device(args.device, cli_args.device)
+
+    if device.startswith("cuda"):
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+
+    model_path = run_dir / "model.pt"
+    if not model_path.exists():
+        raise FileNotFoundError(f"Missing model.pt in {run_dir}")
+
+    if args.embedding != "precomputed":
+        raise NotImplementedError(f"Only embedding=precomputed is supported right now, got {args.embedding!r}")
+
+    if args.homo_only:
+        _, _, test_loader = get_dataloaders(
+            args,
+            train_partitions=cli_args.train_partitions,
+            valid_partitions=cli_args.valid_partitions,
+            test_partitions=cli_args.test_partitions,
+            device=device,
+            restrict=_load_homo_ids(),
+        )
+        homo_test_loader = None
+    else:
+        _, _, test_loader = get_dataloaders(
+            args,
+            train_partitions=cli_args.train_partitions,
+            valid_partitions=cli_args.valid_partitions,
+            test_partitions=cli_args.test_partitions,
+            device=device,
+        )
+        _, _, homo_test_loader = get_dataloaders(
+            args,
+            train_partitions=cli_args.train_partitions,
+            valid_partitions=cli_args.valid_partitions,
+            test_partitions=cli_args.test_partitions,
+            restrict=_load_homo_ids(),
+            device=device,
+        )
+
+    model = get_model(args).to(device)
+    if getattr(args, "feature_extractor", None) == "LSTMCNN" and hasattr(model, "feature_extractor"):
+        bilstm = getattr(model.feature_extractor, "biLSTM", None)
+        if bilstm is not None and hasattr(bilstm, "flatten_parameters"):
+            bilstm.flatten_parameters()
+
+    state_dict = load_state_dict(model_path, device)
+    model.load_state_dict(state_dict, strict=True)
+    model.eval()
+
+    test_loss, test_metrics, test_outputs = evaluate_loader(test_loader, model, device, args)
+    result: Dict[str, Any] = {
+        "run_dir": str(run_dir),
+        "status": "ok",
+        "device": device,
+        "test_metrics": test_metrics,
+    }
+
+    suffix = cli_args.output_suffix
+    with (run_dir / f"test_metrics{suffix}.json").open("w", encoding="utf-8") as f:
+        json.dump(to_jsonable(test_metrics), f, indent=2, ensure_ascii=False)
+    # with (run_dir / f"test_outputs{suffix}.pickle").open("wb") as f:
+        # pickle.dump(test_outputs, f)
+
+    if not cli_args.no_error_stats:
+        save_error_analysis_stats(run_dir, "test", test_outputs, test_loader, cli_args)
+
+    if homo_test_loader is not None:
+        homo_test_loss, homo_test_metrics, homo_test_outputs = evaluate_loader(homo_test_loader, model, device, args)
+        result["homo_test_metrics"] = homo_test_metrics
+        with (run_dir / f"homo_test_metrics{suffix}.json").open("w", encoding="utf-8") as f:
+            json.dump(to_jsonable(homo_test_metrics), f, indent=2, ensure_ascii=False)
+        # with (run_dir / f"homo_test_outputs{suffix}.pickle").open("wb") as f:
+            # pickle.dump(homo_test_outputs, f)
+
+        if not cli_args.no_error_stats:
+            save_error_analysis_stats(run_dir, "homo_test", homo_test_outputs, homo_test_loader, cli_args)
+
+    return result
+
+
+_HOMO_IDS_CACHE: Optional[List[str]] = None
+
+
+def _load_homo_ids() -> List[str]:
+    global _HOMO_IDS_CACHE
+    if _HOMO_IDS_CACHE is None:
+        homo_path = Path("./data/uniprot_2026/protein_id_homo.txt")
+        with homo_path.open("r", encoding="utf-8") as f:
+            _HOMO_IDS_CACHE = [line.strip() for line in f if line.strip()]
+    return _HOMO_IDS_CACHE
+
+
+def iter_run_dirs(runs_dir: Path, only: Optional[Sequence[str]]) -> Iterable[Path]:
+    if not runs_dir.exists():
+        raise FileNotFoundError(f"Runs directory does not exist: {runs_dir}")
+
+    only_set = set(only) if only else None
+    for path in sorted(p for p in runs_dir.iterdir() if p.is_dir()):
+        if only_set is not None and path.name not in only_set:
+            continue
+        yield path
+
+
+def flatten_summary_rows(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for item in results:
+        row: Dict[str, Any] = {
+            "run_name": Path(item["run_dir"]).name,
+            "status": item["status"],
+            "device": item.get("device"),
+            "error": item.get("error"),
+        }
+
+        if item.get("status") == "ok":
+            for prefix, metrics_key in [("test", "test_metrics"), ("homo_test", "homo_test_metrics")]:
+                metrics = item.get(metrics_key)
+                if not metrics:
+                    continue
+                for k, v in metrics.items():
+                    row[f"{prefix}:{k}"] = v
+        rows.append(row)
+    return rows
+
+
+def write_summary_files(runs_dir: Path, results: Sequence[Dict[str, Any]], suffix: str) -> None:
+    summary_json = runs_dir / f"infer_summary{suffix}.json"
+    with summary_json.open("w", encoding="utf-8") as f:
+        json.dump(to_jsonable(list(results)), f, indent=2, ensure_ascii=False)
+
+    rows = flatten_summary_rows(results)
+    if not rows:
+        return
+
+    fieldnames: List[str] = []
+    seen = set()
+    for row in rows:
+        for key in row.keys():
+            if key not in seen:
+                seen.add(key)
+                fieldnames.append(key)
+
+    summary_csv = runs_dir / f"infer_summary{suffix}.csv"
+    with summary_csv.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(to_jsonable(rows))
+
+
+def main() -> int:
+    cli_args = parse_args()
+    runs_dir = Path(cli_args.runs_dir)
+    results: List[Dict[str, Any]] = []
+
+    for run_dir in iter_run_dirs(runs_dir, cli_args.only):
+        print(f"\n=== [{run_dir.name}] ===")
+        try:
+            result = evaluate_single_run(run_dir, cli_args)
+            results.append(result)
+            print(f"[OK] {run_dir.name}")
+        except Exception as exc:
+            tb = traceback.format_exc()
+            failure = {
+                "run_dir": str(run_dir),
+                "status": "failed",
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": tb,
+            }
+            results.append(failure)
+            print(f"[FAILED] {run_dir.name}: {failure['error']}")
+            print(tb)
+
+    write_summary_files(runs_dir, results, cli_args.output_suffix)
+
+    total = len(results)
+    failed = sum(item["status"] != "ok" for item in results)
+    ok = total - failed
+    print("\n=== Summary ===")
+    print(f"Total runs: {total}")
+    print(f"Succeeded:  {ok}")
+    print(f"Failed:     {failed}")
+    print(f"Summary JSON: {runs_dir / f'infer_summary{cli_args.output_suffix}.json'}")
+    print(f"Summary CSV:  {runs_dir / f'infer_summary{cli_args.output_suffix}.csv'}")
+
+    return 0 if failed == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

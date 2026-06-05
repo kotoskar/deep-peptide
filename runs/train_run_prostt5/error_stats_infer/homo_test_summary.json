@@ -1,0 +1,31 @@
+{
+  "n_proteins": 70,
+  "n_true_features": 97,
+  "n_pred_segments": 73,
+  "iou_threshold": 0.5,
+  "true_feature_error_type_counts": {
+    "tp_iou50_boundary_shift": 36,
+    "missed_no_overlap": 27,
+    "tp_exact": 21,
+    "partial_overlap_same_label": 7,
+    "wrong_label_partial_overlap": 5,
+    "wrong_label_iou50": 1
+  },
+  "true_feature_label_counts": {
+    "PROPEP": 60,
+    "PEPTIDE": 37
+  },
+  "pred_segment_error_type_counts": {
+    "tp_iou50_boundary_shift": 33,
+    "tp_exact": 21,
+    "spurious_false_positive": 10,
+    "partial_false_positive_same_label": 6,
+    "wrong_label_false_positive_partial": 2,
+    "wrong_label_false_positive_iou50": 1
+  },
+  "pred_segment_label_counts": {
+    "PROPEP": 54,
+    "PEPTIDE": 19
+  },
+  "mean_macro_f1_no_other": 0.8373595571177204
+}

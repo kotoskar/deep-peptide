@@ -1,0 +1,62 @@
+{
+  "data_dir": "/home/oskar/work/DeepPeptide/data/uniprot_2026",
+  "n_pep_records_raw": 8579,
+  "n_propep_records_raw": 13039,
+  "n_records_unique": 18091,
+  "n_proteins_master": 18091,
+  "n_features_master": 254566,
+  "n_valid_training_features": 16571,
+  "n_training_proteins": 9619,
+  "valid_feature_counts": {
+    "PROPEP": 9140,
+    "PEPTIDE": 7431
+  },
+  "all_target_feature_counts": {
+    "PROPEP": 15287,
+    "PEPTIDE": 12381
+  },
+  "target_drop_reasons": {
+    "peptide_full_length;peptide_plus_signal_or_transit_full_length": 3817,
+    "too_long": 3532,
+    "too_short": 2501,
+    "propeptide_sorting_signal_prorule_PRU00477_or_PRU01070": 289,
+    "missing_location;non_exact_start:UNKNOWN": 227,
+    "missing_location;non_exact_end:UNKNOWN": 199,
+    "non_exact_start:OUTSIDE": 152,
+    "peptide_plus_signal_or_transit_full_length": 130,
+    "non_exact_end:OUTSIDE": 127,
+    "non_exact_start:OUTSIDE;too_short": 27,
+    "non_exact_start:OUTSIDE;too_long": 22,
+    "non_exact_start:UNSURE": 18,
+    "non_exact_start:OUTSIDE;non_exact_end:OUTSIDE": 17,
+    "non_exact_end:UNSURE;too_long": 10,
+    "non_exact_start:UNSURE;non_exact_end:UNSURE;too_long": 9,
+    "non_exact_end:OUTSIDE;too_long": 6,
+    "non_exact_end:OUTSIDE;too_short": 5,
+    "non_exact_start:UNSURE;too_long": 3,
+    "non_exact_start:UNSURE;non_exact_end:UNSURE": 2,
+    "non_exact_end:UNSURE": 1,
+    "non_exact_start:OUTSIDE;non_exact_end:OUTSIDE;too_short": 1,
+    "missing_location;non_exact_start:UNKNOWN;non_exact_end:UNSURE": 1
+  },
+  "deeppeptide_extra_drop_reasons": {
+    "peptide_full_length;peptide_plus_signal_or_transit_full_length": 3817,
+    "propeptide_sorting_signal_prorule_PRU00477_or_PRU01070": 289,
+    "peptide_plus_signal_or_transit_full_length": 130
+  },
+  "n_with_peptide": 4385,
+  "n_with_propeptide": 8007,
+  "n_with_both": 2773,
+  "n_homo_sapiens": 457,
+  "residue_counts": {
+    "OTHER": 1857420,
+    "PEPTIDE": 141390,
+    "PROPEP": 189812,
+    "TOTAL": 2188622
+  },
+  "residue_fracs": {
+    "OTHER_frac": 0.8486709902395205,
+    "PEPTIDE_frac": 0.06460229313239106,
+    "PROPEP_frac": 0.08672671662808835
+  }
+}

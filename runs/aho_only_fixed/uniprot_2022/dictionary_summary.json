@@ -1,0 +1,33 @@
+{
+  "external_gold_policy": "keep",
+  "source_weight_overrides": {},
+  "test": {
+    "allowed_folds": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "n_entries": 7904,
+    "n_patterns": 7904,
+    "n_rows_kept": 10892,
+    "n_rows_loaded": 13510,
+    "sources": [
+      "uniprot_2022"
+    ]
+  },
+  "validation": {
+    "allowed_folds": [
+      0,
+      1,
+      2
+    ],
+    "n_entries": 5982,
+    "n_patterns": 5982,
+    "n_rows_kept": 8131,
+    "n_rows_loaded": 13510,
+    "sources": [
+      "uniprot_2022"
+    ]
+  }
+}

@@ -13,7 +13,7 @@ import numpy as np
 def make_hashes(names: List[str]) -> List[str]:
     hashes = []
     for name in names:
-        hashes.append(md5(name.encode()).digest().hex())
+        hashes.append(md5(name.encode()).hexdigest())
 
     return hashes
 
@@ -512,8 +512,6 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         self.data.loc[:, 'true_peptides'] = coordinates
         self.data.loc[:, 'true_propeptides'] = propeptide_coordinates
         # self.names = data.index.tolist()
-
-        
         
         self.peptides_only = coordinates
         self.propeptides = propeptide_coordinates
@@ -565,6 +563,8 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
             # embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), map_location=self.device, weights_only=False)
             embeddings = torch.load(os.path.join(self.embeddings_dir, f'{seq_hash}.pt'), map_location='cpu', weights_only=False)
             # print(f'EMB LOCATION: {embeddings.device}')
+            if embeddings.shape[0] != seq_len:
+                raise ValueError(f"Length mismatch for {prot_id}: emb={embeddings.shape[0]} seq={seq_len}")
         except FileNotFoundError:
             # raise FileNotFoundError(f'Could not find sequence hash {seq_hash} for {self.names[index]} in {self.embeddings_dir}.')
             try:
@@ -573,14 +573,6 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
                 # print(f'EMB LOCATION: {embeddings.device}')
             except FileNotFoundError:
                 raise FileNotFoundError(f'Could not find embedding for {prot_id} in {self.embeddings_dir}.')
-            except Exception:
-                index = index - 1
-                seq_hash = self.hashes[index]
-                seq_len = len(self.sequences[index])
-                prot_id = self.uniprot_ids[index]
-                # embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location=self.device, weights_only=False)
-                embeddings = torch.load(os.path.join(self.embeddings_dir, f'{prot_id}.pt'), map_location='cpu', weights_only=False)
-
 
         try:
             embeddings = torch.from_numpy(embeddings)
@@ -593,12 +585,12 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         peptides, propeptides = self.peptides[index]
         peptides, propeptides = self._sample_from_overlapping_peptides(peptides, propeptides)
 
-        label = peptide_list_to_label_sequence(peptides, seq_len, max_len = 50) 
+        label = peptide_list_to_label_sequence(peptides, seq_len, max_len = 50).astype(np.int64, copy=False)
         propeptide_label = peptide_list_to_label_sequence(propeptides, seq_len, start_state=51, max_len=50) 
         label = label + propeptide_label # numpy arrays with no overlap at nonzero positions so we can just add the two.
 
 
-        label = torch.from_numpy(label)
+        label = torch.from_numpy(label).long()
         mask = torch.ones(embeddings.shape[0])
         peptides = self.peptides[index]
 
@@ -615,3 +607,90 @@ class PrecomputedCSVForOverlapCRFDataset(Dataset):
         # print(embeddings)
         # print(embeddings.shape)
         return embeddings.permute(0,2,1), masks, labels, peptides
+
+class OnlineESMCSVForOverlapCRFDataset(Dataset):
+    """Like PrecomputedCSVForOverlapCRFDataset, but returns raw amino-acid sequences.
+
+    Use this when the model computes ESM2 embeddings online, for example to train
+    LoRA parameters inside ESM2. Labels and overlap sampling are intentionally kept
+    identical to PrecomputedCSVForOverlapCRFDataset so old CRF metrics stay valid.
+    """
+    def __init__(
+        self,
+        data_file: str,
+        partitioning_file: str,
+        partitions: List[int] = [0],
+        label_type=None,  # compatibility with train_loop_crf.py
+        restrict=None,
+        device=None,      # compatibility only; sequences stay on CPU
+        max_sequence_length: int | None = 1022,
+    ):
+        super().__init__()
+        data = pd.read_csv(data_file, index_col='protein_id')
+        partitioning = pd.read_csv(partitioning_file, index_col='AC')
+        data = data.join(partitioning)
+        data = data.loc[data['cluster'].isin(partitions)]
+        data = data.fillna('')
+        if restrict:
+            data = data[data.index.isin(restrict)]
+
+        if max_sequence_length is not None and int(max_sequence_length) > 0:
+            seq_lengths = data['sequence'].astype(str).str.len()
+            keep_mask = seq_lengths <= int(max_sequence_length)
+            n_dropped = int((~keep_mask).sum())
+            if n_dropped:
+                max_seen = int(seq_lengths.max()) if len(seq_lengths) else 0
+                print(
+                    f"OnlineESMCSVForOverlapCRFDataset: dropped {n_dropped} sequences "
+                    f"longer than max_sequence_length={int(max_sequence_length)} "
+                    f"from partitions {partitions}; max_seen={max_seen}."
+                )
+            data = data.loc[keep_mask]
+
+        self.data = data.copy()
+        self.names = self.data.index.tolist()
+
+        coordinate_strings = self.data['coordinates'].tolist()
+        propeptide_coordinate_strings = self.data['propeptide_coordinates'].tolist()
+        coordinates = [parse_coordinate_string(x, merge_overlaps=False) for x in coordinate_strings]
+        propeptide_coordinates = [parse_coordinate_string(x, merge_overlaps=False) for x in propeptide_coordinate_strings]
+
+        self.data.loc[:, 'true_peptides'] = coordinates
+        self.data.loc[:, 'true_propeptides'] = propeptide_coordinates
+
+        self.peptides_only = coordinates
+        self.propeptides = propeptide_coordinates
+        self.peptides = [(x, y) for x, y in zip(coordinates, propeptide_coordinates)]
+
+        self.sequences = self.data['sequence'].tolist()
+        self.organism = self.data['organism'].tolist()
+        self.uniprot_ids = self.data.index.tolist()
+
+    def __len__(self) -> int:
+        return len(self.names)
+
+    @staticmethod
+    def _sample_from_overlapping_peptides(peptide_coordinates, propeptide_coordinates):
+        return PrecomputedCSVForOverlapCRFDataset._sample_from_overlapping_peptides(
+            peptide_coordinates, propeptide_coordinates
+        )
+
+    def __getitem__(self, index: int):
+        sequence = self.sequences[index]
+        seq_len = len(sequence)
+        peptides, propeptides = self.peptides[index]
+        peptides, propeptides = self._sample_from_overlapping_peptides(peptides, propeptides)
+
+        label = peptide_list_to_label_sequence(peptides, seq_len, max_len=50).astype(np.int64, copy=False)
+        propeptide_label = peptide_list_to_label_sequence(propeptides, seq_len, start_state=51, max_len=50)
+        label = label + propeptide_label
+        label = torch.from_numpy(label).long()
+        mask = torch.ones(seq_len)
+        return sequence, mask, label, self.peptides[index]
+
+    @staticmethod
+    def collate_fn(batch):
+        sequences, masks, labels, peptides = zip(*batch)
+        masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True)
+        labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
+        return list(sequences), masks, labels, peptides
