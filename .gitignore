@@ -54,3 +54,6 @@ metrics.txt
 # by *.pt / *.pth above). Same for data/: labeled_sequences*.csv,
 # graphpart_assignments*.csv, protein_sequences.fasta and the small
 # *_report.json files are kept; only bulk artifacts above are ignored.
+
+# regenerable corrected data-scaling subsets (analysis/make_scaling_subsets.py)
+data/uniprot_2022/scaling/
