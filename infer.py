@@ -466,8 +466,16 @@ def evaluate_loader(
     device: str,
     args: SimpleNamespace,
 ) -> Tuple[float, Dict[str, Any], Tuple[Any, Any, Any, Any]]:
-    use_amp = bool(getattr(args, "amp", False) and device.startswith("cuda"))
-    amp_dtype = torch.bfloat16 if getattr(args, "amp_dtype", "bf16") == "bf16" else torch.float16
+    # IMPORTANT: evaluate in fp32, NOT AMP — even when config.amp is True.
+    # The training-time TEST metrics (the published P/R/F1 in the tables) were
+    # computed in fp32: train_loop_crf.train()'s final `run_dataloader(test_loader,
+    # ..., desc='Test')` call omits use_amp (defaults to False). Running eval in
+    # bf16 AMP here changes the numerics enough to flip borderline predictions of
+    # low-confidence models (e.g. the AFT runs: precision shifts ~0.05-0.13),
+    # which made their fresh metrics fail to reproduce train-time. fp32 matches
+    # training and reproduces train-time P/R/F1 exactly.
+    use_amp = False
+    amp_dtype = torch.bfloat16
 
     loss, probs, preds, _, labels = run_dataloader(
         loader,
