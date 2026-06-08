@@ -33,12 +33,22 @@ Investigated directly (see memory note `deeppeptide-infer-divergence`):
 
 ## The 13 N/A runs, by cause
 
-| # | category | runs | what actually fixes it |
-|--:|---|---|---|
-| 7 | **Structural embeddings (AFT/3Di)** — drift from partial/changed coverage | `train_run_aft`, `train_run_aft_no_lddt`, `train_run_aft_single`, `train_run_aft_plddt70`, `train_run_esm2_aft`, `train_run_esm2_aft_no_lddt_gated`, `train_run_esm2+3di_proj` | regenerate the structural embeddings with full, pinned coverage, then re-infer (deterministic). NOT an ESM2-provider issue. |
-| 2 | **Unrecoverable** — model class no longer in code | `esm2_aho_transition_bias_sparse_trainable_zero`, `esm2_bond_loss_soft_l005_w5_tau15` | restore/rewrite the model class (or retrain), then infer. |
-| 1 | **ESM-C** (different embedding model) | `train_run_esmc_600m` | re-infer deterministically; drift is borderline (0.0151). |
-| 3 | **ESM2-based** | `esm2_lora_lstmcnncrf`, `uni2026_run_esm2`, `train_run_esm2_25` | see below — only 1 is genuinely a provider issue. |
+| # | category | what actually fixes it |
+|--:|---|---|
+| 7 | **Structural embeddings (AFT/3Di)** — drift from partial/changed coverage | regenerate the structural embeddings with full, pinned coverage, then re-infer. NOT an ESM2-provider issue. |
+| 2 | **Unrecoverable** — model class no longer in code | restore/rewrite the model class (or retrain), then infer. |
+| 1 | **ESM-C** — different embedding model | re-infer deterministically; drift is borderline (0.0151). |
+| 3 | **ESM2-based** | see below — only 1 is genuinely a provider issue. |
+
+Runs in each category:
+
+- **Structural (7):** `train_run_aft`, `train_run_aft_no_lddt`, `train_run_aft_single`,
+  `train_run_aft_plddt70`, `train_run_esm2_aft`, `train_run_esm2_aft_no_lddt_gated`,
+  `train_run_esm2+3di_proj`
+- **Unrecoverable (2):** `esm2_aho_transition_bias_sparse_trainable_zero`,
+  `esm2_bond_loss_soft_l005_w5_tau15`
+- **ESM-C (1):** `train_run_esmc_600m`
+- **ESM2-based (3):** `esm2_lora_lstmcnncrf`, `uni2026_run_esm2`, `train_run_esm2_25`
 
 ### The "ESM2 provider" question, precisely
 

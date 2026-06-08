@@ -69,9 +69,17 @@ on tiny ones.
 
 Peptide recall varies from **0.05 to 0.90** across the most frequent organisms:
 
-| good (recall > 0.7) | poor (recall < 0.4) |
-|---|---|
-| Bombyx mori 0.90, Procambarus clarkii 0.90, Conus textile 0.79, Agrotis ipsilon 0.76, Drosophila 0.75 | Cyriopagopus hainanus 0.05, Aplysia californica 0.27, Bos taurus 0.35, Homo sapiens 0.38 |
+| organism | recall | group |
+|---|---:|---|
+| Bombyx mori | 0.90 | good (>0.7) |
+| Procambarus clarkii | 0.90 | good (>0.7) |
+| Conus textile | 0.79 | good (>0.7) |
+| Agrotis ipsilon | 0.76 | good (>0.7) |
+| Drosophila melanogaster | 0.75 | good (>0.7) |
+| Homo sapiens | 0.38 | poor (<0.4) |
+| Bos taurus | 0.35 | poor (<0.4) |
+| Aplysia californica | 0.27 | poor (<0.4) |
+| Cyriopagopus hainanus | 0.05 | poor (<0.4) |
 
 The standout failure is **Cyriopagopus hainanus** (spider venom, 495 test peptides,
 recall 0.05 — essentially never recovered). This tracks the GraphPart split: venom
