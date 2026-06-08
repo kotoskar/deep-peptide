@@ -48,6 +48,18 @@ For **peptides** the misses concentrate in the 21–30 and 31–50 bins (~1660 F
 each) — i.e. the model loses the most ground on long peptides, both because recall
 is low there and because those bins are well populated.
 
+### Length profile across models
+
+![Recall by length, per model](figures/recall_by_length_models.png)
+
+All models share the same inverted-U (peak at 6–20 aa, falling off at both extremes),
+so no architecture reshapes the length dependence much. The one consistent difference:
+the **3Di structural** model (`esm2+3di_proj`) is the best at the hardest lengths
+(len 5 → 0.444, len 31–50 → 0.449, vs baseline 0.389 / 0.405) — structural context
+helps exactly where pure-sequence models struggle (see `structural_potential.md`). The
+600M ESM-C run is uniformly lowest. (Does not yet include the ESM-C 6B + boundary
+winner — adding it needs a GPU inference pass; queued.)
+
 ### Tiny peptides (length 5) are *not* the problem
 
 A recurring question is whether very short peptides (≤5 aa, comparable to the ±3
