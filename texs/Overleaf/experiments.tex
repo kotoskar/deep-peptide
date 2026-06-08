@@ -259,6 +259,54 @@
 \end{table}
 
 % =========================
+% Headline: best combined configuration (architecture x embedding)
+% =========================
+\section*{Лучшая комбинированная конфигурация}
+Отдельный эксперимент вне основного перебора: лучший эмбеддинг по residue-метрикам (ESM-C 6B) подаётся в архитектуру с явной головой границ разреза (\texttt{lstmcnncrf\_boundary\_bond\_loss}). Boundary-голова переводит обильный, но "размытый" сигнал ESM-C 6B в точность (precision +0.14), при сохранении recall. Это лучший F1 и MCC в проекте. Метрики: train-time P/R/F1 + детерминированный fp32-инференс для MCC/AUC (drift 0.000). Один сид.
+
+\begin{table}[ht]
+\centering
+\caption{Test metrics for the best combined configuration vs baselines. Higher is better.}
+\label{tab:best-combined}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{0.95}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{} l
+                S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3]
+                S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3]
+                S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] S[table-format=1.3] @{} }
+\toprule
+\multirow{2}{*}{\textbf{Config}} &
+\multicolumn{5}{c}{\textbf{All}} &
+\multicolumn{5}{c}{\textbf{Peptides}} &
+\multicolumn{5}{c}{\textbf{Propeptides}} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}\cmidrule(lr){12-16}
+&
+\textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{MCC} & \textbf{AUC} &
+\textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{MCC} & \textbf{AUC} &
+\textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{MCC} & \textbf{AUC} \\
+\midrule
+\texttt{ESM-C 6B + boundary/bond} &
+\textbf{0.6571} & \textbf{0.7142} & \textbf{0.6085} & \textbf{0.7646} & 0.6088 &
+\textbf{0.6556} & 0.6585 & \textbf{0.6528} & \textbf{0.7301} & 0.7663 &
+\textbf{0.6585} & \textbf{0.7751} & 0.5724 & \textbf{0.7311} & 0.4082 \\
+\midrule
+\texttt{ESM2 (baseline)} &
+0.6073 & 0.6401 & 0.5776 & 0.7503 & 0.7132 &
+0.6042 & 0.6486 & 0.5654 & 0.6943 & 0.8596 &
+0.6097 & 0.6335 & 0.5877 & 0.7447 & 0.5032 \\
+\midrule
+\texttt{ESM-C 6B (baseline)} &
+0.5795 & 0.5697 & 0.5896 & 0.7583 & 0.7661 &
+0.5624 & 0.5257 & 0.6047 & 0.7282 & 0.8857 &
+0.5948 & 0.6134 & 0.5774 & 0.7462 & 0.5866 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+% =========================
 % Table 2: homo only
 % =========================
 \begin{table}[ht]

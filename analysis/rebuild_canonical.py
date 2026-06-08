@@ -481,6 +481,31 @@ def write_md(rows, existing_md_path):
         f.write("> table, and `texs/error_analysis/report.md` §4 for the bug writeup.\n\n")
         f.write("> **Methodology:** P/R/F1 values are authoritative train-time values from `test_metrics.json` (or `homo_test_metrics.json` for Table 3). MCC and AUC are from fresh fp32 inference (`test_metrics_infer.json` / `homo_test_metrics_infer.json`), accepted only when `drift = max|train-time P/R/F1 − fresh P/R/F1|` ≤ 0.015. Hard overrides (always N/A): `esm2_bond_loss_soft_l005_w5_tau15` and `esm2_aho_transition_bias_sparse_trainable_zero` (model unrecoverable for infer). Values rounded to 3 decimal places. **Bold** = best in column (N/A cells excluded).\n\n")
 
+        # Headline: best combined architecture+embedding (beats both baselines)
+        def _fmt(v):
+            try:
+                return f"{float(v):.3f}"
+            except (TypeError, ValueError):
+                return "N/A"
+        if "esmc6b_boundary_bond" in rows:
+            f.write("## Headline: best combined configuration (architecture × embedding)\n\n")
+            f.write("Not part of the original Table 1/2 sweep — this pairs the best **embedding** "
+                    "(ESM-C 6B, top residue-level signal) with a boundary-sharpening **architecture** "
+                    "(`lstmcnncrf_boundary_bond_loss`). It is the best F1 and MCC in the project; the "
+                    "boundary head turns ESM-C 6B's high-recall/low-precision signal into precision "
+                    "(+0.14). See `texs/error_analysis/combine_best.md`. (Single seed; deterministic "
+                    "fp32, drift 0.000.)\n\n")
+            f.write("| Config | TEST F1 all | TEST Prec all | TEST Rec all | TEST MCC all | HOMO F1 all | HOMO MCC all |\n")
+            f.write("|:--- | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+            for label, run in [("**ESM-C 6B + boundary/bond**", "esmc6b_boundary_bond"),
+                               ("ESM2 baseline", "train_run_esm2"),
+                               ("ESM-C 6B baseline", "esmc_6b")]:
+                tr, hr = rows.get(run, ({}, {}))
+                f.write(f"| {label} | {_fmt(tr.get('f1_all'))} | {_fmt(tr.get('precision_all'))} "
+                        f"| {_fmt(tr.get('recall_all'))} | {_fmt(tr.get('mcc_all'))} "
+                        f"| {_fmt(hr.get('f1_all'))} | {_fmt(hr.get('mcc_all'))} |\n")
+            f.write("\n")
+
         # Table 1
         f.write("## Table 1: Architectural Changes (TEST set)\n\n")
         f.write("\n".join(t1_lines) + "\n\n")

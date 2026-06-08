@@ -8,6 +8,16 @@
 
 > **Methodology:** P/R/F1 values are authoritative train-time values from `test_metrics.json` (or `homo_test_metrics.json` for Table 3). MCC and AUC are from fresh fp32 inference (`test_metrics_infer.json` / `homo_test_metrics_infer.json`), accepted only when `drift = max|train-time P/R/F1 − fresh P/R/F1|` ≤ 0.015. Hard overrides (always N/A): `esm2_bond_loss_soft_l005_w5_tau15` and `esm2_aho_transition_bias_sparse_trainable_zero` (model unrecoverable for infer). Values rounded to 3 decimal places. **Bold** = best in column (N/A cells excluded).
 
+## Headline: best combined configuration (architecture × embedding)
+
+Not part of the original Table 1/2 sweep — this pairs the best **embedding** (ESM-C 6B, top residue-level signal) with a boundary-sharpening **architecture** (`lstmcnncrf_boundary_bond_loss`). It is the best F1 and MCC in the project; the boundary head turns ESM-C 6B's high-recall/low-precision signal into precision (+0.14). See `texs/error_analysis/combine_best.md`. (Single seed; deterministic fp32, drift 0.000.)
+
+| Config | TEST F1 all | TEST Prec all | TEST Rec all | TEST MCC all | HOMO F1 all | HOMO MCC all |
+|:--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **ESM-C 6B + boundary/bond** | 0.657 | 0.714 | 0.608 | 0.765 | 0.548 | 0.747 |
+| ESM2 baseline | 0.607 | 0.640 | 0.578 | 0.750 | 0.460 | 0.693 |
+| ESM-C 6B baseline | 0.579 | 0.570 | 0.590 | 0.758 | 0.476 | 0.686 |
+
 ## Table 1: Architectural Changes (TEST set)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
@@ -92,6 +102,7 @@ The following run folders have `test_metrics.json` (included in `canonical_metri
 - `esm2_boundary_bond_l002_w5_tau15` (test_drift=0.0000, trusted=True)
 - `esm2_boundary_only_scale10` (test_drift=0.0000, trusted=True)
 - `esm2_lora_lstmcnncrf` (test_drift=0.0000, trusted=True)
+- `esmc6b_boundary_bond` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac50` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac60` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac70` (test_drift=0.0000, trusted=True)

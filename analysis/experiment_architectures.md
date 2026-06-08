@@ -455,6 +455,34 @@ Items that should be double-checked against the code / metrics before finalizing
 
 ---
 
+## C. Best combined configuration — ESM-C 6B × boundary/bond (`esmc6b_boundary_bond`)
+
+A deliberate cross of Section A and Section B rather than a sweep entry: the best
+**embedding** by residue-level signal (ESM-C 6B, 2560-d) fed into the best
+boundary-aware **architecture** (`lstmcnncrf_boundary_bond_loss`).
+
+- **Embedding:** ESM-C 6B per-residue, 2560-d (`embeddings_esmc6b`). On its own (plain
+  `lstmcnncrf`) it has the highest recall in Table 2 but the lowest precision, so its
+  ±3 F1 lags the ESM2 baseline.
+- **Architecture:** `LSTMCNNCRFBoundaryBondLoss` (= baseline LSTMCNN→CRF + a learned
+  start/inside/end **boundary-state emission head** added to the CRF emissions, +
+  an auxiliary **soft cleavage-site bond loss** at training, defaults λ=0.02 / window 5
+  / τ 1.5 / pos-weight 10). `embedding_dim=2560`; 365k trainable params. NB: this is
+  the *current* `boundary_bond_loss` class (boundary head + bond aux loss) — distinct
+  from the older, checkpoint-only bond-only variant `esm2_bond_loss_soft` (T1-9).
+- **Result (TEST, fp32, drift 0.000):** F1 0.657 / P 0.714 / R 0.609 / MCC 0.765 —
+  best F1 and MCC in the project (ESM2 baseline 0.607/0.640/0.578/0.750; ESM-C 6B
+  baseline 0.579/0.570/0.590/0.758). Also best on the HOMO slice (F1 0.548 / MCC 0.747
+  vs baseline 0.460 / 0.693).
+- **Why it works:** the boundary head sharpens cleavage calls, so it converts ESM-C 6B's
+  abundant-but-fuzzy residue signal into **precision (+0.14, 0.570→0.714)** with recall
+  held. The same architecture barely moved the already-balanced ESM2 baseline (F1
+  0.606≈0.607) — the benefit is conditional on the embedding's P/R profile.
+- **Caveat:** single seed (training variance ~±0.02; gain ≈2.5×). Full writeup +
+  corrected-metric confirmation in `texs/error_analysis/combine_best.md`.
+
+---
+
 ## VERIFY items — RESOLVED (checked against code + actual tensor shapes)
 
 Ground-truth `.pt` shapes (first protein, L=267): esm2 `(L,1280)`, esm2_plus `(L,1290)`, esm2_3di `(L,1300)`, aft `(L,563)`, aft_single `(L,384)`, aft_pair `(L,128)`, esm2_aho_train012 `(L,1356)`.
