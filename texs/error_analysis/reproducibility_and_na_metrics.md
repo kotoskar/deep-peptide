@@ -1,94 +1,70 @@
-# Why some MCC/AUC cells are N/A, and what retraining would fix them
+# Why some MCC/AUC cells were N/A — root cause and fix
 
-The experiment tables (`analysis/canonical_metrics.md`) leave MCC/AUC as **N/A for
-13 of 39 runs**. A cell is N/A when a fresh inference pass (needed because the
-training code never saved MCC/AUC) did **not** reproduce that run's train-time
-P/R/F1 within 0.015 — so its freshly-computed MCC/AUC cannot be trusted to belong to
-the same evaluation. This note explains the causes and exactly which runs are
-affected, since the obvious hypothesis ("we trained on two different ESM2 providers")
-turns out to explain only a small part.
+The experiment tables (`analysis/canonical_metrics.md`) take P/R/F1 from each run's
+train-time `test_metrics.json` but had to compute **MCC/AUC by a fresh inference
+pass** (training never saved them). A fresh pass was trusted only if it reproduced
+the run's train-time P/R/F1 within 0.015 — otherwise MCC/AUC were marked **N/A**, to
+avoid pairing metrics from a different evaluation with the published P/R/F1.
 
-## Root causes of train-time ↔ fresh-inference divergence
+Originally **~11 of 39 runs** were N/A. We root-caused and fixed it; the N/A set is
+now just the 2 genuinely unrecoverable runs.
 
-Investigated directly (see memory note `deeppeptide-infer-divergence`):
+## Root cause: inference ran in bf16 AMP, training-time metrics were fp32
 
-1. **Non-determinism (the dominant cause).** Two *identical* fresh inference passes
-   of the same run gave different results — even ground-truth residue counts and loss
-   drifted — because nothing seeded the RNGs or forced deterministic algorithms. The
-   per-peptide ±3 metric is sensitive (it truncates labels to the decoded path
-   length), so small perturbations flip matches. **Now fixed** (`src/utils/seeding.py`,
-   wired into training + inference, `--seed`); fresh inference is bit-identical.
-   But the *train-time* numbers in the tables were produced by the old
-   non-deterministic code, so they still differ from a fresh pass.
-2. **Embedding *content* differs between training and now (structural runs).** This
-   is NOT about coverage — the AFT/3Di embeddings still cover ~96% of the test set
-   (1482/1538 vs 1503 for esm2), stable. The issue is *values*: the AFT runs' configs
-   pointed at `data/embeddings_aft*`, a path **deleted** in the reorg and remapped to
-   `data/uniprot_2022/embeddings/embeddings_aft*`, whose contents are a **different
-   generation** than the model trained on. Fed slightly different embedding vectors,
-   the model produces a different set of predictions: recall stays ~stable (it still
-   recovers the same true peptides) but **precision swings ±0.05–0.13, in both
-   directions** (e.g. `train_run_aft` −0.053, `train_run_aft_no_lddt` +0.125) — the
-   signature of a changed input, not noise. esm2's embeddings were never moved (same
-   path) so it reproduces train-time to within 0.0005. (Inferred, not proven: the
-   original AFT embeddings are gone, but the esm2-vs-AFT contrast and the
-   precision-only, bidirectional swing point squarely at an input mismatch.)
-3. **Two ESM2 providers coexist.** `requirements.txt` ships both `fair-esm` (used by
-   the *online* ESM2 path, `embedding=online_esm2`) and HuggingFace `transformers`
-   (`facebook/esm2_t33_650M_UR50D`, used by `make_embeddings.py` to build the
-   *precomputed* `embeddings_esm2`). These give numerically different embeddings.
-   This only matters where a run's inference embeddings differ from its training
-   embeddings — in practice the **online/LoRA** runs.
+The divergence was **not** embeddings, non-determinism, or the ESM2 provider (all
+earlier hypotheses, all wrong). It was a precision mismatch:
 
-## The 13 N/A runs, by cause
+- Training's final test evaluation (`train_loop_crf.train()`,
+  `run_dataloader(test_loader, …, desc='Test')`) **omits `use_amp`** → it runs in
+  **fp32**. So the published P/R/F1 are fp32 numbers.
+- `infer.py::evaluate_loader` read `amp=True` from each config and evaluated in
+  **bf16 AMP**. bf16's coarser rounding shifts the model's logits slightly; for a
+  **low-confidence model** that has many peptide boundaries sitting right at the ±3
+  decision margin (the AFT runs, F1≈0.38–0.43), this flips a lot of borderline
+  predictions — **precision swings ±0.05–0.13**, in both directions. For a confident
+  model (esm2) almost nothing flips (≈0.001), which is why the baseline looked fine
+  and hid the bug.
 
-| # | category | what actually fixes it |
-|--:|---|---|
-| 7 | **Structural embeddings (AFT/3Di)** — fed a different embedding *generation* than trained on (path deleted+remapped in reorg); precision swings, recall stable | re-infer on the exact embeddings the run trained on, or retrain on the current ones, then re-infer. NOT an ESM2-provider issue; NOT a coverage issue (96% stable). |
-| 2 | **Unrecoverable** — model class no longer in code | restore/rewrite the model class (or retrain), then infer. |
-| 1 | **ESM-C** — different embedding model | re-infer deterministically; drift is borderline (0.0151). |
-| 3 | **ESM2-based** | see below — only 1 is genuinely a provider issue. |
+**Proof.** For `train_run_aft`, train-time saved F1=0.3818 / P=0.5294.
+fp32 inference reproduces it **exactly** (0.3818 / 0.5294); bf16 inference gives
+0.3703 / 0.4767 — exactly the old (N/A-triggering) infer value.
 
-Runs in each category:
+## Fix
 
-- **Structural (7):** `train_run_aft`, `train_run_aft_no_lddt`, `train_run_aft_single`,
-  `train_run_aft_plddt70`, `train_run_esm2_aft`, `train_run_esm2_aft_no_lddt_gated`,
-  `train_run_esm2+3di_proj`
-- **Unrecoverable (2):** `esm2_aho_transition_bias_sparse_trainable_zero`,
-  `esm2_bond_loss_soft_l005_w5_tau15`
-- **ESM-C (1):** `train_run_esmc_600m`
-- **ESM2-based (3):** `esm2_lora_lstmcnncrf`, `uni2026_run_esm2`, `train_run_esm2_25`
+`infer.py` now forces `use_amp=False` in evaluation (commit *fix infer.py: evaluate
+in fp32*), matching how the training-time test metrics were produced. Re-inferring
+all runs in fp32, the drift vs train-time **collapses to ~0.0000** for every
+previously-diverging run (AFT, AFT+ESM2, 3Di, ESM-C, uniprot-2026 baseline). No
+retraining, no embedding regeneration — the embeddings were always the same.
 
-### The "ESM2 provider" question, precisely
+| run | drift before (bf16) | drift after (fp32) |
+|---|---:|---:|
+| train_run_aft | 0.061 | 0.000 |
+| train_run_aft_no_lddt | 0.139 | 0.000 |
+| train_run_aft_single | 0.113 | 0.000 |
+| train_run_aft_plddt70 | 0.034 | 0.000 |
+| train_run_esm2_aft | 0.020 | 0.000 |
+| train_run_esm2_aft_no_lddt_gated | 0.049 | 0.000 |
+| train_run_esm2+3di_proj | 0.037 | 0.000 |
+| train_run_esmc_600m | 0.015 | 0.004 |
+| uni2026_run_esm2 | 0.063 | 0.000 |
 
-Of the three ESM2-based N/A runs, the provider only cleanly applies to **one**:
+## Remaining N/A (2 runs) — genuinely need code, not a provider/precision fix
 
-- **`esm2_lora_lstmcnncrf`** (drift 0.023) — `embedding=online_esm2`, i.e. ESM2 is
-  run **live via `fair-esm`**. This is the genuine single-provider case: pin one ESM2
-  provider/version and retrain (or at least re-infer with the same provider used at
-  training). The sibling `esm2_lora_lstmcnncrf_r4_last2_qv` (same online path) would
-  be in the same boat.
-- **`train_run_esm2_25`** (drift 0.042) — uses the **same** precomputed
-  `embeddings_esm2` as the baseline, which diverges only 0.0005. Identical embeddings
-  ⇒ **not** a provider problem; it is amplified non-determinism on a low-quality run.
-  Moreover it is **superseded** by the corrected data-scaling series
-  (`runs/scaling_trainfrac*`), so it does not need retraining at all.
-- **`uni2026_run_esm2`** (drift 0.063) — a separate uniprot-2026 exploratory run with
-  its own `emb_esm2`; lower priority and tied to the 2026 dataset, not the main 2022
-  results.
+| run | reason | to recover |
+|---|---|---|
+| `esm2_aho_transition_bias_sparse_trainable_zero` | model class `lstmcnncrf_aho_transition_bias_sparse` was never committed to git | rewrite/restore the class, or retrain |
+| `esm2_bond_loss_soft_l005_w5_tau15` | trained an old bond-only head (`bond_head.0.*`); the current `lstmcnncrf_boundary_bond_loss` class differs | restore the old class, or retrain |
 
-## Bottom line / recommendation
+(`train_run_esm2_25` is also non-trusted, but it is the mislabeled scaling run that
+trained on the 50% file and is superseded by the corrected scaling series — it does
+not need fixing.)
 
-- The headline hypothesis "many configs need retraining on a single ESM provider" is
-  **mostly not the case**: the provider duality cleanly affects only the **online/LoRA**
-  runs (1–2 configs). The other 11 N/A cells are non-determinism (now fixed in code)
-  and structural-embedding coverage.
-- To fill **all** N/A honestly, the clean path is to **retrain the affected runs with
-  the new seeded/deterministic code on pinned embeddings** (one ESM2 provider for the
-  online runs; regenerated full-coverage AFT/3Di embeddings for the structural ones),
-  then a single deterministic inference supplies P/R/F1 **and** MCC/AUC from one pass.
-- Cost-ranked retrain targets: (1) the 2 LoRA online-ESM2 runs — the only true
-  provider case; (2) the 7 structural runs — but these need embedding regeneration
-  first (AFT embeddings are ~200 h to recompute, so likely not worth it); (3) the 2
-  unrecoverable runs need code, not just a provider. `esm2_25` needs nothing (dropped
-  in favor of the corrected scaling series).
+## On the "single ESM provider" question
+
+`requirements.txt` does ship two ESM2 providers (`fair-esm` for the online path,
+HuggingFace `transformers` for precomputed `embeddings_esm2`). This is real code
+hygiene to tidy up, and it is the only thing that would matter for the **online/LoRA**
+runs. But it turned out **not** to be the cause of any N/A cell — the precision bug
+above explains all of them. So no provider-driven retraining is needed for the
+results in the tables.
