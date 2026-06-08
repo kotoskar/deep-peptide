@@ -50,7 +50,7 @@ Matching = manuscript ±3 (a true peptide group is recovered iff some prediction
 
 ## Per-run recall (peptides / propeptides) and validation gate
 
-| run | recall pep | recall propep | gate max|Δ| |
+| run | recall pep | recall propep | gate max\|Δ\| |
 |---|---:|---:|---:|
 | esm2_aho_emission_fusion | 0.560 | 0.595 | 3.1e-02 |
 | esm2_aho_emission_fusion_h32 | 0.570 | 0.544 | 2.6e-02 |
