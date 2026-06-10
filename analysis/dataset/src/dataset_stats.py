@@ -157,14 +157,33 @@ def make_length_table(lengths: List[int], up_to: int = 10) -> str:
     return header + "\n" + "\n".join(rows)
 
 
-def save_histogram(values: List[int], title: str, xlabel: str, fname: str, bins: int = 50):
+def save_histogram(values: List[int], title: str, xlabel: str, fname: str,
+                   clip_pct: Optional[float] = None):
+    """Честная гистограмма целочисленных длин: ОДИН бин на дискретное значение X
+    (никакого склеивания соседних длин). Длинный разреженный хвост можно обрезать по
+    перцентилю `clip_pct`, чтобы основная масса распределения не сжималась — число
+    обрезанных значений выносится в заголовок."""
     if not HAS_MPL or not values:
         return
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(values, bins=bins, edgecolor="black", alpha=0.75)
+    arr = np.asarray(values, dtype=int)
+    n_clipped = 0
+    hi = int(arr.max())
+    if clip_pct is not None and len(arr) > 0:
+        hi = int(np.percentile(arr, clip_pct))
+        n_clipped = int((arr > hi).sum())
+        arr = arr[arr <= hi]
+    lo = int(arr.min())
+    # центрируем каждый бин на целом числе: края на полуцелых -> ширина ровно 1
+    edges = np.arange(lo - 0.5, hi + 1.5, 1.0)
+    fig, ax = plt.subplots(figsize=(11, 4))
+    ax.hist(arr, bins=edges, edgecolor="none", alpha=0.9)
+    if n_clipped:
+        title += f"  (показано ≤{hi} а.о.; {n_clipped} длиннее обрезаны)"
     ax.set_title(title)
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Count")
+    ax.set_ylabel("Количество")
+    ax.set_xlim(lo - 0.5, hi + 0.5)
+    ax.margins(x=0)
     fig.tight_layout()
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(PLOTS_DIR / fname, dpi=120)
@@ -636,33 +655,33 @@ def make_plots(dataset_key: str, results: Dict):
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     all_s = results["ALL"]
 
-    # Protein lengths
+    # Protein lengths — широкий непрерывный диапазон (до ~4000), обрезаем хвост по p99,
+    # один бин на а.о. внутри показанного диапазона
     save_histogram(
         all_s["prot_lens"],
-        f"Protein Sequence Lengths (uniprot_{dataset_key}, ALL)",
-        "Length (aa)",
+        f"Длины белков (uniprot_{dataset_key}, ALL)",
+        "Длина (а.о.)",
         f"{dataset_key}_protein_lengths.png",
-        bins=60,
+        clip_pct=99,
     )
 
-    # Peptide segment lengths (log-scale x or clipped for readability)
+    # Peptide segment lengths — основная масса ≤50, редкие выбросы до сотен; p99 + 1 бин/а.о.
     pep_lens = all_s["pep_seg_lens"]
     save_histogram(
         pep_lens,
-        f"Peptide Segment Lengths (uniprot_{dataset_key}, ALL)",
-        "Length (aa)",
+        f"Длины пептидных сегментов (uniprot_{dataset_key}, ALL)",
+        "Длина (а.о.)",
         f"{dataset_key}_peptide_lengths.png",
-        bins=80,
+        clip_pct=99,
     )
 
-    # Propeptide segment lengths
+    # Propeptide segment lengths — диапазон узкий (≤~80), показываем полностью, 1 бин/а.о.
     pro_lens = all_s["pro_seg_lens"]
     save_histogram(
         pro_lens,
-        f"Propeptide Segment Lengths (uniprot_{dataset_key}, ALL)",
-        "Length (aa)",
+        f"Длины пропептидных сегментов (uniprot_{dataset_key}, ALL)",
+        "Длина (а.о.)",
         f"{dataset_key}_propeptide_lengths.png",
-        bins=60,
     )
 
     # Tiny peptide zoom (lengths 1..30)
@@ -670,10 +689,10 @@ def make_plots(dataset_key: str, results: Dict):
     if tiny:
         if HAS_MPL:
             fig, ax = plt.subplots(figsize=(10, 4))
-            ax.hist(tiny, bins=range(1, 32), edgecolor="black", alpha=0.75)
-            ax.set_title(f"Peptide Segment Lengths 1–30 aa (uniprot_{dataset_key}, ALL)")
-            ax.set_xlabel("Length (aa)")
-            ax.set_ylabel("Count")
+            ax.hist(tiny, bins=np.arange(0.5, 31.5, 1.0), edgecolor="none", alpha=0.9)
+            ax.set_title(f"Длины пептидных сегментов 1–30 а.о. (uniprot_{dataset_key}, ALL)")
+            ax.set_xlabel("Длина (а.о.)")
+            ax.set_ylabel("Количество")
             ax.set_xticks(range(1, 31))
             fig.tight_layout()
             fig.savefig(PLOTS_DIR / f"{dataset_key}_peptide_lengths_tiny.png", dpi=120)
@@ -689,13 +708,13 @@ def make_plots(dataset_key: str, results: Dict):
         x = np.arange(len(splits_plot))
         w = 0.25
         fig, ax = plt.subplots(figsize=(7, 4))
-        ax.bar(x - w, n_pos_pep, w, label="Has peptide")
-        ax.bar(x, n_pos_pro, w, label="Has propeptide")
-        ax.bar(x + w, n_neg, w, label="Negatives")
+        ax.bar(x - w, n_pos_pep, w, label="Есть пептид")
+        ax.bar(x, n_pos_pro, w, label="Есть пропептид")
+        ax.bar(x + w, n_neg, w, label="Негативы")
         ax.set_xticks(x)
         ax.set_xticklabels(splits_plot)
-        ax.set_title(f"Protein Counts by Split (uniprot_{dataset_key})")
-        ax.set_ylabel("# Proteins")
+        ax.set_title(f"Число белков по сплитам (uniprot_{dataset_key})")
+        ax.set_ylabel("Число белков")
         ax.legend()
         fig.tight_layout()
         fig.savefig(PLOTS_DIR / f"{dataset_key}_split_counts.png", dpi=120)
