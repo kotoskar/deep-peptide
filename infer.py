@@ -257,7 +257,8 @@ TASKS: List[Tuple[str, Sequence[Tuple[int, int]], str]] = [
 ]
 
 
-def get_task_scores(prob_seq: np.ndarray, task_name: str, label_type: str) -> Optional[np.ndarray]:
+def get_task_scores(prob_seq: np.ndarray, task_name: str, label_type: str,
+                    positive_ranges: Optional[Sequence[Tuple[int, int]]] = None) -> Optional[np.ndarray]:
     arr = squeeze_prob_array(np.asarray(prob_seq))
 
     # Most likely cases:
@@ -275,6 +276,21 @@ def get_task_scores(prob_seq: np.ndarray, task_name: str, label_type: str) -> Op
     num_cols = arr.shape[1]
     if num_cols == 0:
         return None
+
+    # STATE-MARGINAL case (the real inference path): the CRF returns per-residue
+    # marginal probabilities over ALL num_states states (e.g. 101 = None + 50 peptide
+    # + 50 propeptide), NOT a 3-class coarse vector. The per-residue probability that
+    # the residue belongs to a task is the SUM of marginals over that task's state
+    # range. Previously this block was absent and the (L,101) array fell through to the
+    # coarse-column logic below, which used column 1 (peptide START state only) as the
+    # peptide score and column 2 (a peptide state!) as the propeptide score — making
+    # residue ROC-AUC meaningless (propeptide AUC ~0.5 / <0.5). Summing over ranges fixes it.
+    if positive_ranges is not None and num_cols > 3:
+        score = np.zeros(arr.shape[0], dtype=np.float64)
+        for lo, hi in positive_ranges:
+            score += arr[:, lo:hi + 1].sum(axis=1)
+        return np.clip(score, 0.0, 1.0)
+
     if num_cols == 1:
         if task_name in {"peptides", "all"}:
             return arr[:, 0].astype(float)
@@ -397,7 +413,7 @@ def compute_residue_level_metrics(
             for task_name, positive_ranges, _ in TASKS:
                 y_true = state_in_ranges(true_seq, positive_ranges).astype(np.int64)
                 y_pred = state_in_ranges(pred_seq, positive_ranges).astype(np.int64)
-                y_score = get_task_scores(prob_seq, task_name, label_type)
+                y_score = get_task_scores(prob_seq, task_name, label_type, positive_ranges)
 
                 collected[task_name]["y_true"].append(y_true)
                 collected[task_name]["y_pred"].append(y_pred)
