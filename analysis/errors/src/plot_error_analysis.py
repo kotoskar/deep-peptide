@@ -54,6 +54,32 @@ def main():
     ax.set_title("Where the missed peptides are (FN count by length)"); ax.legend(); ax.grid(axis="y", alpha=.3)
     fig.tight_layout(); fig.savefig(FIG / "fn_mass_by_length.png", dpi=130); plt.close(fig)
 
+    # ---- Fig 2b: MISS FRACTION by length (per-integer, fine) — nice version ----
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    for task, color in [("peptides", "#2b6cb0"), ("propeptides", "#c05621")]:
+        t = true[true["task"] == task]
+        g = t.groupby("length")["matched"]
+        n = g.size()
+        miss = 1.0 - g.mean()            # доля пропущенных = 1 − recall
+        lens = miss.index.to_numpy()
+        # маркеры ∝ sqrt(поддержки), полупрозрачные точки
+        sizes = 18 + 90 * np.sqrt(n.to_numpy() / n.max())
+        ax.scatter(lens, miss.to_numpy(), s=sizes, color=color, alpha=0.35,
+                   edgecolors="none", zorder=2)
+        # сглаживающая линия тренда (скользящее среднее по 3, взвешенное поддержкой)
+        sm = (miss * n).rolling(3, center=True, min_periods=1).sum() / \
+             n.rolling(3, center=True, min_periods=1).sum()
+        ax.plot(lens, sm.to_numpy(), color=color, lw=2.2, zorder=3,
+                label=f"{'пептиды' if task=='peptides' else 'пропептиды'} (тренд)")
+    ax.axhline(0.5, color="grey", ls=":", lw=.8, zorder=1)
+    ax.set_xlabel("Длина истинного сегмента (а.о.)")
+    ax.set_ylabel("Доля пропущенных  (1 − recall, ±3)")
+    ax.set_title("Доля пропусков по длине сегмента (по каждой длине; размер точки ∝ числу сегментов)")
+    ax.set_ylim(0, 1); ax.set_xlim(4, 51)
+    ax.legend(loc="upper center", frameon=False, ncol=2)
+    ax.grid(alpha=.3)
+    fig.tight_layout(); fig.savefig(FIG / "miss_fraction_by_length.png", dpi=140); plt.close(fig)
+
     # ---- Fig 3: recall by organism (peptides, top 12 by count) ----
     t = true[true["task"] == "peptides"]
     top = t["organism"].value_counts().head(12)
