@@ -4,6 +4,7 @@ Code to generate state space labels from a binary labeled peptide annotation seq
 States are hardcoded.
 '''
 from typing import List, Tuple
+import warnings
 import numpy as np
 
 
@@ -73,11 +74,25 @@ def peptide_list_to_label_sequence(peptides: List[Tuple[int,int]], protein_lengt
     for start, end in peptides:
         peptide_length = end - start + 1 #upper bound is inclusive.
 
+        # A segment longer than max_len cannot be represented by the max_len-state
+        # grammar: the original formula `arange(start_state+max_len-2-(plen-min_len), ...)`
+        # goes negative for plen > max_len+? and emits duplicate/backward states for
+        # plen slightly over max_len (e.g. plen=52 -> ...,3,2,3,4,...), corrupting the
+        # gold path. The model caps segments at max_len anyway, so such a segment is
+        # unrepresentable. Skip it (leave those residues as background) instead of
+        # writing negative/invalid states. Rare on uniprot_2022 (1 train peptide, 0
+        # propeptides) but matters for uniprot_2026 (propeptides up to 79 aa).
+        if peptide_length > max_len:
+            warnings.warn(
+                f"peptide_list_to_label_sequence: segment length {peptide_length} > "
+                f"max_len {max_len} cannot be encoded; skipping segment ({start},{end}).")
+            continue
+
         peptide_label = np.concatenate(
-            [ 
+            [
             np.arange(start_state, start_state+min_len-2),#np.arange(1, 4), # from start to first position with skip connections
             # (end_state -1) - (peptide_length - min_len)
-            np.arange((start_state+max_len-2 - (peptide_length - min_len)), start_state+max_len) #np.arange( 59-(peptide_length-5) ,61) 
+            np.arange((start_state+max_len-2 - (peptide_length - min_len)), start_state+max_len) #np.arange( 59-(peptide_length-5) ,61)
             ]
         )
         # e.g. peptide of len 5 -> 1,2,3,59, 60
