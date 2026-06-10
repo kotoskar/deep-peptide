@@ -1,43 +1,43 @@
-# Why some MCC/AUC cells were N/A — root cause and fix
+# Почему часть ячеек MCC/AUC были N/A — первопричина и исправление
 
-The experiment tables (`analysis/canonical_metrics.md`) take P/R/F1 from each run's
-train-time `test_metrics.json` but had to compute **MCC/AUC by a fresh inference
-pass** (training never saved them). A fresh pass was trusted only if it reproduced
-the run's train-time P/R/F1 within 0.015 — otherwise MCC/AUC were marked **N/A**, to
-avoid pairing metrics from a different evaluation with the published P/R/F1.
+Таблицы экспериментов (`analysis/metrics/canonical_metrics.md`) берут P/R/F1 из
+train-time `test_metrics.json` каждого запуска, но **MCC/AUC** приходилось считать
+**отдельным проходом инференса** (при обучении они не сохранялись). Свежий проход
+принимался только если он воспроизводил train-time P/R/F1 с точностью до 0.015 — иначе
+MCC/AUC помечались **N/A**, чтобы не сочетать метрики из другой оценки с опубликованными
+P/R/F1.
 
-Originally **~11 of 39 runs** were N/A. We root-caused and fixed it; the N/A set is
-now just the 2 genuinely unrecoverable runs.
+Изначально N/A были у **~11 из 39 запусков**. Мы нашли первопричину и исправили; теперь
+N/A остались только у 2 по-настоящему невосстановимых запусков.
 
-## Root cause: inference ran in bf16 AMP, training-time metrics were fp32
+## Первопричина: инференс шёл в bf16 AMP, а train-time метрики были fp32
 
-The divergence was **not** embeddings, non-determinism, or the ESM2 provider (all
-earlier hypotheses, all wrong). It was a precision mismatch:
+Расхождение было **не** из-за эмбеддингов, не из-за недетерминизма и не из-за провайдера
+ESM2 (все ранние гипотезы — неверны). Дело в несовпадении точности:
 
-- Training's final test evaluation (`train_loop_crf.train()`,
-  `run_dataloader(test_loader, …, desc='Test')`) **omits `use_amp`** → it runs in
-  **fp32**. So the published P/R/F1 are fp32 numbers.
-- `infer.py::evaluate_loader` read `amp=True` from each config and evaluated in
-  **bf16 AMP**. bf16's coarser rounding shifts the model's logits slightly; for a
-  **low-confidence model** that has many peptide boundaries sitting right at the ±3
-  decision margin (the AFT runs, F1≈0.38–0.43), this flips a lot of borderline
-  predictions — **precision swings ±0.05–0.13**, in both directions. For a confident
-  model (esm2) almost nothing flips (≈0.001), which is why the baseline looked fine
-  and hid the bug.
+- Финальная оценка на test при обучении (`train_loop_crf.train()`,
+  `run_dataloader(test_loader, …, desc='Test')`) **пропускает `use_amp`** → идёт в
+  **fp32**. То есть опубликованные P/R/F1 — это fp32-числа.
+- `infer.py::evaluate_loader` читал `amp=True` из конфига и считал в **bf16 AMP**.
+  Грубое округление bf16 чуть сдвигает логиты модели; у **низкоувернной модели** с
+  множеством границ пептидов прямо на пороге решения ±3 (запуски AFT, F1≈0.38–0.43) это
+  флипает много пограничных предсказаний — **precision гуляет на ±0.05–0.13** в обе
+  стороны. У уверенной модели (esm2) почти ничего не флипается (≈0.001) — поэтому базовая
+  модель выглядела нормально и скрывала баг.
 
-**Proof.** For `train_run_aft`, train-time saved F1=0.3818 / P=0.5294.
-fp32 inference reproduces it **exactly** (0.3818 / 0.5294); bf16 inference gives
-0.3703 / 0.4767 — exactly the old (N/A-triggering) infer value.
+**Доказательство.** Для `train_run_aft` train-time сохранил F1=0.3818 / P=0.5294.
+fp32-инференс воспроизводит это **точно** (0.3818 / 0.5294); bf16-инференс даёт
+0.3703 / 0.4767 — ровно старое (вызывавшее N/A) значение.
 
-## Fix
+## Исправление
 
-`infer.py` now forces `use_amp=False` in evaluation (commit *fix infer.py: evaluate
-in fp32*), matching how the training-time test metrics were produced. Re-inferring
-all runs in fp32, the drift vs train-time **collapses to ~0.0000** for every
-previously-diverging run (AFT, AFT+ESM2, 3Di, ESM-C, uniprot-2026 baseline). No
-retraining, no embedding regeneration — the embeddings were always the same.
+`infer.py` теперь принудительно ставит `use_amp=False` при оценке, как и
+train-time-метрики. После переинференса всех запусков в fp32 drift к train-time
+**схлопывается до ~0.0000** для каждого прежде расходившегося запуска (AFT, AFT+ESM2,
+3Di, ESM-C, базовая на uniprot-2026). Без переобучения и без перегенерации эмбеддингов —
+эмбеддинги всегда были теми же.
 
-| run | drift before (bf16) | drift after (fp32) |
+| запуск | drift до (bf16) | drift после (fp32) |
 |---|---:|---:|
 | train_run_aft | 0.061 | 0.000 |
 | train_run_aft_no_lddt | 0.139 | 0.000 |
@@ -49,22 +49,21 @@ retraining, no embedding regeneration — the embeddings were always the same.
 | train_run_esmc_600m | 0.015 | 0.004 |
 | uni2026_run_esm2 | 0.063 | 0.000 |
 
-## Remaining N/A (2 runs) — genuinely need code, not a provider/precision fix
+## Оставшиеся N/A (2 запуска) — здесь нужен код, а не провайдер/точность
 
-| run | reason | to recover |
+| запуск | причина | как восстановить |
 |---|---|---|
-| `esm2_aho_transition_bias_sparse_trainable_zero` | model class `lstmcnncrf_aho_transition_bias_sparse` was never committed to git | rewrite/restore the class, or retrain |
-| `esm2_bond_loss_soft_l005_w5_tau15` | trained an old bond-only head (`bond_head.0.*`); the current `lstmcnncrf_boundary_bond_loss` class differs | restore the old class, or retrain |
+| `esm2_aho_transition_bias_sparse_trainable_zero` | класс модели `lstmcnncrf_aho_transition_bias_sparse` никогда не коммитился в git | переписать/восстановить класс или переобучить |
+| `esm2_bond_loss_soft_l005_w5_tau15` | обучена старая bond-only голова (`bond_head.0.*`); текущий класс `lstmcnncrf_boundary_bond_loss` отличается | восстановить старый класс или переобучить |
 
-(`train_run_esm2_25` is also non-trusted, but it is the mislabeled scaling run that
-trained on the 50% file and is superseded by the corrected scaling series — it does
-not need fixing.)
+(`train_run_esm2_25` тоже не доверенный, но это неверно помеченный запуск
+масштабирования, обучавшийся на файле с 50%, и он вытеснен исправленной серией
+масштабирования — его чинить не нужно.)
 
-## On the "single ESM provider" question
+## По поводу вопроса про «единый провайдер ESM»
 
-`requirements.txt` does ship two ESM2 providers (`fair-esm` for the online path,
-HuggingFace `transformers` for precomputed `embeddings_esm2`). This is real code
-hygiene to tidy up, and it is the only thing that would matter for the **online/LoRA**
-runs. But it turned out **not** to be the cause of any N/A cell — the precision bug
-above explains all of them. So no provider-driven retraining is needed for the
-results in the tables.
+`requirements.txt` действительно содержит два провайдера ESM2 (`fair-esm` для онлайн-пути
+и HuggingFace `transformers` для предвычисленных `embeddings_esm2`). Это реальная гигиена
+кода, которую стоит навести, и она имела бы значение только для **онлайн/LoRA**-запусков.
+Но оказалось, что **не** она причина ни одной N/A-ячейки — всё объясняет баг с точностью
+выше. Так что для результатов в таблицах переобучение из-за провайдера не требуется.

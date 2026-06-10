@@ -1,51 +1,52 @@
-# Do structural embeddings have the same latent potential as ESM-C 6B?
+# Есть ли у структурных эмбеддингов тот же скрытый потенциал, что у ESM-C 6B?
 
-The P2a win (ESM-C 6B + boundary/bond) worked through a specific mechanism: ESM-C 6B
-is **high-recall / low-precision**, and the boundary head converted recall into
-precision (+0.14). Natural question: do the **structural** embeddings (AFT, 3Di,
-ProstT5) hide a similar exploitable profile, and should they be combined with — or
-replace — ESM-C 6B?
+Победа P2a (ESM-C 6B + boundary/bond) сработала через конкретный механизм: ESM-C 6B —
+**высокий recall / низкая precision**, и boundary-голова конвертировала recall в
+precision (+0.14). Естественный вопрос: прячут ли **структурные** эмбеддинги (AFT, 3Di,
+ProstT5) похожий эксплуатируемый профиль, и стоит ли их комбинировать с ESM-C 6B — или
+заменять им?
 
-## 1. Structural embeddings have the OPPOSITE profile — the boundary trick won't transfer
+## 1. У структурных эмбеддингов ПРОТИВОПОЛОЖНЫЙ профиль — boundary-трюк не перенесётся
 
-| embedding (TEST) | F1 | Prec | Rec | profile |
+| эмбеддинг (TEST) | F1 | Prec | Rec | профиль |
 |---|---:|---:|---:|---|
-| **ESM-C 6B** | 0.579 | 0.570 | 0.590 | **high-recall / low-precision** ✅ |
-| ESM2 baseline | 0.607 | 0.640 | 0.578 | balanced |
-| ESM2+3Di proj.gated.conv | 0.611 | 0.658 | 0.571 | precision-heavy |
-| ESM2+AFT (pair, gated) | 0.595 | 0.651 | 0.547 | precision-heavy |
-| ProstT5 | 0.509 | 0.588 | 0.449 | precision-heavy, recall-poor |
-| AFT (no lddt) | 0.408 | 0.458 | 0.368 | weak both |
-| AFT | 0.382 | 0.529 | 0.299 | precision-heavy, recall-starved |
+| **ESM-C 6B** | 0.579 | 0.570 | 0.590 | **высокий recall / низкая precision** ✅ |
+| ESM2 (базовая) | 0.607 | 0.640 | 0.578 | сбалансированный |
+| ESM2+3Di proj.gated.conv | 0.611 | 0.658 | 0.571 | precision-перевес |
+| ESM2+AFT (pair, gated) | 0.595 | 0.651 | 0.547 | precision-перевес |
+| ProstT5 | 0.509 | 0.588 | 0.449 | precision-перевес, бедный recall |
+| AFT (без lddt) | 0.408 | 0.458 | 0.368 | слабо по обоим |
+| AFT | 0.382 | 0.529 | 0.299 | precision-перевес, голодный по recall |
 
-Only ESM-C 6B has recall > precision. Every structural config is precision-heavy and
-**recall-starved** — they miss peptides rather than mis-place boundaries. So a
-boundary-sharpening head (which trades recall→precision) is the wrong tool for them; if
-anything they need the opposite (a recall boost). **The P2a mechanism does not transfer
-to structural embeddings.**
+Только у ESM-C 6B recall > precision. Каждая структурная конфигурация — с перевесом в
+precision и **голодная по recall**: они *пропускают* пептиды, а не путают границы.
+Поэтому boundary-голова (которая меняет recall→precision) — неправильный инструмент для
+них; если что, им нужно обратное (буст recall). **Механизм P2a на структурные эмбеддинги
+не переносится.**
 
-## 2. But they DO give complementary signal — in two specific places
+## 2. Но комплементарный сигнал они ДАЮТ — в двух конкретных местах
 
-- **Length extremes (3Di).** In the per-model recall-by-length breakdown,
-  `esm2+3di_proj` is the **best model at the hardest lengths**: len 5 → 0.444 (vs
-  baseline 0.389) and len 31–50 → 0.449 (vs baseline 0.405). Structural context helps
-  exactly where pure-sequence models struggle most.
-- **Ranking / AUC (ProstT5, AFT).** ProstT5 and AFT have high residue AUC (0.78 / 0.73)
-  despite low F1 — good at *ranking* residues, poor at the ±3 threshold. That is latent
-  signal a better head/threshold could exploit.
-- The best embedding-table F1 was `esm2+3di_proj_gated_conv` (0.611), i.e. 3Di already
-  adds a hair over ESM2 baseline.
+- **Крайние длины (3Di).** В разбивке recall по длине для каждой модели `esm2+3di_proj`
+  — **лучшая модель на самых трудных длинах**: длина 5 → 0.444 (база 0.389) и длина
+  31–50 → 0.449 (база 0.405). Структурный контекст помогает именно там, где
+  чисто-последовательностные модели страдают сильнее всего.
+- **Ранжирование / AUC (ProstT5, AFT).** У ProstT5 и AFT высокий residue AUC (0.78 /
+  0.73) при низком F1 — они хороши в *ранжировании* остатков, но плохи на пороге ±3. Это
+  скрытый сигнал, который лучшая голова/порог могли бы использовать.
+- Лучший F1 в таблице эмбеддингов — `esm2+3di_proj_gated_conv` (0.611), т.е. 3Di уже
+  добавляет чуть-чуть сверх базовой ESM2.
 
-## 3. Recommendation
+## 3. Рекомендация
 
-- **Replace ESM-C 6B with structural? No.** Structural-only is far weaker (AFT 0.38,
-  ProstT5 0.51); ESM-C 6B (a large 2560-d model) dominates. They are not substitutes.
-- **Combine with ESM-C 6B? Worth one experiment.** The promising direction is to add a
-  **3Di structural branch** to the ESM-C 6B + boundary winner, to pick up the
-  length-extreme signal on top of the current best. This needs a new concatenated
-  embedding `embeddings_esmc6b_3di` (ESM-C 6B 2560-d ⊕ ProstT5-3Di 20-d) — cheap to
-  build (3Di is fast) — then train `lstmcnncrf_gated3diresidual_conv` (the
-  structural-branch arch) on it, ideally with the boundary/bond loss too.
-- Expectation: modest gain at the length tails; unlikely to beat the +0.05 from P2a,
-  but tests whether structural and ESM-C 6B signals are additive. **Queued as a GPU
-  experiment (see roadmap), to run after the telescoping candidate B finishes.**
+- **Заменить ESM-C 6B структурными? Нет.** Чисто структурные сильно слабее (AFT 0.38,
+  ProstT5 0.51); ESM-C 6B (крупная модель 2560-d) доминирует. Это не взаимозаменяемые
+  варианты.
+- **Скомбинировать с ESM-C 6B? Стоит одного эксперимента.** Перспективное направление —
+  добавить **структурную ветку 3Di** к победителю ESM-C 6B + boundary, чтобы подобрать
+  сигнал на крайних длинах поверх текущего лучшего. Нужен новый конкатенированный
+  эмбеддинг `embeddings_esmc6b_3di` (ESM-C 6B 2560-d ⊕ ProstT5-3Di 20-d) — дёшево
+  построить (3Di быстрый) — затем обучить `lstmcnncrf_gated3diresidual_conv`
+  (архитектуру со структурной веткой) на нём, в идеале ещё и с boundary/bond-лоссом.
+- Ожидание: умеренный выигрыш на хвостах по длине; вряд ли побьёт +0.05 от P2a, но
+  проверит, аддитивны ли структурный сигнал и ESM-C 6B. **Поставлено в очередь как
+  GPU-эксперимент (см. roadmap).**

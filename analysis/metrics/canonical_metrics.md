@@ -1,16 +1,26 @@
-# Canonical Experiment Tables
+# Канонические таблицы экспериментов
 
-> ⚠️ **Metric note:** the P/R/F1 here come from the shipped ±3 peptide-finding
-> metric, which has a variable-shadowing bug (inherited from upstream DeepPeptide)
-> that understates recall by ~2–4 pp. These values are kept for comparability with
-> the paper. See `analysis/dual_reporting_metrics.md` for the original-vs-corrected
-> table, and `texs/error_analysis/report.md` §4 for the bug writeup.
+> ⚠️ **О метрике:** P/R/F1 здесь — из штатной метрики поиска пептидов ±3, в которой есть
+> баг затенения переменной (унаследован от исходного DeepPeptide), занижающий recall на
+> ~2–4 п.п. Эти значения сохранены для сопоставимости со статьёй. Старую-против-новой
+> таблицу см. в `dual_reporting_metrics.md`, полную сводную (с MCC/AUC и pep/propep) — в
+> `big_metrics_table.md`, разбор бага — в `texs/error_analysis/report.md` §4 и
+> `texs/error_analysis/methodology.md`.
 
-> **Methodology:** P/R/F1 values are authoritative train-time values from `test_metrics.json` (or `homo_test_metrics.json` for Table 3). MCC and AUC are from fresh fp32 inference (`test_metrics_infer.json` / `homo_test_metrics_infer.json`), accepted only when `drift = max|train-time P/R/F1 − fresh P/R/F1|` ≤ 0.015. Hard overrides (always N/A): `esm2_bond_loss_soft_l005_w5_tau15` and `esm2_aho_transition_bias_sparse_trainable_zero` (model unrecoverable for infer). Values rounded to 3 decimal places. **Bold** = best in column (N/A cells excluded).
+> **Методология:** P/R/F1 — авторитетные train-time значения из `test_metrics.json` (или
+> `homo_test_metrics.json` для Таблицы 3). MCC и AUC — из свежего fp32-инференса, принимаются
+> только при `drift = max|train-time P/R/F1 − свежие P/R/F1| ≤ 0.015`. Жёсткие N/A:
+> `esm2_bond_loss_soft_l005_w5_tau15` и `esm2_aho_transition_bias_sparse_trainable_zero`
+> (модель невосстановима для инференса). Округление до 3 знаков. **Жирным** — лучшее в
+> столбце (ячейки N/A исключены).
 
-## Headline: best combined configuration (architecture × embedding)
+## Заголовок: лучшая комбинированная конфигурация (архитектура × эмбеддинг)
 
-Not part of the original Table 1/2 sweep — this pairs the best **embedding** (ESM-C 6B, top residue-level signal) with a boundary-sharpening **architecture** (`lstmcnncrf_boundary_bond_loss`). It is the best F1 and MCC in the project; the boundary head turns ESM-C 6B's high-recall/low-precision signal into precision (+0.14). See `texs/error_analysis/combine_best.md`. (Single seed; deterministic fp32, drift 0.000.)
+Не часть исходного sweep'а Таблиц 1/2 — это пара из лучшего **эмбеддинга** (ESM-C 6B,
+топ-сигнал на уровне остатков) и **архитектуры**, заостряющей границы
+(`lstmcnncrf_boundary_bond_loss`). Лучшие F1 и MCC в проекте; boundary-голова превращает
+высокий-recall/низкую-precision ESM-C 6B в precision (+0.14). См.
+`texs/error_analysis/combine_best.md`. (Один сид; детерминированный fp32, drift 0.000.)
 
 | Config | TEST F1 all | TEST Prec all | TEST Rec all | TEST MCC all | HOMO F1 all | HOMO MCC all |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -18,7 +28,7 @@ Not part of the original Table 1/2 sweep — this pairs the best **embedding** (
 | ESM2 baseline | 0.607 | 0.640 | 0.578 | 0.750 | 0.460 | 0.693 |
 | ESM-C 6B baseline | 0.579 | 0.570 | 0.590 | 0.758 | 0.476 | 0.686 |
 
-## Table 1: Architectural Changes (TEST set)
+## Таблица 1: Архитектурные изменения (TEST)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -33,13 +43,13 @@ Not part of the original Table 1/2 sweep — this pairs the best **embedding** (
 | ESM2 + доп. лосс разрезов к ближайшей границе | 0.559 | 0.629 | 0.503 | N/A | N/A | 0.543 | 0.603 | 0.494 | N/A | N/A | 0.573 | 0.651 | 0.511 | N/A | N/A |
 | ESM2 c AdamW оптимизатором | 0.560 | 0.602 | 0.524 | 0.729 | **0.812** | 0.541 | 0.560 | 0.524 | 0.687 | 0.883 | 0.577 | 0.642 | 0.524 | 0.703 | **0.662** |
 
-**Footnotes — rows with N/A MCC/AUC:**
+**Сноски — строки с N/A в MCC/AUC:**
 
-- *ESM2 + Aho сигнал добавляется к CRF переходам* (`esm2_aho_transition_bias_sparse_trainable_zero`): model unrecoverable for infer
-- *ESM2 + доп. лосс разрезов к ближайшей границе* (`esm2_bond_loss_soft_l005_w5_tau15`): model unrecoverable for infer
+- *ESM2 + Aho сигнал добавляется к CRF переходам* (`esm2_aho_transition_bias_sparse_trainable_zero`): модель невосстановима для инференса
+- *ESM2 + доп. лосс разрезов к ближайшей границе* (`esm2_bond_loss_soft_l005_w5_tau15`): модель невосстановима для инференса
 
 
-## Table 2: Embedding Generators (TEST set)
+## Таблица 2: Генераторы эмбеддингов (TEST)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -62,12 +72,12 @@ Not part of the original Table 1/2 sweep — this pairs the best **embedding** (
 | ESM2+(AFTK all w/o lddt no filter) pr.gt.conv | 0.565 | 0.585 | 0.546 | 0.744 | 0.664 | 0.546 | 0.546 | 0.545 | 0.692 | 0.836 | 0.582 | 0.622 | 0.547 | 0.693 | 0.440 |
 | ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.574 | 0.593 | 0.555 | 0.662 | 0.477 | 0.524 | 0.564 | 0.489 | 0.567 | 0.839 | 0.595 | 0.605 | 0.585 | 0.702 | 0.234 |
 
-**Footnotes — rows with N/A MCC/AUC:**
+**Сноски — строки с N/A в MCC/AUC:**
 
-*(none — all rows trusted)*
+*(нет — всем строкам доверяем)*
 
 
-## Table 3: Homo sapiens Only (HOMO test set)
+## Таблица 3: Только Homo sapiens (HOMO test)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -89,14 +99,16 @@ Not part of the original Table 1/2 sweep — this pairs the best **embedding** (
 | ESM2+(AFTK all w/o lddt, no filter) pr.gt.conv | 0.460 | 0.493 | 0.430 | 0.685 | 0.519 | 0.349 | 0.367 | 0.333 | 0.543 | 0.840 | 0.531 | 0.578 | 0.491 | 0.710 | 0.323 |
 | ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.488 | 0.541 | **0.444** | **0.732** | 0.119 | 0.000 | 0.000 | 0.000 | -0.004 | 0.329 | 0.556 | 0.588 | 0.526 | **0.764** | 0.105 |
 
-**Footnotes — rows with N/A MCC/AUC:**
+**Сноски — строки с N/A в MCC/AUC:**
 
-- *AFTK all, >70% avg plddt* (`train_run_aft_plddt70`): MCC undefined (no positive predictions for that class)
+- *AFTK all, >70% avg plddt* (`train_run_aft_plddt70`): MCC не определён (нет позитивных предсказаний для этого класса)
 
 
-## Coverage
+## Покрытие
 
-The following run folders have `test_metrics.json` (included in `canonical_metrics.csv`) but are not mapped to any of the 3 experiment tables. They can be added in future tables.
+У следующих папок есть `test_metrics.json` (включены в `canonical_metrics.csv`), но они не
+отображены ни в одну из 3 таблиц экспериментов. Их можно добавить в будущие таблицы (см.
+сводную `big_metrics_table.md` и раздел untabled в `experiment_architectures.md`).
 
 - `esm2_aho_state_bias_pep_boundary_010` (test_drift=0.0000, trusted=True)
 - `esm2_boundary_bond_l002_w5_tau15` (test_drift=0.0000, trusted=True)
@@ -117,9 +129,12 @@ The following run folders have `test_metrics.json` (included in `canonical_metri
 - `train_run_esm2_plus_proj_gated` (test_drift=0.0000, trusted=True)
 - `uni2026_run_esm2` (test_drift=0.0000, trusted=True)
 
-The following run folders have `test_metrics_infer.json` but **no** `test_metrics.json`. They are excluded from the CSV entirely (no authoritative P/R/F1 source) and not in any table:
+У следующих папок есть `test_metrics_infer.json`, но **нет** `test_metrics.json`. Они
+полностью исключены из CSV (нет авторитетного источника P/R/F1) и не входят ни в одну таблицу:
 
-- `esm2_lora_lstmcnncrf_r4_last2_qv` (infer-only, no test_metrics.json)
-- `train_run_3di_only` (infer-only, no test_metrics.json)
+- `esm2_lora_lstmcnncrf_r4_last2_qv` (только infer, нет test_metrics.json)
+- `train_run_3di_only` (только infer, нет test_metrics.json)
 
-> **Dropped rows (no backing run folder):** `(ProstT5 3DI + ESM2+) proj.gated.conv.` was present in the LaTeX source for both Table 2 and Table 3 but has no matching run folder in `runs/`. These rows are omitted.
+> **Удалённые строки (нет папки запуска):** `(ProstT5 3DI + ESM2+) proj.gated.conv.`
+> присутствовала в LaTeX-исходнике Таблиц 2 и 3, но ей не соответствует ни одна папка в
+> `runs/` — соответствующего эксперимента нет. Эти строки опущены.

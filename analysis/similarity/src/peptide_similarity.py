@@ -38,13 +38,13 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())))
 from src.utils.crf_label_utils import parse_coordinate_string
 
 DATA = "data/uniprot_2022/labeled_sequences.csv"
 GP = "data/uniprot_2022/graphpart_assignments.csv"
 SPLIT = {0: "train", 1: "train", 2: "train", 3: "valid", 4: "test"}
-OUT = Path("analysis/peptide_similarity"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("analysis/similarity"); OUT.mkdir(parents=True, exist_ok=True)
 MIN_LEN, MAX_LEN = 5, 100
 SIM_THRESHOLD = 0.70
 

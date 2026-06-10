@@ -23,13 +23,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from analysis.error_analysis import run_inference, _group
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())))
+from analysis.errors.src.error_analysis import run_inference, _group
 from src.utils.manuscript_metrics import (
     convert_path_to_peptide_borders, PEPTIDE_START_STATE, PEPTIDE_END_STATE,
 )
 
-OUT = Path("analysis/aho_analysis"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("analysis/aho/aho_analysis"); OUT.mkdir(parents=True, exist_ok=True)
 BASELINE = "train_run_esm2"
 AHO_MODELS = ["esm2_aho_emission_fusion", "esm2_aho_emission_fusion_h32",
               "esm2_aho_mid_fusion_raw_m64"]
@@ -61,7 +61,7 @@ def main():
     args = ap.parse_args()
     device = f"cuda:{args.device}" if __import__("torch").cuda.is_available() else "cpu"
 
-    sim = pd.read_csv("analysis/peptide_similarity/peptide_similarity.csv")
+    sim = pd.read_csv("analysis/similarity/peptide_similarity.csv")
     sim = sim[(sim["split"] == "test") & (sim["type"] == "pep")][["seq", "max_identity_to_train"]]
     sim_map = dict(zip(sim["seq"], sim["max_identity_to_train"]))
 

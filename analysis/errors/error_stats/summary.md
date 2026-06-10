@@ -1,12 +1,14 @@
-# Error analysis (±3 cleavage-tolerance matching)
+# Разбор ошибок (матчинг с допуском ±3 по разрезам)
 
-Runs (gate-passed): esm2_aho_emission_fusion, esm2_aho_emission_fusion_h32, esm2_aho_mid_fusion_raw_m64, esm2_telescoping_segmental, train_run_esm2, train_run_esm2+3di_proj, train_run_esm2+3di_proj_gated_conv, train_run_esm2_aft_single_gated, train_run_esmc_600m
+> _Этот файл автогенерируется скриптом из `src/`; при повторном запуске прозаические подписи вернутся к английскому шаблону (числа — нейтральны)._
 
-Matching = manuscript ±3 (a true peptide group is recovered iff some prediction's start AND stop are within ±3). Recall = TP/(TP+FN) over true groups; FP = predicted segments matching no true group.
+Запуски (прошли валидационный gate): esm2_aho_emission_fusion, esm2_aho_emission_fusion_h32, esm2_aho_mid_fusion_raw_m64, esm2_telescoping_segmental, train_run_esm2, train_run_esm2+3di_proj, train_run_esm2+3di_proj_gated_conv, train_run_esm2_aft_single_gated, train_run_esmc_600m
 
-## Recall by length bin — peptides (pooled over gate-passed runs)
+Матчинг = manuscript ±3 (истинная группа пептидов найдена, если у какого-то предсказания И начало, И конец в пределах ±3). Recall = TP/(TP+FN) по истинным группам; FP = предсказанные сегменты, не совпавшие ни с одной истинной группой.
 
-| length | n true | recall | FN |
+## Recall по бинам длины — пептиды (объединённо по прошедшим gate запускам)
+
+| длина | n истин | recall | FN |
 |---|---:|---:|---:|
 | 5 | 162 | 0.358 | 104 |
 | 6-10 | 1166 | 0.746 | 296 |
@@ -15,9 +17,9 @@ Matching = manuscript ±3 (a true peptide group is recovered iff some prediction
 | 31-50 | 2661 | 0.376 | 1660 |
 | 51+ | 0 | nan | 0 |
 
-## Recall by length bin — propeptides (pooled over gate-passed runs)
+## Recall по бинам длины — пропептиды (объединённо)
 
-| length | n true | recall | FN |
+| длина | n истин | recall | FN |
 |---|---:|---:|---:|
 | 5 | 252 | 0.349 | 164 |
 | 6-10 | 2599 | 0.289 | 1848 |
@@ -26,14 +28,14 @@ Matching = manuscript ±3 (a true peptide group is recovered iff some prediction
 | 31-50 | 2540 | 0.477 | 1328 |
 | 51+ | 0 | nan | 0 |
 
-## Tiny peptides (length = 5)
+## Крошечные пептиды (длина = 5)
 
 - **peptides**: 162 true len-5 segments, recall=0.358; len-5 FN = 104 of 4359 total FN (2.4%).
 - **propeptides**: 252 true len-5 segments, recall=0.349; len-5 FN = 164 of 5339 total FN (3.1%).
 
-## Recall by organism — peptides (top 12 by true count, pooled)
+## Recall по организмам — пептиды (топ-12 по числу истинных, объединённо)
 
-| organism | n true | recall |
+| организм | n истин | recall |
 |---|---:|---:|
 | Bombyx mori | 549 | 0.896 |
 | Cyriopagopus hainanus | 495 | 0.046 |
@@ -48,9 +50,9 @@ Matching = manuscript ±3 (a true peptide group is recovered iff some prediction
 | Drosophila melanogaster | 171 | 0.749 |
 | Aplysia californica | 162 | 0.272 |
 
-## Per-run recall (peptides / propeptides) and validation gate
+## Recall по запускам (пептиды / пропептиды) и валидационный gate
 
-| run | recall pep | recall propep | gate max\|Δ\| |
+| запуск | recall пеп | recall пропеп | gate max\|Δ\| |
 |---|---:|---:|---:|
 | esm2_aho_emission_fusion | 0.560 | 0.595 | 3.1e-02 |
 | esm2_aho_emission_fusion_h32 | 0.570 | 0.544 | 2.6e-02 |
@@ -62,7 +64,7 @@ Matching = manuscript ±3 (a true peptide group is recovered iff some prediction
 | train_run_esm2_aft_single_gated | 0.612 | 0.536 | 3.4e-02 |
 | train_run_esmc_600m | 0.495 | 0.553 | 1.4e-02 |
 
-## Finding: corrected ±3 matching vs published per-peptide metric
+## Находка: исправленный матчинг ±3 против опубликованной поостаточной метрики
 
 `manuscript_metrics.get_counts_for_protein` has a variable-shadowing bug (the inner `for idx, row in pred_df.iterrows()` reuses `idx`, so `true_df.loc[idx,'matched']=True` writes the matched flag to the row whose label equals the *pred* index, not the true row). It mostly cancels in the aggregate but diverges when a protein has more predictions than true segments. Below: published recall (buggy) vs this correct ±3 matcher.
 

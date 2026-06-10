@@ -1,20 +1,26 @@
-# Table Verification Report
+# Отчёт о сверке таблиц
 
-Source: `texs/Overleaf/experiments.tex`  
-Runs directory: `runs/*/`  
-Match tolerance (P/R/F1): 1e-4  
-Stale MCC/AUC threshold: 1e-4
+> Исторический верификационный лог: сверка значений в `texs/Overleaf/experiments.tex` с
+> JSON-метриками запусков. Большинство находок уже исправлено (см.
+> `texs/error_analysis/reproducibility_and_na_metrics.md`); каноническая сводка —
+> `canonical_metrics.md` и `big_metrics_table.md`. Таблицы с символами ✓/Δ оставлены
+> как есть (язык-нейтральны).
 
-## Summary
+Источник: `texs/Overleaf/experiments.tex`  
+Каталог запусков: `runs/*/`  
+Допуск совпадения (P/R/F1): 1e-4  
+Порог «устаревших» MCC/AUC: 1e-4
 
-- Total rows across 3 tables: 47
-- Cleanly matched (P/R/F1 exact + MCC/AUC within 1e-4): 40
-- Matched P/R/F1 but stale MCC/AUC only (delta > 1e-4): 4
-- Propeptides transcription error (all+pep exact, Pprop/Rprop wrong): 1
-- Unmatched on P/R/F1 (source run missing): 2
-- Run folders not referenced by any table: 14
+## Резюме
 
-## Table 1 (Arch changes, all data)
+- Всего строк в 3 таблицах: 47
+- Чисто совпали (P/R/F1 точно + MCC/AUC в пределах 1e-4): 40
+- Совпали P/R/F1, но устаревшие только MCC/AUC (Δ > 1e-4): 4
+- Ошибка переписывания пропептидов (all+pep точно, Pprop/Rprop неверно): 1
+- Не совпали по P/R/F1 (нет исходного запуска): 2
+- Папок запусков, не упомянутых ни в одной таблице: 14
+
+## Таблица 1 (Архитектурные изменения, все данные)
 
 | Row label | Matched folder | P/R/F1 source | F1-all match? | MCC/AUC match? (max Δ) | Notes |
 |-----------|---------------|---------------|---------------|------------------------|-------|
@@ -29,7 +35,7 @@ Stale MCC/AUC threshold: 1e-4
 | `ESM2 + доп. лосс разрезов к ближайшей границе` | `esm2_bond_loss_soft_l005_w5_tau15` | `test_metrics.json` | ✓ exact | ✓ (0.00e+00) |  |
 | `ESM2 c AdamW оптимизатором` | `train_run_esm2_adamw` | `test_metrics_infer.json` | ✓ exact | ✓ (0.00e+00) |  |
 
-## Table 2 (Embedding generators, all data)
+## Таблица 2 (Генераторы эмбеддингов, все данные)
 
 | Row label | Matched folder | P/R/F1 source | F1-all match? | MCC/AUC match? (max Δ) | Notes |
 |-----------|---------------|---------------|---------------|------------------------|-------|
@@ -53,7 +59,7 @@ Stale MCC/AUC threshold: 1e-4
 | `ESM2+(AFTK all w/o lddt no filter) pr.gt.conv` | `train_run_esm2_aft_no_lddt_gated` | `test_metrics_infer.json` | ✓ exact | ✓ (0.00e+00) |  |
 | `ESM2+(AFTK all, >70\% avg plddt) pr.gt.conv` | `train_run_esm2_aft_plddt70` | `test_metrics_infer.json` | ✓ exact | ✓ (0.00e+00) |  |
 
-## Table 3 (Homo only)
+## Таблица 3 (Только Homo)
 
 | Row label | Matched folder | P/R/F1 source | F1-all match? | MCC/AUC match? (max Δ) | Notes |
 |-----------|---------------|---------------|---------------|------------------------|-------|
@@ -76,9 +82,9 @@ Stale MCC/AUC threshold: 1e-4
 | `ESM2+(AFTK all w/o lddt, no filter) pr.gt.conv` | `train_run_esm2_aft_no_lddt_gated` | `homo_test_metrics_infer.json` | ✓ exact | ✓ (0.00e+00) |  |
 | `ESM2+(AFTK all, >70\% avg plddt) pr.gt.conv` | `train_run_esm2_aft_plddt70` | `homo_test_metrics.json` | ✓ exact | ✓ (0.00e+00) |  |
 
-## FINDINGS
+## НАХОДКИ
 
-Total discrepancies: 8
+Всего расхождений: 8
 
 ### Finding 1: [HIGH] PARTIAL_MATCH_PROPEPTIDES_ERROR
 - **Table:** Table 3 (Homo only)
@@ -136,7 +142,7 @@ Total discrepancies: 8
 - **Max delta:** 3.7997e-04
 - **Detail:** AUC-all: table=0.716213 json=0.716044 Δ=1.6879e-04; MCC-pep: table=0.697816 json=0.697436 Δ=3.7997e-04; AUC-pep: table=0.858958 json=0.859269 Δ=3.1140e-04
 
-### Cross-table folder reuse (expected for baseline)
+### Переиспользование папок между таблицами (ожидаемо для базовой)
 - `train_run_aft`: [('T2', 'AFTK all, no filter'), ('T3', 'AFTK all, no filter')]
 - `train_run_aft_no_lddt`: [('T2', 'AFTK all w/o lddt, no filter'), ('T3', 'AFTK all w/o lddt, no filter')]
 - `train_run_aft_plddt70`: [('T2', 'AFTK all, >70\\% avg plddt'), ('T3', 'AFTK all, >70\\% avg plddt')]
@@ -155,7 +161,7 @@ Total discrepancies: 8
 - `train_run_prostt5`: [('T2', 'ProstT5'), ('T3', 'ProstT5')]
 - `train_run_prostt5_plus`: [('T2', 'ProstT5+residue features'), ('T3', 'ProstT5+residue features')]
 
-### Run folders not referenced by any table
+### Папки запусков, не упомянутые ни в одной таблице
 
 - `esm2_aho_state_bias_pep_boundary_010`
 - `esm2_boundary_bond_l002_w5_tau15`
@@ -172,9 +178,9 @@ Total discrepancies: 8
 - `train_run_esm2_plus_proj_gated`
 - `uni2026_run_esm2`
 
-## Detailed MCC/AUC comparison per row
+## Детальное сравнение MCC/AUC по строкам
 
-### Table 1 (Arch changes, all data)
+### Таблица 1 (Архитектурные изменения, все данные)
 
 | Row | Folder | MCC-all Δ | AUC-all Δ | MCC-pep Δ | AUC-pep Δ | MCC-prop Δ | AUC-prop Δ |
 |-----|--------|-----------|-----------|-----------|-----------|------------|------------|
@@ -189,7 +195,7 @@ Total discrepancies: 8
 | `ESM2 + доп. лосс разрезов к ближайшей гр` | `esm2_bond_loss_soft_l005_w5_tau15` | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 |
 | `ESM2 c AdamW оптимизатором` | `train_run_esm2_adamw` | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 |
 
-### Table 2 (Embedding generators, all data)
+### Таблица 2 (Генераторы эмбеддингов, все данные)
 
 | Row | Folder | MCC-all Δ | AUC-all Δ | MCC-pep Δ | AUC-pep Δ | MCC-prop Δ | AUC-prop Δ |
 |-----|--------|-----------|-----------|-----------|-----------|------------|------------|
@@ -213,7 +219,7 @@ Total discrepancies: 8
 | `ESM2+(AFTK all w/o lddt no filter) pr.gt` | `train_run_esm2_aft_no_lddt_gated` | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 |
 | `ESM2+(AFTK all, >70\% avg plddt) pr.gt.c` | `train_run_esm2_aft_plddt70` | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 |
 
-### Table 3 (Homo only)
+### Таблица 3 (Только Homo)
 
 | Row | Folder | MCC-all Δ | AUC-all Δ | MCC-pep Δ | AUC-pep Δ | MCC-prop Δ | AUC-prop Δ |
 |-----|--------|-----------|-----------|-----------|-----------|------------|------------|

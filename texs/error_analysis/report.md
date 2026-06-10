@@ -1,32 +1,31 @@
-# Error analysis: where the peptide predictor fails
+# Разбор ошибок: где предсказатель пептидов проваливается
 
-**Scope.** Inference on the held-out TEST partition (GraphPart cluster 4) for the
-top-5 models of each results table (architectural changes ∪ embedding generators),
-9 runs total, 29 514 true/predicted segments. Per-segment outcomes are aggregated
-by **peptide length** and by **organism** to locate the systematic failure modes.
+**Объём.** Инференс на held-out TEST-партиции (GraphPart кластер 4) для топ-5 моделей
+каждой таблицы результатов (архитектурные изменения ∪ генераторы эмбеддингов), всего 9
+запусков, 29 514 истинных/предсказанных сегментов. Поостаточные исходы агрегированы по
+**длине пептида** и по **организму**, чтобы локализовать систематические режимы провала.
 
-**Matching rule.** A true peptide (or propeptide) group counts as *recovered* iff
-some prediction has BOTH its start and its stop within **±3 residues** of a group
-member — the acceptance window used throughout DeepPeptide. Overlapping true
-annotations are collapsed into one group (recovering any member is enough).
-Recall = recovered / total true groups; a prediction matching no true group is a
-false positive.
+**Правило матчинга.** Истинный пептид (или пропептид) считается *найденным*, если у
+какого-то предсказания И начало, И конец попадают в **±3 остатка** от члена группы —
+окно допуска, принятое во всём DeepPeptide. Перекрывающиеся истинные аннотации
+схлопываются в одну группу (достаточно найти любого члена). Recall = найдено / всего
+истинных групп; предсказание, не совпавшее ни с одной истинной группой, — ложноположительное.
 
-> All recall numbers here use a **corrected** implementation of the ±3 matcher.
-> The shipped metric (`manuscript_metrics.get_counts_for_protein`) has a bug that
-> understates recall by ~2–4 pp; see the last section. It does not change *relative*
-> conclusions (the bug is a near-constant offset across runs and length/organism bins).
+> Все числа recall здесь используют **исправленную** реализацию матчера ±3. У штатной
+> метрики (`manuscript_metrics.get_counts_for_protein`) есть баг, занижающий recall на
+> ~2–4 п.п.; см. последний раздел и `methodology.md`. На *относительные* выводы это не
+> влияет (баг — почти константный сдвиг по запускам и по бинам длины/организма).
 
-Reproduce: `env/bin/python analysis/error_analysis.py` → `analysis/error_stats/`;
-figures via `env/bin/python analysis/plot_error_analysis.py`.
+Воспроизведение: `env/bin/python analysis/errors/src/error_analysis.py` →
+`analysis/errors/error_stats/`; рисунки — `env/bin/python analysis/errors/src/plot_error_analysis.py`.
 
 ---
 
-## 1. Length is the dominant factor, and it is not the short peptides
+## 1. Длина — доминирующий фактор, и это не короткие пептиды
 
-![Recall by peptide length](figures/recall_by_length.png)
+![Recall по длине пептида](figures/recall_by_length.png)
 
-| length (aa) | peptides recall | propeptides recall |
+| длина (а.о.) | recall пептидов | recall пропептидов |
 |---|---:|---:|
 | 5 | 0.36 | 0.35 |
 | 6–10 | **0.75** | 0.29 |
@@ -34,126 +33,129 @@ figures via `env/bin/python analysis/plot_error_analysis.py`.
 | 21–30 | 0.60 | **0.79** |
 | 31–50 | 0.38 | 0.48 |
 
-Peptides and propeptides have **opposite** length profiles. Peptides are recovered
-best in the 6–20 aa range and degrade sharply for **long** segments (31–50 aa →
-0.38). Propeptides are worst for **short** segments (6–10 aa → 0.29) and best at
-21–30 aa. True segments are capped at 50 aa in this dataset/label encoding (the
-multistate CRF has 50 length states per class), so there is no 51+ bin.
+У пептидов и пропептидов **противоположные** профили по длине. Пептиды лучше всего
+распознаются в диапазоне 6–20 а.о. и резко деградируют на **длинных** сегментах (31–50
+а.о. → 0.38). Пропептиды хуже всего на **коротких** сегментах (6–10 а.о. → 0.29) и лучше
+всего на 21–30 а.о. Истинные сегменты в этом датасете/кодировке меток обрезаны на 50
+а.о. (у многосостоянийного CRF 50 состояний длины на класс), так что бина 51+ нет.
 
-Where the actual error mass sits (count of missed segments, not rate):
+Где сидит реальная масса ошибок (число пропущенных сегментов, не доля):
 
-![FN mass by length](figures/fn_mass_by_length.png)
+![Масса FN по длине](figures/fn_mass_by_length.png)
 
-For **peptides** the misses concentrate in the 21–30 and 31–50 bins (~1660 FN
-each) — i.e. the model loses the most ground on long peptides, both because recall
-is low there and because those bins are well populated.
+Для **пептидов** промахи концентрируются в бинах 21–30 и 31–50 (~1660 FN каждый) — то
+есть модель теряет больше всего на длинных пептидах, и потому что там низкий recall, и
+потому что эти бины хорошо населены.
 
-### Length profile across models
+### Профиль по длине у разных моделей
 
-![Recall by length, per model](figures/recall_by_length_models.png)
+![Recall по длине, по моделям](figures/recall_by_length_models.png)
 
-All models share the same inverted-U (peak at 6–20 aa, falling off at both extremes),
-so no architecture reshapes the length dependence much. The one consistent difference:
-the **3Di structural** model (`esm2+3di_proj`) is the best at the hardest lengths
-(len 5 → 0.444, len 31–50 → 0.449, vs baseline 0.389 / 0.405) — structural context
-helps exactly where pure-sequence models struggle (see `structural_potential.md`). The
-600M ESM-C run is uniformly lowest. (Does not yet include the ESM-C 6B + boundary
-winner — adding it needs a GPU inference pass; queued.)
+Все модели разделяют одну и ту же перевёрнутую U (пик на 6–20 а.о., спад на обоих
+краях), так что ни одна архитектура заметно не меняет зависимость от длины. Единственное
+устойчивое отличие: **3Di-структурная** модель (`esm2+3di_proj`) лучшая на самых трудных
+длинах (длина 5 → 0.444, длина 31–50 → 0.449 против базовых 0.389 / 0.405) — структурный
+контекст помогает именно там, где чисто-последовательностные модели буксуют (см.
+`structural_potential.md`). 600M-запуск ESM-C равномерно самый низкий. (Пока не включает
+победителя ESM-C 6B + boundary — для добавления нужен GPU-проход инференса; в очереди.)
 
-### Tiny peptides (length 5) are *not* the problem
+### Крошечные пептиды (длина 5) — *не* проблема
 
-A recurring question is whether very short peptides (≤5 aa, comparable to the ±3
-window itself) should be excluded. They should not, on error grounds:
+Часто возникает вопрос, не исключить ли совсем короткие пептиды (≤5 а.о., сравнимые с
+самим окном ±3). По соображениям ошибок — не стоит:
 
-- **Peptides:** 162 true len-5 segments, recall 0.36 — but only **104 of 4359 total
+- **Пептиды:** 162 истинных сегмента длины 5, recall 0.36 — но лишь **104 из 4359 всех
   FN (2.4%)**.
-- **Propeptides:** 252 true len-5 segments, recall 0.35 — only **164 of 5339 FN (3.1%)**.
+- **Пропептиды:** 252 истинных сегмента длины 5, recall 0.35 — лишь **164 из 5339 FN (3.1%)**.
 
-Excluding len-5 segments removes <3 % of the errors and a few hundred examples.
-The leverage is on long peptides and on under-represented organisms (below), not
-on tiny ones.
+Исключение сегментов длины 5 убирает <3% ошибок и пару сотен примеров. Рычаг — на
+длинных пептидах и на недопредставленных организмах (ниже), а не на крошечных.
 
 ---
 
-## 2. Organism is the second axis: under-representation in train drives failure
+## 2. Организм — вторая ось: провал ведёт недопредставленность в train
 
-![Recall by organism](figures/recall_by_organism.png)
+![Recall по организму](figures/recall_by_organism.png)
 
-Peptide recall varies from **0.05 to 0.90** across the most frequent organisms:
+Peptide recall варьируется от **0.05 до 0.90** по самым частым организмам:
 
-| organism | recall | group |
+| организм | recall | группа |
 |---|---:|---|
-| Bombyx mori | 0.90 | good (>0.7) |
-| Procambarus clarkii | 0.90 | good (>0.7) |
-| Conus textile | 0.79 | good (>0.7) |
-| Agrotis ipsilon | 0.76 | good (>0.7) |
-| Drosophila melanogaster | 0.75 | good (>0.7) |
-| Homo sapiens | 0.38 | poor (<0.4) |
-| Bos taurus | 0.35 | poor (<0.4) |
-| Aplysia californica | 0.27 | poor (<0.4) |
-| Cyriopagopus hainanus | 0.05 | poor (<0.4) |
+| Bombyx mori | 0.90 | хорошо (>0.7) |
+| Procambarus clarkii | 0.90 | хорошо (>0.7) |
+| Conus textile | 0.79 | хорошо (>0.7) |
+| Agrotis ipsilon | 0.76 | хорошо (>0.7) |
+| Drosophila melanogaster | 0.75 | хорошо (>0.7) |
+| Homo sapiens | 0.38 | плохо (<0.4) |
+| Bos taurus | 0.35 | плохо (<0.4) |
+| Aplysia californica | 0.27 | плохо (<0.4) |
+| Cyriopagopus hainanus | 0.05 | плохо (<0.4) |
 
-The standout failure is **Cyriopagopus hainanus** (spider venom, 495 test peptides,
-recall 0.05 — essentially never recovered). This tracks the GraphPart split: venom
-organisms like *Cyriopagopus* and *Lycosa* are concentrated in the valid/test
-partitions and barely present in train (see `analysis/dataset_stats_2022.md`), so
-the model never learns their peptide grammar. **Homo sapiens recall is only 0.38**,
-which is relevant because the "homo-only" evaluation slice is both small and on the
-hard side of the distribution.
+Выдающийся провал — **Cyriopagopus hainanus** (яд паука, 495 тестовых пептидов, recall
+0.05 — по сути никогда не распознаётся). Это отслеживает GraphPart-сплит: ядовитые
+организмы вроде *Cyriopagopus* и *Lycosa* сконцентрированы в valid/test-партициях и едва
+присутствуют в train (см. `analysis/dataset/dataset_stats_2022.md`), так что модель
+никогда не учит их пептидную грамматику. **Recall у Homo sapiens лишь 0.38**, что важно,
+потому что «homo-only» срез оценки и мал, и лежит на трудной стороне распределения.
 
-Takeaway: the ceiling here is set by **train coverage of organism/peptide-family
-diversity**, not by model architecture — consistent with the near-flat metric
-differences across the architecture and embedding tables.
+Вывод: потолок здесь задаётся **покрытием в train разнообразия организмов/пептидных
+семейств**, а не архитектурой модели — согласуется с почти-плоскими различиями метрик по
+таблицам архитектур и эмбеддингов.
 
----
-
-## 3. Per-run view
-
-![Per-run recall](figures/recall_by_run.png)
-
-Recall differences between the top architectures/embeddings are small (peptide
-recall ~0.50–0.61) relative to the length- and organism-driven spread above. No
-single top model rescues the hard bins; the failure structure is shared.
+> Уточнение: «недопредставленность в train» точнее формулируется не как число белков по
+> организму, а как покрытие пептидных *семейств* — см. `data_need.md` (число белков по
+> организму даже анти-коррелирует с recall, ρ=−0.70; предсказывает recall именно
+> покрытие на уровне пептидов).
 
 ---
 
-## 4. The shipped metric understates recall (bug — inherited from upstream DeepPeptide)
+## 3. Вид по запускам
 
-`manuscript_metrics.get_counts_for_protein` (the ±3 peptide-finding metric behind
-every reported P/R/F1) has a **variable-shadowing bug**:
+![Recall по запускам](figures/recall_by_run.png)
+
+Различия recall между топовыми архитектурами/эмбеддингами малы (peptide recall
+~0.50–0.61) по сравнению с разбросом, который задают длина и организм. Ни одна топовая
+модель не спасает трудные бины; структура провала общая.
+
+---
+
+## 4. Штатная метрика занижает recall (баг — унаследован от исходного DeepPeptide)
+
+У `manuscript_metrics.get_counts_for_protein` (метрики поиска пептидов ±3, стоящей за
+всеми P/R/F1) есть **баг затенения переменной**:
 
 ```python
-for idx, row in true_df.iterrows():        # idx = true-row index
+for idx, row in true_df.iterrows():        # idx = индекс истинной строки
     ...
-    for idx, row in pred_df.iterrows():    # rebinds idx to the PRED index
+    for idx, row in pred_df.iterrows():    # переопределяет idx на индекс ПРЕДСКАЗАНИЯ
         if start_match and stop_match:
-            true_df.loc[idx, 'matched'] = True   # writes to the PRED-labelled row, not the true row
+            true_df.loc[idx, 'matched'] = True   # пишет в строку с меткой ПРЕДСКАЗАНИЯ, не истины
             break
 ```
 
-When a true peptide matches, the `matched` flag is written to `true_df.loc[<pred
-index>]` instead of the current true row. If a protein has **more predictions than
-true segments**, the matching pred's index exceeds the true index range, so
-`.loc` *creates a phantom row* with `group = NaN`, which `groupby('group')` then
-silently drops — the match is lost. A perfectly predicted peptide can therefore be
-counted as a miss:
+Когда истинный пептид совпадает, флаг `matched` пишется в `true_df.loc[<индекс
+предсказания>]` вместо текущей истинной строки. Если у белка **больше предсказаний, чем
+истинных сегментов**, индекс совпавшего предсказания выходит за диапазон истинных
+индексов, так что `.loc` *создаёт фантомную строку* с `group = NaN`, которую
+`groupby('group')` затем молча отбрасывает — совпадение теряется. Идеально предсказанный
+пептид может из-за этого посчитаться как промах:
 
 ```
-true=[(10,30)]  pred=[(200,220),(10,30)]   # 2nd prediction is an exact hit
-  shipped metric (tp,fn,fp) = (0, 1, 1)    # counted as a MISS
-  corrected      (tp,fn,fp) = (1, 0, 1)
+true=[(10,30)]  pred=[(200,220),(10,30)]   # 2-е предсказание — точное попадание
+  штатная метрика (tp,fn,fp) = (0, 1, 1)    # засчитано как ПРОМАХ
+  исправленная     (tp,fn,fp) = (1, 0, 1)
 ```
 
-**This bug is present in the upstream DeepPeptide code too** (verified), so the
-numbers reported here remain directly comparable to the original paper — which is
-exactly why we *keep* the published values and report a corrected column alongside
-them rather than overwriting. Empirically the corrected ±3 recall is a near-constant
-**+0.024…+0.044 (peptides) / +0.011…+0.023 (propeptides)** above the published value
-across all runs, so model rankings are unchanged. The full original-vs-corrected
-table is in `analysis/corrected_metrics.csv` / the canonical metrics report.
+**Этот баг присутствует и в исходном коде DeepPeptide** (проверено), так что
+приводимые здесь числа остаются прямо сопоставимыми с оригинальной статьёй — именно
+поэтому мы *сохраняем* опубликованные значения и приводим исправленный столбец рядом, а
+не переписываем. Эмпирически исправленный ±3 recall на почти-константные
+**+0.024…+0.044 (пептиды) / +0.011…+0.023 (пропептиды)** выше опубликованного по всем
+запускам, так что ранжирование моделей не меняется. Полная таблица оригинал-против-исправленного
+— в `analysis/metrics/big_metrics_table.md` (и `corrected_metrics.csv`).
 
-*Fix (if ever desired):* give the inner loop its own variable
+*Исправление (если когда-нибудь понадобится):* дать внутреннему циклу свою переменную
 (`for p_idx, p_row in pred_df.iterrows(): ... true_df.loc[t_idx,'matched']=True;
-pred_df.loc[p_idx,'matched']=True`). Applying it would shift every reported number
-up by ~2–4 pp and break comparability with the paper, hence left as a documented,
-dual-reported finding.
+pred_df.loc[p_idx,'matched']=True`). Его применение сдвинуло бы каждое приводимое число
+вверх на ~2–4 п.п. и сломало бы сопоставимость со статьёй — поэтому оставлено как
+задокументированная находка с двойным отчётом.

@@ -26,7 +26,7 @@ def lenbin(L):
 
 
 def main():
-    df = pd.read_csv("analysis/error_stats/all_segments.csv")
+    df = pd.read_csv("analysis/errors/error_stats/all_segments.csv")
     df = df[df.get("gate_ok", True)] if "gate_ok" in df.columns else df
     true = df[df["kind"] == "true"].copy()
     true["lenbin"] = true["length"].apply(lenbin)

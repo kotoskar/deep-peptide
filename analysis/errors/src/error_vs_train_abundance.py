@@ -17,15 +17,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())))
 from src.utils.crf_label_utils import parse_coordinate_string
 
 DATA = "data/uniprot_2022/labeled_sequences.csv"
 GP = "data/uniprot_2022/graphpart_assignments.csv"
-SEG = "analysis/error_stats/all_segments.csv"
+SEG = "analysis/errors/error_stats/all_segments.csv"
 MODEL = "train_run_esm2"          # baseline; the canonical reference model
 FIG = Path("texs/error_analysis/figures")
-OUTCSV = Path("analysis/error_stats/error_vs_train_abundance.csv")
+OUTCSV = Path("analysis/errors/error_stats/error_vs_train_abundance.csv")
 TRAIN_CLUSTERS = {0, 1, 2}
 
 

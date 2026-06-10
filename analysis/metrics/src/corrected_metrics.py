@@ -20,15 +20,15 @@ from __future__ import annotations
 import argparse, csv, json, sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())))
 import torch
 from src.utils.manuscript_metrics import (
     convert_path_to_peptide_borders, get_counts_for_protein,
     PEPTIDE_START_STATE, PEPTIDE_END_STATE, PROPEPTIDE_START_STATE, PROPEPTIDE_END_STATE,
 )
-from analysis.error_analysis import run_inference, match_protein
+from analysis.errors.src.error_analysis import run_inference, match_protein
 
-CANON = [r["run"] for r in csv.DictReader(open("analysis/canonical_metrics.csv"))]
+CANON = [r["run"] for r in csv.DictReader(open("analysis/metrics/canonical_metrics.csv"))]
 
 
 def corrected_counts(true, pred, tol=3):
@@ -91,7 +91,7 @@ def main() -> int:
     if not rows:
         print("no rows"); return 1
     cols = list(rows[0].keys())
-    with open("analysis/corrected_metrics.csv", "w", newline="") as f:
+    with open("analysis/metrics/corrected_metrics.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
     print(f"\nWrote analysis/corrected_metrics.csv ({len(rows)} runs)")
     return 0

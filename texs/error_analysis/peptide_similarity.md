@@ -1,48 +1,50 @@
-# Peptide-level similarity to train, and its link to recall
+# Похожесть пептидов к train и её связь с recall
 
-**Question.** The train/val/test split is homology-separated at the **whole-protein**
-level (GraphPart `needle --threshold 0.3`). Does that also make the peptide
-*segments* novel, or do conserved peptide motifs leak across the split? And does
-peptide novelty explain where the model fails?
+**Вопрос.** Сплит train/val/test разделён по гомологии на уровне **целых белков**
+(GraphPart `needle --threshold 0.3`). Делает ли это новыми и сами *сегменты* пептидов,
+или консервативные пептидные мотивы протекают через сплит? И объясняет ли новизна
+пептидов то, где модель ошибается?
 
-**Method.** Extract peptide / propeptide segments (merged coordinates) per split,
-dedupe to unique sequences, and align every unique held-out (valid/test) peptide
-against all train peptides of the **same type** with EMBOSS `needleall` (global
-Needleman–Wunsch — the aligner family GraphPart uses). For each held-out peptide
-keep its **maximum identity to any train peptide** (identity = matches /
-alignment-length, GraphPart-consistent). Coverage = matches / min(len) is also
-recorded to expose short-in-long containment that alignment-length identity
-under-counts. Reproduce: `analysis/peptide_similarity.py` →
-`analysis/peptide_similarity/peptide_similarity.csv`.
+**Метод.** Извлекаем сегменты пептидов/пропептидов (слитые координаты) по каждому
+сплиту, дедуплицируем до уникальных последовательностей и выравниваем каждый уникальный
+held-out (valid/test) пептид против всех train-пептидов **того же типа** с помощью EMBOSS
+`needleall` (глобальный Нидлман–Вунш — то семейство выравнивателей, что использует
+GraphPart). Для каждого held-out пептида берём его **максимальную идентичность к любому
+train-пептиду** (идентичность = совпадения / длина выравнивания, согласовано с
+GraphPart). Также фиксируем coverage = совпадения / min(длин), чтобы выявить вложение
+короткого в длинный, которое идентичность по длине выравнивания недооценивает. Полное
+определение метода — в `methodology.md` §4. Воспроизведение:
+`analysis/similarity/src/peptide_similarity.py` →
+`analysis/similarity/peptide_similarity.csv`.
 
-## 1. Held-out peptides are genuinely novel
+## 1. Held-out пептиды по-настоящему новые
 
-![Peptide novelty histogram](figures/peptide_similarity_hist.png)
+![Гистограмма новизны пептидов](figures/peptide_similarity_hist.png)
 
-| split / type | n unique | median max-identity | ≥70% identity | ≥70% coverage |
+| сплит / тип | n уник. | медиана макс.-идентичности | ≥70% идентичности | ≥70% coverage |
 |---|---:|---:|---:|---:|
 | test / pep | 852 | 0.37 | **6%** | 8% |
 | test / propep | 1118 | 0.35 | **0%** | 2% |
 | valid / pep | 747 | 0.34 | 5% | 9% |
 | valid / propep | 1068 | 0.36 | 1% | 4% |
 
-Only ~6% of test peptides (and essentially 0% of propeptides) have a ≥70%-identical
-counterpart in train; the median peptide sits at ~0.35 identity, which is close to
-the global-alignment baseline for unrelated short sequences. So the protein-level
-30% split **does** carry down to the peptide level: the held-out evaluation measures
-generalization to **unseen** peptides, not motif memorization. (Caveat: using
-*coverage* instead of alignment-length identity only lifts the "similar" fraction to
-8–9% — a handful of test peptides are short fragments contained in a longer train
-peptide; it does not change the picture.)
+Лишь ~6% тестовых пептидов (и по сути 0% пропептидов) имеют ≥70%-идентичного двойника в
+train; медианный пептид сидит на ~0.35 идентичности — близко к базовому уровню
+глобального выравнивания неродственных коротких последовательностей. То есть
+белковый сплит на 30% **переносится** и на уровень пептидов: held-out оценка измеряет
+обобщение на **невиданные** пептиды, а не запоминание мотивов. (Оговорка: использование
+*coverage* вместо идентичности по длине выравнивания поднимает долю «похожих» лишь до
+8–9% — горстка тестовых пептидов это короткие фрагменты внутри более длинного
+train-пептида; картину это не меняет.)
 
-## 2. Novelty tracks recall — coverage, not architecture, is the ceiling
+## 2. Новизна отслеживает recall — потолок задаёт покрытие, а не архитектура
 
-Per organism (test peptides, organisms with ≥20 segments), mean peptide
-similarity-to-train vs the model's peptide recall:
+По организмам (тестовые пептиды, организмы с ≥20 сегментами), средняя похожесть пептидов
+к train против peptide recall модели:
 
-![Recall vs similarity by organism](figures/recall_vs_similarity_organism.png)
+![Recall vs похожесть по организму](figures/recall_vs_similarity_organism.png)
 
-| organism | mean identity to train | peptide recall | n |
+| организм | средняя идентичность к train | peptide recall | n |
 |---|---:|---:|---:|
 | Cyriopagopus hainanus | 0.31 | **0.05** | 495 |
 | Bos taurus | 0.37 | 0.35 | 204 |
@@ -53,26 +55,24 @@ similarity-to-train vs the model's peptide recall:
 | Caenorhabditis elegans | 0.46 | 0.43 | 495 |
 | Agrotis ipsilon | 0.61 | 0.76 | 216 |
 
-Correlation r = **0.56**. The single worst organism — *Cyriopagopus hainanus*
-(spider venom), recall 0.05 — is also the **least similar to train** (0.31, i.e. no
-meaningfully similar train peptide exists), and the most similar organism
-(*Agrotis*, 0.61) is recovered well (0.76). This is the clean form of the
-data-ceiling argument: the model fails precisely where the training data does not
-cover the peptide space.
+Корреляция r = **0.56**. Худший организм — *Cyriopagopus hainanus* (яд паука), recall
+0.05 — он же **наименее похож на train** (0.31, т.е. осмысленно похожего train-пептида
+не существует), а самый похожий организм (*Agrotis*, 0.61) распознаётся хорошо (0.76).
+Это чистая форма аргумента про потолок по данным: модель ошибается именно там, где
+обучающие данные не покрывают пространство пептидов.
 
-The correlation is moderate, not perfect, because **train abundance** is a second
-axis: *Bombyx mori* has only middling similarity (0.38) yet 0.90 recall — it is
-heavily represented in train by count (549 test segments, and correspondingly many
-in train), so the model learns its peptide grammar despite low pairwise identity.
-So recall is governed by *coverage of the peptide space* (both similarity AND
-abundance in train), not by architecture — consistent with the near-flat
-differences across the architecture/embedding tables.
+Корреляция умеренная, не идеальная, потому что **обилие в train** — вторая ось:
+*Bombyx mori* имеет лишь среднюю похожесть (0.38), но recall 0.90 — он тяжело
+представлен в train по количеству (549 тестовых сегментов и соответственно много в
+train), так что модель учит его пептидную грамматику несмотря на низкую попарную
+идентичность. То есть recall управляется *покрытием пространства пептидов* (и похожестью,
+и обилием в train), а не архитектурой — согласуется с почти-плоскими различиями по
+таблицам архитектур/эмбеддингов.
 
-## 3. Artifact for downstream use
+## 3. Артефакт для дальнейшего использования
 
-`analysis/peptide_similarity/peptide_similarity.csv` (one row per unique held-out
-peptide: seq, type, split, length, n_occurrences, organisms,
-`max_identity_to_train`, `coverage_at_best`, `best_train_seq`, `is_similar_70`)
-is the join key for the planned **AHO analysis** — "how much does the AHO prior help
-on peptides similar to train (≥70%) vs novel ones" — and for any per-peptide
-similarity-stratified error breakdown.
+`analysis/similarity/peptide_similarity.csv` (одна строка на уникальный held-out пептид:
+seq, type, split, length, n_occurrences, organisms, `max_identity_to_train`,
+`coverage_at_best`, `best_train_seq`, `is_similar_70`) — ключ джойна для **AHO-анализа**
+(«насколько AHO-приор помогает на пептидах, похожих на train (≥70%), против новых») и
+для любой стратификации ошибок по похожести на уровне пептидов.

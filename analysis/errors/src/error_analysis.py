@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())))
 from infer import load_run_args, load_state_dict            # reuse exact config/ckpt loading
 from src.train_loop_crf import get_dataloaders, get_model, run_dataloader
 from src.utils.manuscript_metrics import (
@@ -187,7 +187,7 @@ def main() -> int:
     ap.add_argument("--device", type=int, default=0)
     args = ap.parse_args()
     device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
-    out = Path("analysis/error_stats"); out.mkdir(parents=True, exist_ok=True)
+    out = Path("analysis/errors/error_stats"); out.mkdir(parents=True, exist_ok=True)
 
     all_df = []
     gates = {}

@@ -65,7 +65,9 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-BASE = Path(__file__).resolve().parent.parent / "data"
+_ROOT = next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())
+_TOPIC = Path(__file__).resolve().parent.parent  # analysis/dataset
+BASE = _ROOT / "data"
 
 DATASETS = {
     "2022": {
@@ -80,7 +82,7 @@ DATASETS = {
 
 SPLIT_MAP = {0: "TRAIN", 1: "TRAIN", 2: "TRAIN", 3: "VALID", 4: "TEST"}
 SPLITS = ["TRAIN", "VALID", "TEST", "ALL"]
-PLOTS_DIR = Path(__file__).resolve().parent / "plots"
+PLOTS_DIR = _TOPIC / "plots"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -617,7 +619,7 @@ def generate_report(dataset_key: str, results: Dict) -> str:
         lines.append("\n> **Note:** matplotlib not available; histograms not generated.\n")
     else:
         lines.append(f"\n## 7. Histograms\n")
-        lines.append(f"See `analysis/plots/` for histogram PNGs.\n")
+        lines.append(f"See `analysis/dataset/plots/` for histogram PNGs.\n")
 
     return "\n".join(lines)
 
@@ -723,7 +725,7 @@ def main():
         make_plots(key, results)
 
         report = generate_report(key, results)
-        report_path = Path(__file__).resolve().parent / f"dataset_stats_{key}.md"
+        report_path = _TOPIC / f"dataset_stats_{key}.md"
         report_path.write_text(report, encoding="utf-8")
         print(f"\n  Report written to: {report_path}")
 

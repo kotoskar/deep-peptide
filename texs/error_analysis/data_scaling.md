@@ -1,21 +1,22 @@
-# Data-scaling: is the model data-limited?
+# Масштабирование данных: ограничен ли модель объёмом данных?
 
-**Question.** Train the ESM2 baseline on increasing fractions of the training data
-and see whether test performance has plateaued (architecture-limited) or is still
-rising (data-limited).
+**Вопрос.** Обучить базовую модель на ESM2 на возрастающих долях обучающих данных и
+посмотреть, вышло ли качество на плато (ограничение архитектурой) или всё ещё растёт
+(ограничение данными).
 
-**Method (corrected).** The pre-existing scaling runs were unreliable —
-`select_subdata_ids.py` subsampled **every** GraphPart cluster, so smaller runs were
-evaluated on *smaller, different* test sets (not comparable), and `train_run_esm2_25`
-even pointed at the 50% file. This series fixes that: subsample **TRAIN clusters
-(0,1,2) only**, keep **valid(3)+test(4) FULL and identical** across all fractions,
-seeded (`--seed 42`). Same baseline config (`lstmcnncrf`, 100 epochs, bs 48, lr 1e-4).
-Metrics from a single deterministic inference pass over all six points (so they are
-directly comparable; MCC/AUC are residue-level and unaffected by the ±3 metric bug).
-Reproduce: `analysis/make_scaling_subsets.py` → `analysis/run_data_scaling.sh` →
-`runs/scaling_trainfrac{50..90}` (+ existing `train_run_esm2_100` for 100%).
+**Метод (исправленный).** Существовавшие ранее запуски масштабирования были ненадёжны:
+`select_subdata_ids.py` сабсэмплил **каждый** GraphPart-кластер, поэтому меньшие запуски
+оценивались на *меньших, других* тестовых наборах (несопоставимо), а `train_run_esm2_25`
+вообще указывал на файл с 50%. Эта серия исправлена: сабсэмплим **только TRAIN-кластеры
+(0, 1, 2)**, а valid(3)+test(4) держим **полными и идентичными** для всех долей, с
+фиксированным сидом (`--seed 42`). Конфиг тот же, что у базовой модели (`lstmcnncrf`,
+100 эпох, bs 48, lr 1e-4). Метрики получены одним детерминированным проходом инференса
+по всем шести точкам (поэтому прямо сопоставимы; MCC/AUC считаются по остаткам и не
+затронуты багом ±3-метрики). Воспроизведение: `analysis/scaling/src/make_scaling_subsets.py`
+→ `analysis/scaling/src/run_data_scaling.sh` → `runs/scaling_trainfrac{50..90}`
+(+ существующий `train_run_esm2_100` для 100%).
 
-![Data-scaling curve](figures/data_scaling_curve.png)
+![Кривая масштабирования данных](figures/data_scaling_curve.png)
 
 | % train | F1 all (±3) | residue MCC all | residue AUC all |
 |---:|---:|---:|---:|
@@ -26,28 +27,29 @@ Reproduce: `analysis/make_scaling_subsets.py` → `analysis/run_data_scaling.sh`
 | 90 | 0.565 | 0.724 | 0.812 |
 | 100 | 0.588 | 0.729 | 0.764 |
 
-## Findings
+## Выводы
 
-- **Performance is still rising at 100% of the data — no plateau.** F1 climbs from
-  0.50 (half the train set) to 0.59 (full), MCC from 0.68 to 0.73. The slope is
-  ≈ **+0.014 F1 per +10% train**, and the last step 90→100% is still
-  **+0.023 F1 / +0.006 MCC**. The model is **data-limited**, not
-  architecture-limited: more training data would still improve it.
-- **Single-run variance is ~±0.02 F1.** The dip at 80% persists under deterministic
-  inference, so it is real training noise (one seed per point), not a metric
-  artifact — read the curve as a trend, not point-by-point. (A cleaner curve would
-  average 3 seeds per fraction; deferred as it triples the ~20 h compute.)
+- **При 100% данных качество всё ещё растёт — плато нет.** F1 поднимается с 0.50
+  (половина train) до 0.59 (полный набор), MCC — с 0.68 до 0.73. Наклон ≈ **+0.014 F1
+  на каждые +10% train**, и последний шаг 90→100% всё ещё даёт **+0.023 F1 / +0.006 MCC**.
+  Модель **ограничена данными**, а не архитектурой: больше обучающих данных всё ещё
+  улучшали бы её.
+- **Разброс одиночного запуска ~±0.02 F1.** Провал на 80% сохраняется и при
+  детерминированном инференсе, то есть это реальный шум обучения (один сид на точку), а
+  не артефакт метрики — читайте кривую как тренд, а не по отдельным точкам. (Более
+  чистую кривую дало бы усреднение по 3 сидам на долю; отложено, т.к. это утраивает
+  ~20 ч вычислений.)
 
-## Interpretation (the ceiling argument)
+## Интерпретация (аргумент про «потолок»)
 
-This is the quantitative version of "we are not at the data ceiling": within the
-*current* dataset the curve has not flattened, so the limiting factor is **dataset
-size / coverage**, consistent with the error analysis (recall collapses on
-under-represented organisms) and the peptide-similarity analysis (held-out peptides
-are mostly novel). Architecture and embedding changes moved metrics by ≲0.02 (the
-experiment tables) — the same magnitude as a 10% change in train data here — which is
-why no architectural variant decisively beat the baseline. The actionable lever is
-**more / broader training data**, not a bigger model.
+Это количественная версия тезиса «мы не у потолка по данным»: в рамках *текущего*
+датасета кривая не вышла на плато, значит лимитирующий фактор — **размер / покрытие
+датасета**, что согласуется с разбором ошибок (recall обваливается на
+недопредставленных организмах) и анализом похожести пептидов (held-out пептиды в
+основном новые). Изменения архитектуры и эмбеддингов двигали метрики на ≲0.02 (таблицы
+экспериментов) — той же величины, что и изменение train-данных на 10% здесь, — поэтому ни
+один архитектурный вариант не побил базовую модель решительно. Действенный рычаг — это
+**больше / шире обучающие данные**, а не более крупная модель.
 
-The complementary direction (does a *lighter* model keep the same performance?) is a
-natural follow-up but was not run here.
+Комплементарное направление (сохраняет ли *более лёгкая* модель то же качество?) —
+естественное продолжение, но здесь не запускалось.

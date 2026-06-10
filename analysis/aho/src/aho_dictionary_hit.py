@@ -23,9 +23,9 @@ import pandas as pd
 import torch
 
 AHO_DIR = Path("data/embeddings_aho_train012")
-SEG = "analysis/aho_analysis/aho_segments.csv"
+SEG = "analysis/aho/aho_analysis/aho_segments.csv"
 DATA = "data/uniprot_2022/labeled_sequences.csv"
-OUT = Path("analysis/aho_analysis")
+OUT = Path("analysis/aho/aho_analysis")
 
 names = json.load(open(AHO_DIR / "feature_names.json"))
 IDX = {n: i for i, n in enumerate(names)}

@@ -1,20 +1,20 @@
-# Where the errors come from — and what "more data" actually means
+# Откуда берутся ошибки — и что на самом деле значит «больше данных»
 
-A natural hypothesis for the data-ceiling argument is: *the model fails on organisms
-that are under-represented in training.* We tested it directly, and it is **wrong** —
-in an informative way. The correct axis is coverage of **peptide sequence space**, not
-organism headcount.
+Естественная гипотеза к аргументу про потолок по данным: *модель ошибается на
+организмах, недопредставленных в обучении*. Мы проверили её напрямую — и она **неверна**,
+причём поучительно. Правильная ось — это покрытие **пространства последовательностей
+пептидов**, а не число белков по организму.
 
-## 1. Organism headcount does NOT predict error (it slightly anti-correlates)
+## 1. Число белков по организму НЕ предсказывает ошибку (даже слегка анти-коррелирует)
 
-For each organism: number of peptide segments in TRAIN vs the baseline model's TEST
-peptide recall (`analysis/error_vs_train_abundance.py`).
+Для каждого организма: число пептидных сегментов в TRAIN против peptide recall базовой
+модели на TEST (`analysis/errors/src/error_vs_train_abundance.py`).
 
-![Recall vs organism train abundance](figures/error_vs_train_abundance.png)
+![Recall vs обилие организма в train](figures/error_vs_train_abundance.png)
 
-Spearman ρ(train count, recall) = **−0.70**. Examples:
+Спирмен ρ(число в train, recall) = **−0.70**. Примеры:
 
-| organism | train peptides | test recall |
+| организм | пептидов в train | recall на test |
 |---|---:|---:|
 | Procambarus clarkii | 1 | 0.93 |
 | Bombyx mori | 13 | 0.92 |
@@ -22,49 +22,52 @@ Spearman ρ(train count, recall) = **−0.70**. Examples:
 | Homo sapiens | 153 | 0.43 |
 | Aplysia californica | 192 | 0.33 |
 
-An organism with a **single** training peptide (Procambarus) is recovered at 0.93,
-while *Homo sapiens* (153 train peptides) sits at 0.43. So "few examples of this
-organism" is **not** the cause of failure.
+Организм с **единственным** обучающим пептидом (Procambarus) распознаётся с recall 0.93,
+тогда как *Homo sapiens* (153 пептида в train) — лишь на 0.43. То есть «мало примеров
+этого организма» — **не** причина провала.
 
-**Why:** the model learns peptide *families*, not organisms. Conserved toxin /
-neuropeptide families recur across species, so a barely-represented organism is
-recovered when its peptides belong to a well-covered family. Conversely, well-studied
-mammals contribute many *diverse* peptides, and the GraphPart split (held-out proteins
-<30% identical) makes their TEST peptides genuinely novel — the hard ones.
+**Почему:** модель учит пептидные *семейства*, а не организмы. Консервативные
+семейства токсинов / нейропептидов повторяются у разных видов, поэтому едва
+представленный организм распознаётся, если его пептиды принадлежат хорошо покрытому
+семейству. И наоборот, хорошо изученные млекопитающие дают много *разнообразных*
+пептидов, а GraphPart-сплит (held-out белки <30% идентичности) делает их TEST-пептиды
+по-настоящему новыми — самыми трудными.
 
-## 2. Peptide-level training coverage DOES predict error
+## 2. Покрытие на уровне пептидов в обучении ДЕЙСТВИТЕЛЬНО предсказывает ошибку
 
-Bin each TEST peptide by its maximum identity to any TRAIN peptide
-(`analysis/aho_analysis/aho_segments.csv`, baseline ESM2):
+Разбиваем каждый TEST-пептид по максимальной идентичности к любому TRAIN-пептиду
+(`analysis/aho/aho_analysis/aho_segments.csv`, базовая ESM2):
 
-![Recall vs peptide coverage](figures/recall_vs_peptide_coverage.png)
+![Recall vs покрытие пептида](figures/recall_vs_peptide_coverage.png)
 
-| max identity to a train peptide | n | recall |
+| макс. идентичность к train-пептиду | n | recall |
 |---|---:|---:|
-| < 0.30 (no similar train peptide) | 121 | **0.39** |
+| < 0.30 (нет похожего train-пептида) | 121 | **0.39** |
 | 0.30–0.40 | 478 | 0.57 |
 | 0.40–0.50 | 266 | 0.62 |
 | 0.50–0.60 | 145 | 0.61 |
 | 0.60–0.70 | 56 | 0.63 |
-| ≥ 0.70 (close train match) | 73 | **0.85** |
+| ≥ 0.70 (близкий train-аналог) | 73 | **0.85** |
 
-Recall rises monotonically with how well the *peptide* is covered in training: peptides
-with no similar training example are recovered at 0.39; those with a ≥70%-identical
-training peptide at 0.85.
+Recall монотонно растёт с тем, насколько хорошо *пептид* покрыт в обучении: пептиды без
+похожего обучающего примера распознаются на 0.39; те, у кого есть ≥70%-идентичный
+обучающий пептид — на 0.85.
 
-## 3. The corrected "more data" argument
+## 3. Исправленный аргумент «больше данных»
 
-Putting the three pieces together:
+Собирая три куска вместе:
 
-- **Data-scaling curve still rising at 100%** (`data_scaling.md`): more training data
-  keeps improving the model — not yet at the ceiling.
-- **Recall is governed by peptide-family coverage** (§2), not organism headcount (§1).
-- Held-out peptides are **mostly novel** (only ~6% are ≥70% similar to train;
+- **Кривая масштабирования всё ещё растёт при 100%** (`data_scaling.md`): больше
+  обучающих данных продолжает улучшать модель — потолок не достигнут.
+- **Recall управляется покрытием пептидных семейств** (§2), а не числом белков по
+  организму (§1).
+- Held-out пептиды **в основном новые** (лишь ~6% имеют ≥70% сходства с train;
   `peptide_similarity.md`).
 
-So the lever is **more data that broadens coverage of peptide sequence space** — new
-peptide families, not more proteins from families already seen. Adding 1000 more human
-proteins whose peptides resemble existing training data would help little; sampling
-under-covered peptide families (the <0.30-similarity tail, where recall is 0.39) is
-what would move the needle. This is a sharper, more actionable version of "we need more
-data" than a raw per-organism count would suggest.
+Значит рычаг — это **больше данных, расширяющих покрытие пространства
+последовательностей пептидов** — новые пептидные семейства, а не больше белков из уже
+виденных семейств. Добавить 1000 человеческих белков, чьи пептиды похожи на уже
+имеющиеся в обучении, поможет мало; набирать недопокрытые пептидные семейства (хвост
+<0.30 сходства, где recall = 0.39) — вот что сдвинет дело. Это более точная и
+действенная версия тезиса «нужно больше данных», чем подсказал бы сырой подсчёт по
+организмам.

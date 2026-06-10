@@ -9,8 +9,9 @@ import os
 import glob
 from pathlib import Path
 
-RUNS_DIR = Path("/home/oskar/work/DeepPeptide/runs")
-ANALYSIS_DIR = Path("/home/oskar/work/DeepPeptide/analysis")
+_ROOT = next(p for p in Path(__file__).resolve().parents if (p / ".git").exists())
+RUNS_DIR = _ROOT / "runs"
+ANALYSIS_DIR = _ROOT / "analysis" / "metrics"
 
 HARD_OVERRIDES = {
     "esm2_bond_loss_soft_l005_w5_tau15",

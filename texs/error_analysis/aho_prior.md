@@ -1,107 +1,105 @@
-# Does the AHO prior help — and on which peptides?
+# Помогает ли AHO-приор — и на каких пептидах?
 
-**What AHO is.** An Aho–Corasick dictionary of known bioactive peptides; the model
-receives a per-residue feature marking substrings already known to be active.
-Supervisor's concern: part of any gain may be **retrieval of known peptides**
-rather than genuine generalization.
+**Что такое AHO.** Словарь Ахо–Корасик известных биоактивных пептидов; модель получает
+по-остаточный признак, помечающий подстроки, уже известные как активные. Опасение
+научного руководителя: часть любого выигрыша может быть **извлечением известных
+пептидов** (retrieval), а не реальным обобщением.
 
-**Dictionary actually used** (from `data/embeddings_aho_train012/config.json` +
-`summary.json`, the embedding these AHO models trained on) — **49,286 peptides**:
-- `dbamp_3` 25,271 · `dramp_general` 8,801 · `dramp_natural` 4,211 ·
-  `apd6_natural` 2,872 — four external AMP databases, included **in full**;
-- `uniprot_2022` 8,131 — **train folds (0,1,2) only** (of 13,510), so held-out test
-  peptides are NOT in the dictionary (no exact-match leakage).
+**Фактически использованный словарь** (из `data/embeddings_aho_train012/config.json` +
+`summary.json` — эмбеддинг, на котором обучались эти AHO-модели) — **49 286 пептидов**:
+- `dbamp_3` 25 271 · `dramp_general` 8 801 · `dramp_natural` 4 211 ·
+  `apd6_natural` 2 872 — четыре внешних AMP-базы, включены **целиком**;
+- `uniprot_2022` 8 131 — **только train-фолды (0, 1, 2)** (из 13 510), так что held-out
+  тестовые пептиды в словарь НЕ входят (нет утечки точным совпадением).
 
-So this is the strong/"sad" version of the question: the dictionary is not merely
-"train peptides" — it contains ~41k external bioactive peptides from the major AMP
-databases. The result below therefore says AHO fails on novel peptides **despite** a
-49k-entry external dictionary, not because the dictionary was too small.
+То есть это сильная/«грустная» версия вопроса: словарь — не просто «train-пептиды», он
+содержит ~41k внешних биоактивных пептидов из крупнейших AMP-баз. Поэтому результат ниже
+говорит, что AHO проваливается на новых пептидах **несмотря на** словарь в 49k записей, а
+не из-за того, что словарь был мал.
 
-**Method.** Run TEST inference for a no-AHO baseline (`train_run_esm2`) and three
-AHO-fusion models (`esm2_aho_emission_fusion`, `_h32`, `esm2_aho_mid_fusion_raw_m64`).
-For each true test **peptide** record whether it was recovered (±3 matching) and
-join its sequence to its max-identity-to-train bucket from the peptide-similarity
-analysis: **similar = ≥70% identity to a train peptide, novel = <70%**.
-Reproduce: `analysis/aho_similarity_analysis.py` → `analysis/aho_analysis/`.
+**Метод.** Прогон TEST-инференса для базовой модели без AHO (`train_run_esm2`) и трёх
+AHO-fusion-моделей (`esm2_aho_emission_fusion`, `_h32`, `esm2_aho_mid_fusion_raw_m64`).
+Для каждого истинного тестового **пептида** фиксируем, найден ли он (матчинг ±3), и
+джойним его последовательность с бакетом макс.-идентичности-к-train из анализа похожести:
+**похожий = ≥70% идентичности к train-пептиду, новый = <70%**. Воспроизведение:
+`analysis/aho/src/aho_similarity_analysis.py` → `analysis/aho/aho_analysis/`.
 
-## Result: AHO is a retrieval mechanism
+## Результат: AHO — это механизм извлечения (retrieval)
 
-![AHO uplift by similarity](figures/aho_uplift_by_similarity.png)
+![AHO uplift по похожести](figures/aho_uplift_by_similarity.png)
 
-Recall (±3) on true test peptides, by bucket:
+Recall (±3) на истинных тестовых пептидах, по бакетам:
 
-| model | recall novel (<70%, n=1066) | recall similar (≥70%, n=73) | recall all |
+| модель | recall новые (<70%, n=1066) | recall похожие (≥70%, n=73) | recall все |
 |---|---:|---:|---:|
-| baseline (no AHO) | 0.571 | 0.849 | 0.590 |
+| базовая (без AHO) | 0.571 | 0.849 | 0.590 |
 | esm2_aho_emission_fusion | 0.537 | 0.890 | 0.560 |
 | esm2_aho_emission_fusion_h32 | 0.545 | 0.932 | 0.570 |
 | esm2_aho_mid_fusion_raw_m64 | 0.532 | 0.890 | 0.556 |
-| **AHO uplift over baseline** | **−0.033** | **+0.055** | **−0.026** |
+| **прирост AHO над базой** | **−0.033** | **+0.055** | **−0.026** |
 
-Two things stand out:
+Бросаются в глаза две вещи:
 
-1. **Similarity drives recall even without AHO.** The baseline already recovers
-   similar-to-train peptides far better than novel ones (0.85 vs 0.57). This is the
-   same coverage effect seen in the peptide-similarity report.
+1. **Похожесть управляет recall даже без AHO.** Базовая модель уже распознаёт
+   похожие-на-train пептиды куда лучше новых (0.85 против 0.57). Это тот же эффект
+   покрытия, что в отчёте о похожести пептидов.
 
-2. **The AHO prior only helps on the similar bucket, and slightly hurts on novel
-   peptides** (+0.055 vs −0.033). I.e. AHO improves recovery of peptides resembling
-   ones it has memorized, but adds noise on genuinely novel peptides — exactly the
-   "retrieval, not generalization" failure the supervisor anticipated.
+2. **AHO-приор помогает только на бакете похожих и слегка вредит на новых** (+0.055
+   против −0.033). То есть AHO улучшает распознавание пептидов, напоминающих
+   запомненные, но добавляет шум на по-настоящему новых — ровно тот провал
+   «извлечение, а не обобщение», который предвидел руководитель.
 
-## Why AHO doesn't win overall
+## Почему AHO не выигрывает в целом
 
-Only ~6% of test peptides are ≥70% similar to train (peptide-similarity report), so
-the novel bucket (n=1066) dwarfs the similar one (n=73). AHO's retrieval gain on the
-small similar bucket cannot offset its small loss on the large novel bucket, so
-**overall recall with AHO is no better than (slightly below) baseline** — which is
-why the AHO rows never beat the ESM2 baseline in the architecture table. The prior
-helps precisely where it is least needed (peptides already easy because they resemble
-training data) and not where the model actually struggles (novel peptides).
+Лишь ~6% тестовых пептидов ≥70% похожи на train (отчёт о похожести), поэтому бакет
+новых (n=1066) подавляет бакет похожих (n=73). Выигрыш AHO от извлечения на маленьком
+бакете похожих не может компенсировать небольшую потерю на большом бакете новых,
+поэтому **общий recall с AHO не лучше (слегка ниже) базового** — вот почему AHO-строки
+никогда не били базовую ESM2 в таблице архитектур. Приор помогает именно там, где он
+меньше всего нужен (пептиды и так лёгкие, ибо похожи на обучающие), и не там, где модель
+реально буксует (новые пептиды).
 
-## Refinement: stratify by whether the dictionary actually FIRES
+## Уточнение: стратификация по тому, СРАБАТЫВАЕТ ли словарь
 
-Bucketing by similarity-to-train is a proxy — the dictionary also holds ~41k
-external AMP-DB peptides, so a peptide novel to train can still be a dictionary hit.
-The precise version reads the precomputed AHO feature `pep.inside` and buckets each
-true test peptide by whether the dictionary actually overlaps it (and by hit source:
-train uniprot vs external-DB-only). Reproduce: `analysis/aho_dictionary_hit.py` →
-`dictionary_hit_summary.md`.
+Бакетирование по похожести-к-train — это прокси: словарь содержит ещё ~41k внешних
+AMP-DB пептидов, поэтому новый-к-train пептид всё равно может быть попаданием в словарь.
+Точная версия читает предвычисленный AHO-признак `pep.inside` и бакетирует каждый
+истинный тестовый пептид по тому, реально ли словарь его перекрывает (и по источнику
+попадания: train uniprot vs только внешние БД). Воспроизведение:
+`analysis/aho/src/aho_dictionary_hit.py` → `dictionary_hit_summary.md`.
 
-![AHO uplift by dictionary hit](figures/aho_uplift_by_dict_hit.png)
+![AHO uplift по попаданию в словарь](figures/aho_uplift_by_dict_hit.png)
 
-| bucket | n | baseline recall | AHO recall | uplift |
+| бакет | n | recall базы | recall AHO | прирост |
 |---|---:|---:|---:|---:|
-| dictionary HIT | 226 | 0.668 | 0.748 | **+0.080** |
-| ↳ train hit | 19 | 0.842 | 0.895 | +0.053 |
-| ↳ external-only hit | 207 | 0.652 | 0.734 | **+0.082** |
-| NO hit | 915 | 0.570 | 0.516 | **−0.055** |
+| ПОПАДАНИЕ в словарь | 226 | 0.668 | 0.748 | **+0.080** |
+| ↳ попадание из train | 19 | 0.842 | 0.895 | +0.053 |
+| ↳ только внешнее попадание | 207 | 0.652 | 0.734 | **+0.082** |
+| НЕТ попадания | 915 | 0.570 | 0.516 | **−0.055** |
 
-This sharpens — and partly **revises** — the picture:
+Это уточняет — и отчасти **пересматривает** — картину:
 
-1. **The dictionary covers ~20% of test peptides** (226/1141), and that coverage is
-   overwhelmingly from the **external** databases (207 external-only vs 19 train) —
-   the AMP DBs genuinely reach peptides that train does not.
-2. **Where the dictionary fires, AHO genuinely helps (+0.08 recall), and it helps
-   external-DB-only hits just as much as train hits** (+0.082 vs +0.053). So AHO is
-   *not* merely retrieving memorized train peptides — it successfully exploits the
-   external AMP knowledge base on peptides that are novel to the training set. That
-   is a real, useful signal.
-3. **But the dictionary is silent on the other ~80%, and there the AHO channel is
-   net noise (−0.055)** — the AHO-trained models do slightly worse than the pure
-   baseline on peptides with no hit.
-4. **Net:** the gain on the covered 20% cannot outweigh the penalty on the
-   uncovered 80%, so overall AHO ≤ baseline. The bottleneck is **dictionary
-   coverage**, not the idea itself.
+1. **Словарь покрывает ~20% тестовых пептидов** (226/1141), и это покрытие
+   преимущественно из **внешних** баз (207 только-внешних против 19 train) — AMP-базы
+   действительно достают пептиды, которых нет в train.
+2. **Там, где словарь срабатывает, AHO реально помогает (+0.08 recall), и помогает
+   только-внешним попаданиям не меньше, чем train-попаданиям** (+0.082 против +0.053). То
+   есть AHO *не* просто извлекает запомненные train-пептиды — он успешно использует
+   внешнюю базу знаний AMP на пептидах, новых для обучающего набора. Это реальный
+   полезный сигнал.
+3. **Но на остальных ~80% словарь молчит, и там AHO-канал — чистый шум (−0.055)** —
+   AHO-обученные модели чуть хуже чистой базовой на пептидах без попадания.
+4. **Итог:** выигрыш на покрытых 20% не перевешивает штраф на непокрытых 80%, поэтому в
+   целом AHO ≤ база. Узкое место — **покрытие словаря**, а не сама идея.
 
-**Actionable implication.** A *gated* AHO (apply the prior only where `pep.inside>0`,
-leave no-hit residues untouched) would keep the +0.08 on hits and remove the −0.055
-penalty on misses — a concrete follow-up experiment. Broader/again-larger AMP
-dictionaries would raise the 20% coverage.
+**Действенный вывод.** *Гейтированный* AHO (применять приор только там, где
+`pep.inside>0`, не трогать остатки без попадания) сохранил бы +0.08 на попаданиях и убрал
+бы штраф −0.055 на промахах — конкретный эксперимент-продолжение. Более широкие/ещё
+большие AMP-словари подняли бы покрытие 20%.
 
-## Caveats
+## Оговорки
 
-- `train hit` n=19 is tiny (noisy); the solid signal is external-only (n=207) and
-  no-hit (n=915), consistent across all three AHO models.
-- Peptides only (the AHO dictionaries are dominated by mature peptides, not
-  propeptides), matching how the prior was designed.
+- `train hit` n=19 крошечный (шумный); надёжный сигнал — это только-внешние (n=207) и
+  без-попадания (n=915), согласованный по всем трём AHO-моделям.
+- Только пептиды (AHO-словари состоят в основном из зрелых пептидов, не пропептидов),
+  как и задумывался приор.

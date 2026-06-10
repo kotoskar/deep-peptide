@@ -1,56 +1,87 @@
-# Combining the best embedding with a complementary architecture
+# Комбинация лучшего эмбеддинга с дополняющей архитектурой
 
-**Setup.** After the fp32 fix, the plain ESM2 baseline tops both experiment tables on
-MCC, and no single architectural variant beats it — which looked like a ceiling. But
-the two tables optimize different things: the best *embedding* by residue-level signal
-is **ESM-C 6B** (MCC 0.758, AUC 0.766, and the highest recall in Table 2, 0.590), yet
-it has the **lowest precision** (0.570) so its ±3 F1 (0.579) lags the ESM2 baseline
-(0.607). Hypothesis: pair ESM-C 6B's strong residue signal with an architecture that
-**sharpens cleavage boundaries** — `lstmcnncrf_boundary_bond_loss` (a learned
-start/inside/end boundary-emission head + an auxiliary soft cleavage-site bond loss) —
-to convert recall into precision.
+**Постановка.** После исправления fp32 обычная базовая ESM2 возглавляет обе таблицы
+экспериментов по MCC, и ни один отдельный архитектурный вариант её не бьёт — это
+выглядело как потолок. Но две таблицы оптимизируют разное: лучший *эмбеддинг* по
+сигналу на уровне остатков — это **ESM-C 6B** (MCC 0.758, AUC 0.766 и наивысший recall
+в Таблице 2 — 0.590), однако у него **самая низкая precision** (0.570), так что его ±3
+F1 (0.579) отстаёт от базовой ESM2 (0.607). Гипотеза: соединить сильный
+по-остаточный сигнал ESM-C 6B с архитектурой, которая **заостряет границы разрезов** —
+`lstmcnncrf_boundary_bond_loss` (обучаемая голова эмиссий начало/внутри/конец сегмента +
+вспомогательный мягкий лосс на сайты разреза) — чтобы конвертировать recall в precision.
 
-Run: `runs/esmc6b_boundary_bond` (model `lstmcnncrf_boundary_bond_loss`, embeddings
-`embeddings_esmc6b` dim 2560, bond defaults λ=0.02/window 5/τ 1.5, 100 ep, bs 48,
-seed 42). Metrics from a deterministic fp32 inference (drift vs train-time = 0.0000).
+Запуск: `runs/esmc6b_boundary_bond` (модель `lstmcnncrf_boundary_bond_loss`, эмбеддинги
+`embeddings_esmc6b` dim 2560, дефолты bond λ=0.02 / окно 5 / τ 1.5, 100 эпох, bs 48,
+seed 42). Метрики из детерминированного fp32-инференса (drift к train-time = 0.0000).
 
-## Result: it breaks above the baseline ceiling
+## ⚠️ Какой метрикой получено «0.657» (однозначность)
 
-| config | F1 all | Prec all | Rec all | MCC all |
+Это главный вопрос проекта по терминологии, фиксируем раз и навсегда:
+
+| метрика ±3 | F1 all (этот запуск) | что это |
+|---|---:|---|
+| **СТАРАЯ** (баговая, как в оригинале) | **0.657** | train-time `test_metrics.json`; то, что в таблицах Overleaf |
+| **НОВАЯ** (исправленный матчер) | **0.675** | `analysis/metrics/corrected_metrics.csv` |
+
+То есть **«0.65» — это СТАРАЯ (баговая ±3) метрика**; по исправленной метрике тот же
+запуск даёт даже выше — **0.675**. MCC/AUC у деления старая/новая нет (они на уровне
+остатков); MCC all = 0.765. Подробнее о метриках — `methodology.md`.
+
+## Результат: пробивает выше потолка базовой модели
+
+| конфигурация | F1 all | Prec all | Rec all | MCC all |
 |---|---:|---:|---:|---:|
-| ESM2 baseline (lstmcnncrf) | 0.607 | 0.640 | 0.578 | 0.750 |
-| ESM-C 6B baseline (lstmcnncrf) | 0.579 | 0.570 | 0.590 | 0.758 |
-| **ESM-C 6B + boundary_bond** | **0.657** | **0.714** | 0.609 | **0.765** |
+| ESM2 базовая (lstmcnncrf) | 0.607 | 0.640 | 0.578 | 0.750 |
+| ESM-C 6B базовая (lstmcnncrf) | 0.579 | 0.570 | 0.590 | 0.758 |
+| **ESM-C 6B + boundary/bond** | **0.657** | **0.714** | 0.609 | **0.765** |
 
-Same ranking under the debugged ±3 metric (`analysis/corrected_metrics.csv`):
-corrected F1 0.675 vs ESM2 0.621 vs ESM-C 6B 0.599.
+Тот же порядок и по исправленной ±3-метрике: F1 0.675 против ESM2 0.621 против
+ESM-C 6B 0.599.
 
-This is the **best F1 and best MCC in the whole project** — +0.05 F1 over the ESM2
-baseline and +0.046 over the previous table maximum (0.611). The mechanism is exactly
-the hypothesis: **precision jumps +0.14 (0.570 → 0.714) while recall holds** (~0.59 →
-0.61). The boundary head turns ESM-C 6B's abundant-but-fuzzy residue signal into
-sharp ±3 cleavage calls.
+Это **лучшие F1 и MCC во всём проекте** — +0.05 F1 над базовой ESM2 и +0.046 над прежним
+максимумом таблиц (0.611). Механизм ровно по гипотезе: **precision подскакивает на +0.14
+(0.570 → 0.714) при сохранении recall** (~0.59 → 0.61). Boundary-голова превращает
+обильный-но-размытый по-остаточный сигнал ESM-C 6B в чёткие ±3-вызовы разрезов.
 
-## Why this is a real (and informative) win
+## Почему это реальный (и поучительный) выигрыш
 
-- It is **not** the AMP/metric artifact: drift train-time↔fp32-infer is 0.0000, and
-  the gain survives the debugged ±3 metric.
-- It is a **complementary pairing**, not stacking two strong numbers: `boundary_bond`
-  barely helped ESM2 (F1 0.606 ≈ baseline 0.607) because ESM2 is already
-  precision/recall-balanced. It helps ESM-C 6B a lot precisely because ESM-C 6B is
-  high-recall / low-precision, so the boundary head has slack to exploit. The benefit
-  of an architecture depends on the embedding's P/R profile.
-- It refines the ceiling story: the data-scaling curve shows the model is data-limited,
-  but a *well-matched* architecture+embedding combination still buys ~+0.05 F1 on top —
-  the ceiling is not yet hit at fixed data either.
+- Это **не** артефакт AMP/метрики: drift train-time↔fp32-инференс = 0.0000, и выигрыш
+  выживает при исправленной ±3-метрике.
+- Это **дополняющая пара**, а не складывание двух сильных чисел: `boundary_bond` почти
+  не помог ESM2 (F1 0.606 ≈ база 0.607), потому что ESM2 уже сбалансирована по P/R. Он
+  сильно помогает ESM-C 6B именно потому, что та высоко-recall / низко-precision, и у
+  boundary-головы есть запас для использования. Польза архитектуры зависит от P/R-профиля
+  эмбеддинга.
+- Это уточняет историю про потолок: кривая масштабирования показывает, что модель
+  ограничена данными, но *хорошо подобранная* комбинация архитектура+эмбеддинг всё же
+  покупает ~+0.05 F1 сверху — при фиксированных данных потолок тоже ещё не достигнут.
 
-## Caveats / follow-up
+## Оговорки / продолжение
 
-- **Single seed.** Single-run training variance is ~±0.02 F1 (data-scaling section), so
-  the +0.05 gain is ~2.5× the noise and consistent across metrics — but a 3-seed
-  repeat would make it airtight.
-- AUC all is low (0.609) for this run; AUC here is calibration-sensitive and was noisy
-  across all runs, so MCC/F1 are the reliable comparison.
-- Natural next probes: ESM-C 6B + telescoping_segmental (the other boundary-aware
-  arch); and whether the gain holds on the homo-only and per-organism/length error
-  breakdowns.
+- **Один сид.** Разброс одиночного обучения ~±0.02 F1 (раздел масштабирования), так что
+  выигрыш +0.05 — это ~2.5× шума и согласован по метрикам, но повтор на 3 сидах сделал
+  бы его железобетонным.
+- AUC all низкий (0.609) у этого запуска; AUC здесь чувствителен к калибровке и был
+  шумным во всех запусках, поэтому надёжное сравнение — это MCC/F1.
+- Естественные следующие пробы: ESM-C 6B + telescoping_segmental (другая
+  граница-осознанная архитектура — **проверено, см. ниже**); и держится ли выигрыш на
+  homo-срезе и разбивках по организму/длине.
+
+## Кандидат B (проверен): ESM-C 6B + телескопический сегментный CRF
+
+Запуск `runs/esmc6b_telescoping` (модель `lstmcnncrf_telescoping_segmental`, тот же
+эмбеддинг ESM-C 6B 2560-d, 100 эпох, seed 42; детали архитектуры — в
+`analysis/metrics/experiment_architectures.md`). Результат (TEST, fp32, drift 0.000):
+
+| конфигурация | F1 all (стар.) | MCC all | AUC all |
+|---|---:|---:|---:|
+| ESM-C 6B + telescoping_segmental | 0.601 | 0.747 | 0.760 |
+| (для сравнения) ESM2 базовая | 0.607 | 0.750 | 0.713 |
+| (для сравнения) **ESM-C 6B + boundary/bond** | **0.657** | **0.765** | 0.609 |
+
+**Вывод: кандидат B НЕ побил кандидата A.** Телескопический сегментный CRF дал F1 0.601
+— примерно вровень с базовой ESM2 (0.607) и заметно ниже победителя boundary/bond
+(0.657); MCC чуть ниже базовой. То есть лучший результат проекта остаётся за
+**ESM-C 6B + boundary/bond (F1 0.657 / MCC 0.765)**. Это согласуется с механизмом: boundary-голова
+напрямую заостряет precision (нужное ESM-C 6B), а телескопический CRF переосмысливает
+длину сегмента, но не лечит низкую precision ESM-C 6B.
