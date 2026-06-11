@@ -1,26 +1,16 @@
-# Канонические таблицы экспериментов
+# Canonical Experiment Tables
 
-> ⚠️ **О метрике:** P/R/F1 здесь — из штатной метрики поиска пептидов ±3, в которой есть
-> баг затенения переменной (унаследован от исходного DeepPeptide), занижающий recall на
-> ~2–4 п.п. Эти значения сохранены для сопоставимости со статьёй. Старую-против-новой
-> таблицу см. в `dual_reporting_metrics.md`, полную сводную (с MCC/AUC и pep/propep) — в
-> `big_metrics_table.md`, разбор бага — в `texs/error_analysis/report.md` §4 и
-> `texs/error_analysis/methodology.md`.
+> ⚠️ **Metric note:** the P/R/F1 here come from the shipped ±3 peptide-finding
+> metric, which has a variable-shadowing bug (inherited from upstream DeepPeptide)
+> that understates recall by ~2–4 pp. These values are kept for comparability with
+> the paper. See `analysis/dual_reporting_metrics.md` for the original-vs-corrected
+> table, and `texs/error_analysis/report.md` §4 for the bug writeup.
 
-> **Методология:** P/R/F1 — авторитетные train-time значения из `test_metrics.json` (или
-> `homo_test_metrics.json` для Таблицы 3). MCC и AUC — из свежего fp32-инференса, принимаются
-> только при `drift = max|train-time P/R/F1 − свежие P/R/F1| ≤ 0.015`. Жёсткие N/A:
-> `esm2_bond_loss_soft_l005_w5_tau15` и `esm2_aho_transition_bias_sparse_trainable_zero`
-> (модель невосстановима для инференса). Округление до 3 знаков. **Жирным** — лучшее в
-> столбце (ячейки N/A исключены).
+> **Methodology:** P/R/F1 values are authoritative train-time values from `test_metrics.json` (or `homo_test_metrics.json` for Table 3). MCC and AUC are from fresh fp32 inference (`test_metrics_infer.json` / `homo_test_metrics_infer.json`), accepted only when `drift = max|train-time P/R/F1 − fresh P/R/F1|` ≤ 0.015. Hard overrides (always N/A): `esm2_bond_loss_soft_l005_w5_tau15` and `esm2_aho_transition_bias_sparse_trainable_zero` (model unrecoverable for infer). Values rounded to 3 decimal places. **Bold** = best in column (N/A cells excluded).
 
-## Заголовок: лучшая комбинированная конфигурация (архитектура × эмбеддинг)
+## Headline: best combined configuration (architecture × embedding)
 
-Не часть исходного sweep'а Таблиц 1/2 — это пара из лучшего **эмбеддинга** (ESM-C 6B,
-топ-сигнал на уровне остатков) и **архитектуры**, заостряющей границы
-(`lstmcnncrf_boundary_bond_loss`). Лучшие F1 и MCC в проекте; boundary-голова превращает
-высокий-recall/низкую-precision ESM-C 6B в precision (+0.14). См.
-`texs/error_analysis/combine_best.md`. (Один сид; детерминированный fp32, drift 0.000.)
+Not part of the original Table 1/2 sweep — this pairs the best **embedding** (ESM-C 6B, top residue-level signal) with a boundary-sharpening **architecture** (`lstmcnncrf_boundary_bond_loss`). It is the best F1 and MCC in the project; the boundary head turns ESM-C 6B's high-recall/low-precision signal into precision (+0.14). See `texs/error_analysis/combine_best.md`. (Single seed; deterministic fp32, drift 0.000.)
 
 | Config | TEST F1 all | TEST Prec all | TEST Rec all | TEST MCC all | HOMO F1 all | HOMO MCC all |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -28,93 +18,92 @@
 | ESM2 baseline | 0.607 | 0.640 | 0.578 | 0.750 | 0.460 | 0.693 |
 | ESM-C 6B baseline | 0.579 | 0.570 | 0.590 | 0.758 | 0.476 | 0.686 |
 
-## Таблица 1: Архитектурные изменения (TEST)
+## Table 1: Architectural Changes (TEST set)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| ESM2 (baseline) | 0.607 | 0.640 | **0.578** | **0.750** | 0.713 | 0.604 | 0.649 | **0.565** | **0.694** | 0.860 | 0.610 | 0.633 | **0.588** | **0.745** | 0.503 |
-| ESM2 + telescopic CRF | 0.596 | 0.632 | 0.564 | 0.731 | 0.719 | **0.614** | 0.675 | 0.562 | 0.679 | **0.904** | 0.582 | 0.600 | 0.566 | 0.706 | 0.610 |
-| ESM2 + Aho emission fusion | **0.615** | **0.686** | 0.558 | 0.737 | 0.646 | 0.594 | 0.676 | 0.529 | 0.681 | 0.822 | **0.633** | **0.693** | 0.582 | 0.735 | 0.411 |
-| ESM2 + (Aho -> hidden layer 32) emission fusion | 0.596 | 0.674 | 0.534 | 0.733 | 0.779 | 0.595 | 0.657 | 0.544 | 0.673 | 0.857 | 0.597 | 0.690 | 0.526 | 0.721 | 0.626 |
-| ESM2 + Aho hidden state fusion | 0.605 | 0.685 | 0.541 | 0.707 | 0.719 | 0.612 | **0.723** | 0.531 | 0.663 | 0.839 | 0.599 | 0.658 | 0.549 | 0.708 | 0.530 |
-| ESM2 + Aho hidden state fusion only peptides | 0.581 | 0.665 | 0.515 | 0.696 | 0.616 | 0.584 | 0.718 | 0.491 | 0.650 | 0.827 | 0.578 | 0.628 | 0.536 | 0.704 | 0.357 |
+| ESM2 (baseline) | 0.607 | 0.640 | **0.578** | **0.750** | **0.963** | 0.604 | 0.649 | **0.565** | **0.694** | **0.969** | 0.610 | 0.633 | **0.588** | **0.745** | 0.963 |
+| ESM2 + telescopic CRF | 0.596 | 0.632 | 0.564 | 0.731 | 0.949 | **0.614** | 0.675 | 0.562 | 0.679 | 0.958 | 0.582 | 0.600 | 0.566 | 0.706 | 0.954 |
+| ESM2 + Aho emission fusion | **0.615** | **0.686** | 0.558 | 0.737 | 0.949 | 0.594 | 0.676 | 0.529 | 0.681 | 0.958 | **0.633** | **0.693** | 0.582 | 0.735 | 0.954 |
+| ESM2 + (Aho -> hidden layer 32) emission fusion | 0.596 | 0.674 | 0.534 | 0.733 | 0.959 | 0.595 | 0.657 | 0.544 | 0.673 | 0.960 | 0.597 | 0.690 | 0.526 | 0.721 | **0.966** |
+| ESM2 + Aho hidden state fusion | 0.605 | 0.685 | 0.541 | 0.707 | 0.946 | 0.612 | **0.723** | 0.531 | 0.663 | 0.946 | 0.599 | 0.658 | 0.549 | 0.708 | 0.958 |
+| ESM2 + Aho hidden state fusion only peptides | 0.581 | 0.665 | 0.515 | 0.696 | 0.932 | 0.584 | 0.718 | 0.491 | 0.650 | 0.941 | 0.578 | 0.628 | 0.536 | 0.704 | 0.945 |
 | ESM2 + Aho сигнал добавляется к CRF переходам | 0.558 | 0.629 | 0.501 | N/A | N/A | 0.543 | 0.606 | 0.492 | N/A | N/A | 0.570 | 0.648 | 0.508 | N/A | N/A |
-| ESM2 + Aho early fusion (concat with esm) | 0.594 | 0.633 | 0.560 | 0.738 | 0.651 | 0.568 | 0.603 | 0.537 | 0.672 | 0.836 | 0.616 | 0.659 | 0.578 | 0.708 | 0.412 |
+| ESM2 + Aho early fusion (concat with esm) | 0.594 | 0.633 | 0.560 | 0.738 | 0.960 | 0.568 | 0.603 | 0.537 | 0.672 | 0.958 | 0.616 | 0.659 | 0.578 | 0.708 | 0.961 |
 | ESM2 + доп. лосс разрезов к ближайшей границе | 0.559 | 0.629 | 0.503 | N/A | N/A | 0.543 | 0.603 | 0.494 | N/A | N/A | 0.573 | 0.651 | 0.511 | N/A | N/A |
-| ESM2 c AdamW оптимизатором | 0.560 | 0.602 | 0.524 | 0.729 | **0.812** | 0.541 | 0.560 | 0.524 | 0.687 | 0.883 | 0.577 | 0.642 | 0.524 | 0.703 | **0.662** |
+| ESM2 c AdamW оптимизатором | 0.560 | 0.602 | 0.524 | 0.729 | 0.962 | 0.541 | 0.560 | 0.524 | 0.687 | 0.968 | 0.577 | 0.642 | 0.524 | 0.703 | 0.966 |
 
-**Сноски — строки с N/A в MCC/AUC:**
+**Footnotes — rows with N/A MCC/AUC:**
 
-- *ESM2 + Aho сигнал добавляется к CRF переходам* (`esm2_aho_transition_bias_sparse_trainable_zero`): модель невосстановима для инференса
-- *ESM2 + доп. лосс разрезов к ближайшей границе* (`esm2_bond_loss_soft_l005_w5_tau15`): модель невосстановима для инференса
-
-
-## Таблица 2: Генераторы эмбеддингов (TEST)
-
-| Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
-|:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| ESM2 | 0.607 | 0.640 | 0.578 | 0.750 | 0.713 | **0.604** | 0.649 | 0.565 | 0.694 | 0.860 | 0.610 | 0.633 | **0.588** | 0.745 | 0.503 |
-| ESM2+residue features (ESM2+ below) | 0.566 | 0.652 | 0.500 | 0.730 | 0.731 | 0.551 | 0.636 | 0.486 | 0.653 | 0.852 | 0.579 | 0.666 | 0.512 | 0.735 | 0.545 |
-| ESM-C | 0.568 | 0.634 | 0.515 | 0.713 | 0.750 | 0.538 | 0.609 | 0.481 | 0.629 | 0.868 | 0.592 | 0.652 | 0.542 | 0.706 | 0.578 |
-| ESM-C 6B | 0.579 | 0.570 | **0.590** | **0.758** | 0.766 | 0.562 | 0.526 | **0.605** | **0.728** | **0.886** | 0.595 | 0.613 | 0.577 | **0.746** | 0.587 |
-| ProstT5 | 0.509 | 0.588 | 0.449 | 0.719 | **0.783** | 0.477 | 0.541 | 0.427 | 0.591 | 0.854 | 0.536 | 0.628 | 0.468 | 0.704 | 0.647 |
-| ProstT5+residue features | 0.495 | 0.575 | 0.435 | 0.697 | 0.772 | 0.485 | 0.546 | 0.437 | 0.575 | 0.827 | 0.504 | 0.601 | 0.435 | 0.685 | **0.656** |
-| (ProstT5 3DI + ESM2) proj. | 0.596 | 0.635 | 0.562 | 0.745 | 0.554 | 0.584 | 0.603 | 0.565 | 0.698 | 0.760 | 0.607 | 0.663 | 0.560 | 0.711 | 0.309 |
-| (ProstT5 3DI + ESM2) proj.gated. | 0.545 | **0.697** | 0.447 | 0.659 | 0.395 | 0.530 | 0.612 | 0.468 | 0.604 | 0.565 | 0.559 | **0.798** | 0.430 | 0.682 | 0.228 |
-| (ProstT5 3DI + ESM2) proj.gated.conv. | **0.611** | 0.658 | 0.571 | 0.731 | 0.476 | 0.603 | **0.664** | 0.552 | 0.682 | 0.684 | **0.618** | 0.653 | 0.587 | 0.708 | 0.235 |
-| AFTK all, no filter | 0.382 | 0.529 | 0.299 | 0.550 | 0.732 | 0.382 | 0.464 | 0.324 | 0.498 | 0.837 | 0.382 | 0.611 | 0.278 | 0.522 | 0.565 |
-| AFTK only single, no filter | 0.331 | 0.567 | 0.233 | 0.531 | 0.773 | 0.312 | 0.523 | 0.223 | 0.468 | 0.837 | 0.346 | 0.605 | 0.242 | 0.525 | 0.645 |
-| AFTK all w/o lddt, no filter | 0.408 | 0.458 | 0.368 | 0.615 | 0.704 | 0.385 | 0.364 | 0.409 | 0.544 | 0.818 | 0.434 | 0.616 | 0.335 | 0.528 | 0.541 |
-| AFTK all, >70% avg plddt | 0.274 | 0.316 | 0.242 | 0.579 | 0.737 | 0.069 | 0.065 | 0.074 | 0.483 | 0.876 | 0.397 | 0.531 | 0.317 | 0.517 | 0.619 |
-| ESM2+(AFTK all, no filter) pr.gt.conv | 0.568 | 0.590 | 0.548 | 0.732 | 0.665 | 0.546 | 0.538 | 0.553 | 0.663 | 0.837 | 0.589 | 0.641 | 0.545 | 0.688 | 0.436 |
-| ESM2+(AFTK only single no filter) pr.gt.conv | 0.577 | 0.612 | 0.545 | 0.722 | 0.616 | 0.594 | 0.612 | 0.578 | 0.685 | 0.811 | 0.562 | 0.612 | 0.519 | 0.674 | 0.372 |
-| ESM2+(AFTK only pair no filter) pr.gt.conv | 0.595 | 0.651 | 0.547 | 0.722 | 0.497 | 0.576 | 0.606 | 0.548 | 0.680 | 0.737 | 0.611 | 0.694 | 0.546 | 0.700 | 0.240 |
-| ESM2+(AFTK all w/o lddt no filter) pr.gt.conv | 0.565 | 0.585 | 0.546 | 0.744 | 0.664 | 0.546 | 0.546 | 0.545 | 0.692 | 0.836 | 0.582 | 0.622 | 0.547 | 0.693 | 0.440 |
-| ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.574 | 0.593 | 0.555 | 0.662 | 0.477 | 0.524 | 0.564 | 0.489 | 0.567 | 0.839 | 0.595 | 0.605 | 0.585 | 0.702 | 0.234 |
-
-**Сноски — строки с N/A в MCC/AUC:**
-
-*(нет — всем строкам доверяем)*
+- *ESM2 + Aho сигнал добавляется к CRF переходам* (`esm2_aho_transition_bias_sparse_trainable_zero`): model unrecoverable for infer
+- *ESM2 + доп. лосс разрезов к ближайшей границе* (`esm2_bond_loss_soft_l005_w5_tau15`): model unrecoverable for infer
 
 
-## Таблица 3: Только Homo sapiens (HOMO test)
+## Table 2: Embedding Generators (TEST set)
 
 | Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
 |:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| ESM2 | 0.460 | 0.487 | 0.435 | 0.693 | 0.609 | 0.339 | 0.370 | 0.312 | 0.552 | 0.882 | 0.529 | 0.551 | 0.509 | 0.744 | 0.424 |
-| ESM2+residue features (ESM2+ below) | **0.514** | 0.638 | 0.430 | 0.715 | 0.604 | 0.385 | **0.526** | 0.303 | **0.619** | 0.871 | 0.587 | 0.692 | 0.509 | 0.730 | 0.422 |
-| ESM-C | 0.477 | 0.587 | 0.402 | 0.679 | 0.637 | 0.208 | 0.333 | 0.152 | 0.562 | **0.893** | 0.598 | 0.667 | **0.542** | 0.682 | 0.481 |
-| ProstT5 | 0.503 | 0.586 | 0.441 | 0.695 | 0.697 | 0.346 | 0.474 | 0.273 | 0.589 | 0.858 | 0.577 | 0.627 | 0.533 | 0.716 | 0.591 |
-| ProstT5+residue features | 0.450 | 0.537 | 0.387 | 0.709 | **0.705** | 0.357 | 0.435 | 0.303 | 0.566 | 0.842 | 0.500 | 0.591 | 0.433 | 0.701 | **0.612** |
-| (ProstT5 3DI + ESM2) proj. | 0.446 | 0.486 | 0.412 | 0.628 | 0.519 | 0.308 | 0.303 | 0.312 | 0.519 | 0.772 | 0.543 | 0.641 | 0.472 | 0.646 | 0.341 |
-| (ProstT5 3DI + ESM2) proj. gated. | 0.508 | **0.717** | 0.393 | 0.611 | 0.331 | 0.320 | 0.421 | 0.258 | 0.468 | 0.506 | **0.625** | **0.926** | 0.472 | 0.658 | 0.220 |
-| (ProstT5 3DI + ESM2) proj.gated.conv. | 0.483 | 0.571 | 0.419 | 0.724 | 0.431 | 0.286 | 0.348 | 0.242 | 0.610 | 0.714 | 0.602 | 0.700 | 0.528 | 0.720 | 0.241 |
-| AFTK all, no filter | 0.256 | 0.432 | 0.182 | 0.491 | 0.671 | 0.091 | 0.167 | 0.062 | 0.312 | 0.847 | 0.346 | 0.560 | 0.250 | 0.553 | 0.554 |
-| AFTK only single, no filter | 0.188 | 0.407 | 0.122 | 0.476 | 0.678 | 0.050 | 0.167 | 0.029 | 0.255 | 0.877 | 0.260 | 0.476 | 0.179 | 0.528 | 0.555 |
-| AFTK all w/o lddt, no filter | 0.224 | 0.247 | 0.205 | 0.521 | 0.622 | 0.197 | 0.179 | 0.219 | 0.422 | 0.828 | 0.244 | 0.324 | 0.196 | 0.531 | 0.497 |
-| AFTK all, >70% avg plddt | 0.400 | 0.536 | 0.319 | 0.682 | 0.537 | 0.000 | 0.000 | 0.000 | N/A | 0.784 | 0.441 | 0.536 | 0.375 | 0.700 | 0.517 |
-| ESM2+(AFTK all, no filter) pr.gt.conv | 0.442 | 0.456 | 0.429 | 0.663 | 0.546 | 0.299 | 0.278 | 0.323 | 0.531 | 0.852 | 0.542 | 0.605 | 0.491 | 0.697 | 0.349 |
-| ESM2+(AFTK only single, no filter) pr.gt.conv | 0.471 | 0.529 | 0.424 | 0.692 | 0.460 | **0.386** | 0.440 | **0.344** | 0.581 | 0.793 | 0.521 | 0.581 | 0.472 | 0.690 | 0.253 |
-| ESM2+(AFTK only pair, no filter) pr.gt.conv | 0.446 | 0.585 | 0.360 | 0.678 | 0.385 | 0.291 | 0.364 | 0.242 | 0.614 | 0.737 | 0.548 | 0.742 | 0.434 | 0.677 | 0.173 |
-| ESM2+(AFTK all w/o lddt, no filter) pr.gt.conv | 0.460 | 0.493 | 0.430 | 0.685 | 0.519 | 0.349 | 0.367 | 0.333 | 0.543 | 0.840 | 0.531 | 0.578 | 0.491 | 0.710 | 0.323 |
-| ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.488 | 0.541 | **0.444** | **0.732** | 0.119 | 0.000 | 0.000 | 0.000 | -0.004 | 0.329 | 0.556 | 0.588 | 0.526 | **0.764** | 0.105 |
+| ESM2 | 0.607 | 0.640 | 0.578 | 0.750 | 0.963 | **0.604** | 0.649 | 0.565 | 0.694 | 0.969 | 0.610 | 0.633 | **0.588** | 0.745 | 0.963 |
+| ESM2+residue features (ESM2+ below) | 0.566 | 0.652 | 0.500 | 0.730 | 0.948 | 0.551 | 0.636 | 0.486 | 0.653 | 0.951 | 0.579 | 0.666 | 0.512 | 0.735 | 0.961 |
+| ESM-C | 0.568 | 0.634 | 0.515 | 0.713 | 0.954 | 0.538 | 0.609 | 0.481 | 0.629 | 0.958 | 0.592 | 0.652 | 0.542 | 0.706 | 0.960 |
+| ESM-C 6B | 0.579 | 0.570 | **0.590** | **0.758** | **0.968** | 0.562 | 0.526 | **0.605** | **0.728** | **0.971** | 0.595 | 0.613 | 0.577 | **0.746** | **0.971** |
+| ProstT5 | 0.509 | 0.588 | 0.449 | 0.719 | 0.957 | 0.477 | 0.541 | 0.427 | 0.591 | 0.945 | 0.536 | 0.628 | 0.468 | 0.704 | 0.966 |
+| ProstT5+residue features | 0.495 | 0.575 | 0.435 | 0.697 | 0.943 | 0.485 | 0.546 | 0.437 | 0.575 | 0.916 | 0.504 | 0.601 | 0.435 | 0.685 | 0.968 |
+| (ProstT5 3DI + ESM2) proj. | 0.596 | 0.635 | 0.562 | 0.745 | 0.919 | 0.584 | 0.603 | 0.565 | 0.698 | 0.934 | 0.607 | 0.663 | 0.560 | 0.711 | 0.920 |
+| (ProstT5 3DI + ESM2) proj.gated. | 0.545 | **0.697** | 0.447 | 0.659 | 0.807 | 0.530 | 0.612 | 0.468 | 0.604 | 0.838 | 0.559 | **0.798** | 0.430 | 0.682 | 0.806 |
+| (ProstT5 3DI + ESM2) proj.gated.conv. | **0.611** | 0.658 | 0.571 | 0.731 | 0.912 | 0.603 | **0.664** | 0.552 | 0.682 | 0.916 | **0.618** | 0.653 | 0.587 | 0.708 | 0.908 |
+| AFTK all, no filter | 0.382 | 0.529 | 0.299 | 0.550 | 0.946 | 0.382 | 0.464 | 0.324 | 0.498 | 0.947 | 0.382 | 0.611 | 0.278 | 0.522 | 0.952 |
+| AFTK only single, no filter | 0.331 | 0.567 | 0.233 | 0.531 | 0.939 | 0.312 | 0.523 | 0.223 | 0.468 | 0.934 | 0.346 | 0.605 | 0.242 | 0.525 | 0.945 |
+| AFTK all w/o lddt, no filter | 0.408 | 0.458 | 0.368 | 0.615 | 0.943 | 0.385 | 0.364 | 0.409 | 0.544 | 0.944 | 0.434 | 0.616 | 0.335 | 0.528 | 0.930 |
+| AFTK all, >70% avg plddt | 0.274 | 0.316 | 0.242 | 0.579 | 0.950 | 0.069 | 0.065 | 0.074 | 0.483 | 0.952 | 0.397 | 0.531 | 0.317 | 0.517 | 0.945 |
+| ESM2+(AFTK all, no filter) pr.gt.conv | 0.568 | 0.590 | 0.548 | 0.732 | 0.954 | 0.546 | 0.538 | 0.553 | 0.663 | 0.957 | 0.589 | 0.641 | 0.545 | 0.688 | 0.950 |
+| ESM2+(AFTK only single no filter) pr.gt.conv | 0.577 | 0.612 | 0.545 | 0.722 | 0.933 | 0.594 | 0.612 | 0.578 | 0.685 | 0.937 | 0.562 | 0.612 | 0.519 | 0.674 | 0.935 |
+| ESM2+(AFTK only pair no filter) pr.gt.conv | 0.595 | 0.651 | 0.547 | 0.722 | 0.871 | 0.576 | 0.606 | 0.548 | 0.680 | 0.868 | 0.611 | 0.694 | 0.546 | 0.700 | 0.882 |
+| ESM2+(AFTK all w/o lddt no filter) pr.gt.conv | 0.565 | 0.585 | 0.546 | 0.744 | 0.959 | 0.546 | 0.546 | 0.545 | 0.692 | 0.958 | 0.582 | 0.622 | 0.547 | 0.693 | 0.952 |
+| ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.574 | 0.593 | 0.555 | 0.662 | 0.937 | 0.524 | 0.564 | 0.489 | 0.567 | 0.919 | 0.595 | 0.605 | 0.585 | 0.702 | 0.964 |
 
-**Сноски — строки с N/A в MCC/AUC:**
+**Footnotes — rows with N/A MCC/AUC:**
 
-- *AFTK all, >70% avg plddt* (`train_run_aft_plddt70`): MCC не определён (нет позитивных предсказаний для этого класса)
+*(none — all rows trusted)*
 
 
-## Покрытие
+## Table 3: Homo sapiens Only (HOMO test set)
 
-У следующих папок есть `test_metrics.json` (включены в `canonical_metrics.csv`), но они не
-отображены ни в одну из 3 таблиц экспериментов. Их можно добавить в будущие таблицы (см.
-сводную `big_metrics_table.md` и раздел untabled в `experiment_architectures.md`).
+| Model | All F1 | All Prec | All Rec | All MCC | All AUC | Pep F1 | Pep Prec | Pep Rec | Pep MCC | Pep AUC | Propep F1 | Propep Prec | Propep Rec | Propep MCC | Propep AUC |
+|:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| ESM2 | 0.460 | 0.487 | 0.435 | 0.693 | 0.947 | 0.339 | 0.370 | 0.312 | 0.552 | **0.946** | 0.529 | 0.551 | 0.509 | 0.744 | 0.960 |
+| ESM2+residue features (ESM2+ below) | **0.514** | 0.638 | 0.430 | 0.715 | 0.940 | 0.385 | **0.526** | 0.303 | **0.619** | 0.929 | 0.587 | 0.692 | 0.509 | 0.730 | 0.953 |
+| ESM-C | 0.477 | 0.587 | 0.402 | 0.679 | 0.939 | 0.208 | 0.333 | 0.152 | 0.562 | 0.939 | 0.598 | 0.667 | **0.542** | 0.682 | 0.941 |
+| ProstT5 | 0.503 | 0.586 | 0.441 | 0.695 | 0.952 | 0.346 | 0.474 | 0.273 | 0.589 | 0.909 | 0.577 | 0.627 | 0.533 | 0.716 | 0.968 |
+| ProstT5+residue features | 0.450 | 0.537 | 0.387 | 0.709 | 0.959 | 0.357 | 0.435 | 0.303 | 0.566 | 0.901 | 0.500 | 0.591 | 0.433 | 0.701 | **0.973** |
+| (ProstT5 3DI + ESM2) proj. | 0.446 | 0.486 | 0.412 | 0.628 | 0.916 | 0.308 | 0.303 | 0.312 | 0.519 | 0.897 | 0.543 | 0.641 | 0.472 | 0.646 | 0.876 |
+| (ProstT5 3DI + ESM2) proj. gated. | 0.508 | **0.717** | 0.393 | 0.611 | 0.717 | 0.320 | 0.421 | 0.258 | 0.468 | 0.755 | **0.625** | **0.926** | 0.472 | 0.658 | 0.683 |
+| (ProstT5 3DI + ESM2) proj.gated.conv. | 0.483 | 0.571 | 0.419 | 0.724 | 0.901 | 0.286 | 0.348 | 0.242 | 0.610 | 0.873 | 0.602 | 0.700 | 0.528 | 0.720 | 0.904 |
+| AFTK all, no filter | 0.256 | 0.432 | 0.182 | 0.491 | 0.952 | 0.091 | 0.167 | 0.062 | 0.312 | 0.929 | 0.346 | 0.560 | 0.250 | 0.553 | 0.971 |
+| AFTK only single, no filter | 0.188 | 0.407 | 0.122 | 0.476 | 0.947 | 0.050 | 0.167 | 0.029 | 0.255 | 0.941 | 0.260 | 0.476 | 0.179 | 0.528 | 0.969 |
+| AFTK all w/o lddt, no filter | 0.224 | 0.247 | 0.205 | 0.521 | 0.947 | 0.197 | 0.179 | 0.219 | 0.422 | 0.923 | 0.244 | 0.324 | 0.196 | 0.531 | 0.955 |
+| AFTK all, >70% avg plddt | 0.400 | 0.536 | 0.319 | 0.682 | **0.973** | 0.000 | 0.000 | 0.000 | N/A | 0.857 | 0.441 | 0.536 | 0.375 | 0.700 | 0.970 |
+| ESM2+(AFTK all, no filter) pr.gt.conv | 0.442 | 0.456 | 0.429 | 0.663 | 0.948 | 0.299 | 0.278 | 0.323 | 0.531 | 0.927 | 0.542 | 0.605 | 0.491 | 0.697 | 0.929 |
+| ESM2+(AFTK only single, no filter) pr.gt.conv | 0.471 | 0.529 | 0.424 | 0.692 | 0.891 | **0.386** | 0.440 | **0.344** | 0.581 | 0.878 | 0.521 | 0.581 | 0.472 | 0.690 | 0.877 |
+| ESM2+(AFTK only pair, no filter) pr.gt.conv | 0.446 | 0.585 | 0.360 | 0.678 | 0.784 | 0.291 | 0.364 | 0.242 | 0.614 | 0.828 | 0.548 | 0.742 | 0.434 | 0.677 | 0.768 |
+| ESM2+(AFTK all w/o lddt, no filter) pr.gt.conv | 0.460 | 0.493 | 0.430 | 0.685 | 0.934 | 0.349 | 0.367 | 0.333 | 0.543 | 0.911 | 0.531 | 0.578 | 0.491 | 0.710 | 0.930 |
+| ESM2+(AFTK all, >70% avg plddt) pr.gt.conv | 0.488 | 0.541 | **0.444** | **0.732** | 0.933 | 0.000 | 0.000 | 0.000 | -0.004 | 0.381 | 0.556 | 0.588 | 0.526 | **0.764** | 0.972 |
+
+**Footnotes — rows with N/A MCC/AUC:**
+
+- *AFTK all, >70% avg plddt* (`train_run_aft_plddt70`): MCC undefined (no positive predictions for that class)
+
+
+## Coverage
+
+The following run folders have `test_metrics.json` (included in `canonical_metrics.csv`) but are not mapped to any of the 3 experiment tables. They can be added in future tables.
 
 - `esm2_aho_state_bias_pep_boundary_010` (test_drift=0.0000, trusted=True)
 - `esm2_boundary_bond_l002_w5_tau15` (test_drift=0.0000, trusted=True)
 - `esm2_boundary_only_scale10` (test_drift=0.0000, trusted=True)
 - `esm2_lora_lstmcnncrf` (test_drift=0.0000, trusted=True)
 - `esmc6b_boundary_bond` (test_drift=0.0000, trusted=True)
+- `esmc6b_telescoping` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac50` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac60` (test_drift=0.0000, trusted=True)
 - `scaling_trainfrac70` (test_drift=0.0000, trusted=True)
@@ -129,12 +118,9 @@
 - `train_run_esm2_plus_proj_gated` (test_drift=0.0000, trusted=True)
 - `uni2026_run_esm2` (test_drift=0.0000, trusted=True)
 
-У следующих папок есть `test_metrics_infer.json`, но **нет** `test_metrics.json`. Они
-полностью исключены из CSV (нет авторитетного источника P/R/F1) и не входят ни в одну таблицу:
+The following run folders have `test_metrics_infer.json` but **no** `test_metrics.json`. They are excluded from the CSV entirely (no authoritative P/R/F1 source) and not in any table:
 
-- `esm2_lora_lstmcnncrf_r4_last2_qv` (только infer, нет test_metrics.json)
-- `train_run_3di_only` (только infer, нет test_metrics.json)
+- `esm2_lora_lstmcnncrf_r4_last2_qv` (infer-only, no test_metrics.json)
+- `train_run_3di_only` (infer-only, no test_metrics.json)
 
-> **Удалённые строки (нет папки запуска):** `(ProstT5 3DI + ESM2+) proj.gated.conv.`
-> присутствовала в LaTeX-исходнике Таблиц 2 и 3, но ей не соответствует ни одна папка в
-> `runs/` — соответствующего эксперимента нет. Эти строки опущены.
+> **Dropped rows (no backing run folder):** `(ProstT5 3DI + ESM2+) proj.gated.conv.` was present in the LaTeX source for both Table 2 and Table 3 but has no matching run folder in `runs/`. These rows are omitted.
