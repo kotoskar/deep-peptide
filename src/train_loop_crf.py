@@ -362,6 +362,7 @@ def get_model(args: argparse.Namespace):
             boundary_state_dropout=args.boundary_state_dropout,
             boundary_state_scale=args.boundary_state_scale,
             boundary_state_zero_init=not args.boundary_state_no_zero_init,
+            boundary_window=getattr(args, 'boundary_window', 1),
             bond_loss_lambda=args.bond_loss_lambda,
             bond_soft_window=args.bond_soft_window,
             bond_soft_tau=args.bond_soft_tau,
@@ -800,6 +801,7 @@ def parse_arguments():
     p.add_argument('--boundary_state_dropout', type=float, default=0.1, help='Dropout in learned boundary state-emission head.')
     p.add_argument('--boundary_state_scale', type=float, default=1.0, help='Global scale for learned boundary state-emission logits.')
     p.add_argument('--boundary_state_no_zero_init', action='store_true', help='Do not zero-initialize the final boundary state-emission layer.')
+    p.add_argument('--boundary_window', type=int, default=1, help='Boundary state-emission window W: per branch emit start_1..W, inside, end_1..W mapped to states {1..W} and {max_len..max_len-W+1}. 1 = original start/inside/end head.')
     p.add_argument('--bond_loss_lambda', type=float, default=0.02, help='Weight for auxiliary soft bond boundary loss.')
     p.add_argument('--bond_soft_window', type=int, default=5, help='Window around true boundaries for soft bond targets. Use -1 for no cutoff.')
     p.add_argument('--bond_soft_tau', type=float, default=1.5, help='Temperature/sigma for soft bond targets.')

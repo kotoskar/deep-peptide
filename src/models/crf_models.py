@@ -2186,9 +2186,14 @@ class LSTMCNNCRFAhoStateBias(CRFBaseModel):
 class BoundaryStateEmissionHead(nn.Module):
     """Predict state-level boundary emission biases from contextual residue features.
 
-    Output channels:
-      2-label model: pep_start, pep_inside, pep_end
-      3-label model: pep_start, pep_inside, pep_end, propep_start, propep_inside, propep_end
+    Per positive branch (peptide, and propeptide for 3-label) the head emits a window
+    of ``2*window+1`` channels, ordered:
+      [start_1 .. start_W, inside, end_1 .. end_W]
+    where start_k targets the k-th state from the segment start (states 1,2,..,W) and
+    end_k the k-th state from the segment end (states max_len, max_len-1, ..). These
+    near-end states are exactly the residues anchored by the telescoping grammar
+    (first W and last W residues = the cleavage-motif window). window=1 reproduces the
+    original {start, inside, end} head exactly (out_size 3 / 6), so old checkpoints load.
 
     The final layer is zero-initialized by default, so the model starts as the plain
     coarse-emission CRF and learns boundary specialization only if it helps.
@@ -2200,12 +2205,18 @@ class BoundaryStateEmissionHead(nn.Module):
         hidden_size: int = 64,
         dropout: float = 0.1,
         zero_init: bool = True,
+        window: int = 1,
     ):
         super().__init__()
         if num_labels not in (2, 3):
             raise ValueError(f"Unsupported num_labels={num_labels}; expected 2 or 3")
+        if int(window) < 1:
+            raise ValueError(f"boundary window must be >= 1, got {window}")
         self.num_labels = int(num_labels)
-        self.out_size = 3 if num_labels == 2 else 6
+        self.window = int(window)
+        self.per_branch = 2 * self.window + 1
+        n_branches = 1 if num_labels == 2 else 2
+        self.out_size = self.per_branch * n_branches
         hidden_size = int(hidden_size)
 
         if hidden_size > 0:
@@ -2311,6 +2322,7 @@ class LSTMCNNCRFBoundaryBondLoss(CRFBaseModel):
         boundary_state_dropout: float = 0.1,
         boundary_state_scale: float = 1.0,
         boundary_state_zero_init: bool = True,
+        boundary_window: int = 1,
         bond_loss_lambda: float = 0.02,
         bond_soft_window: int = 5,
         bond_soft_tau: float = 1.5,
@@ -2339,6 +2351,7 @@ class LSTMCNNCRFBoundaryBondLoss(CRFBaseModel):
             n_tissues=0,
         )
         self.feature_size = int(n_filters) * 2
+        self.boundary_window = int(boundary_window)
         self.features_to_emissions = nn.Linear(self.feature_size, num_labels)
         self.boundary_to_state = BoundaryStateEmissionHead(
             feature_size=self.feature_size,
@@ -2346,6 +2359,7 @@ class LSTMCNNCRFBoundaryBondLoss(CRFBaseModel):
             hidden_size=boundary_state_hidden_size,
             dropout=boundary_state_dropout,
             zero_init=boundary_state_zero_init,
+            window=self.boundary_window,
         )
         self.bond_head = BondBoundaryHead(
             feature_size=self.feature_size,
@@ -2380,32 +2394,31 @@ class LSTMCNNCRFBoundaryBondLoss(CRFBaseModel):
         self.last_bond_loss = None
 
     def _add_boundary_state_emissions(self, emissions: torch.Tensor, boundary_logits: torch.Tensor) -> torch.Tensor:
-        # emissions: [B, L, num_states], boundary_logits: [B, L, 3 or 6]
+        # emissions: [B, L, num_states], boundary_logits: [B, L, per_branch * n_branches]
         if self.boundary_state_scale == 0:
             return emissions
 
         b = boundary_logits.to(dtype=emissions.dtype) * self.boundary_state_scale
+        W = self.boundary_window
+        per = 2 * W + 1  # [start_1..W, inside, end_1..W]
 
-        # Peptide branch: states 1..max_len.
-        pep_start = b[:, :, 0]
-        pep_inside = b[:, :, 1]
-        pep_end = b[:, :, 2]
-        emissions[:, :, 1:(self.max_len + 1)] = emissions[:, :, 1:(self.max_len + 1)] + pep_inside.unsqueeze(-1)
-        emissions[:, :, 1] = emissions[:, :, 1] + pep_start
-        emissions[:, :, self.max_len] = emissions[:, :, self.max_len] + pep_end
-
-        # Propeptide branch: states max_len+1..2*max_len, only for 3-label / 101-state setup.
+        # (start_state, end_state, channel_offset) per positive branch.
+        branches = [(1, self.max_len, 0)]
         if self.num_labels == 3 and self.num_states > self.max_len + 1:
             pro_start_state = self.max_len + 1
             pro_end_state = min(2 * self.max_len, self.num_states - 1)
-            pro_start = b[:, :, 3]
-            pro_inside = b[:, :, 4]
-            pro_end = b[:, :, 5]
-            emissions[:, :, pro_start_state:(pro_end_state + 1)] = (
-                emissions[:, :, pro_start_state:(pro_end_state + 1)] + pro_inside.unsqueeze(-1)
-            )
-            emissions[:, :, pro_start_state] = emissions[:, :, pro_start_state] + pro_start
-            emissions[:, :, pro_end_state] = emissions[:, :, pro_end_state] + pro_end
+            branches.append((pro_start_state, pro_end_state, per))
+
+        for s_state, e_state, off in branches:
+            inside = b[:, :, off + W]
+            emissions[:, :, s_state:(e_state + 1)] = emissions[:, :, s_state:(e_state + 1)] + inside.unsqueeze(-1)
+            for k in range(W):
+                st = s_state + k                 # k-th state from start: 1,2,..,W
+                if st <= e_state:
+                    emissions[:, :, st] = emissions[:, :, st] + b[:, :, off + k]
+                en = e_state - k                 # k-th state from end: max_len, max_len-1, ..
+                if en >= s_state:
+                    emissions[:, :, en] = emissions[:, :, en] + b[:, :, off + W + 1 + k]
 
         return emissions
 
