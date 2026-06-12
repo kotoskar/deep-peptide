@@ -74,11 +74,12 @@ def build_row(folder_name, train_json, infer_json, is_hard_override):
     """
     row = {}
 
-    # P/R/F1 always from train_json
-    if train_json is not None:
+    # P/R/F1 from train_json (authoritative); fall back to infer_json for runs that
+    # have no train-time test_metrics.json (inference-only runs, e.g. re-inferred ones).
+    prf_src = train_json if train_json is not None else infer_json
+    if prf_src is not None:
         for key, col in PRF_KEYS:
-            val = train_json.get(key)
-            row[col] = val
+            row[col] = prf_src.get(key)
     else:
         for _, col in PRF_KEYS:
             row[col] = "N/A"
@@ -92,6 +93,8 @@ def build_row(folder_name, train_json, infer_json, is_hard_override):
         trusted = False
     elif infer_json is None:
         trusted = False
+    elif train_json is None:
+        trusted = True   # inference-only run: infer IS the source, nothing to drift against
     elif drift is None:
         trusted = False
     elif drift <= DRIFT_THRESHOLD:
@@ -117,7 +120,8 @@ def process_all_runs():
     rows = {}
 
     run_dirs = sorted([d for d in RUNS_DIR.iterdir()
-                       if d.is_dir() and (d / "test_metrics.json").exists()])
+                       if d.is_dir() and ((d / "test_metrics.json").exists()
+                                          or (d / "test_metrics_infer.json").exists())])
 
     for run_dir in run_dirs:
         name = run_dir.name

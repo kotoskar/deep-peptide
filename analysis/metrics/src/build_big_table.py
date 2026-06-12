@@ -65,6 +65,11 @@ LABELS = {
     "esm2_boundary_only_scale10": "ESM2 + только boundary-голова (scale 10)",
     "esm2_aho_state_bias_pep_boundary_010": "ESM2 + Aho смещение состояний (pep boundary 0.10)",
     "esm2_lora_lstmcnncrf": "ESM2 LoRA (rank8, last4 q/v) + boundary/bond",
+    "esm2_lora_lstmcnncrf_r4_last2_qv": "ESM2 LoRA (rank4, last2 q/v) + boundary/bond",
+    "train_run_3di_only": "Только 3Di (структура, без ESM)",
+    "esmc6b_boundary_only": "ESM-C 6B + boundary-голова (без bond)",
+    "esmc6b_boundary_w3": "ESM-C 6B + boundary-голова, окно W3 (без bond)",
+    "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary",
     "train_run_esm2_conv": "ESM2 + многомасштабный проектор (multiscale)",
     "train_run_esm2_only_homo": "ESM2 (обучение только на Homo, 40 эпох)",
     "train_run_esm2_plus_proj_gated": "ESM2+ + трёхветочный gated-проектор",
@@ -200,6 +205,20 @@ P/R/F1, но невосстановимой для инференса модел
 `esm2_aho_transition_bias_sparse_trainable_zero`): класс модели отсутствует в текущем
 коде, чекпойнт не загружается. Старые P/R/F1 — это train-time published значения;
 новая P/R/F1 и MCC/AUC недоступны (N/A).
+
+**Сноска — недавно добавленные запуски** (`esmc6b_boundary_only`, `esmc6b_boundary_w3`,
+`esmc6b_3di_gated_boundary`, `esm2_lora_lstmcnncrf_r4_last2_qv`, `train_run_3di_only`):
+у них показаны старые ±3 P/R/F1 (train-time) + residue MCC/AUC; «новый» исправленный ±3
+не пересчитывался (N/A), кроме `esmc6b_3di_gated_boundary`. Разница стар./нов. — это
+известный баг матчера (~2–4 п.п. recall).
+
+**ВАЖНО — 3Di-запуски на СОКРАЩЁННОМ тест-сете.** `esmc6b_3di_gated_boundary` и
+`train_run_3di_only` оцениваются на **1503** белках (а не 1533): у 122 белков нет 3Di-
+структуры. Поэтому их F1 НЕ сравнивать напрямую со строками на полном сете — для честного
+сравнения `esmc6b_3di_gated_boundary` vs победитель на ОДНИХ И ТЕХ ЖЕ 1503 белках
+(типизированный ±3, как в манускрипте): all F1 **0.692 vs 0.673 (+0.0185)**, пропептиды
+**0.697 vs 0.657 (+0.040)**, пептиды 0.686 vs 0.691 (−0.005); 30 выкинутых белков
+~средней сложности (винер 1533 vs 1503: Δ−0.0015). Прирост сконцентрирован в пропептидах.
 """
     md = "\n\n".join([header,
                       subtable("all", "All (пептиды + пропептиды вместе)"),
