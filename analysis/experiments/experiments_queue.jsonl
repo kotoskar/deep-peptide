@@ -1,0 +1,5 @@
+{"name":"esmc6b_3di_zeroctrl","base":"runs/esmc6b_3di_gated_boundary/config.json","set":["embeddings_dir=data/uniprot_2022/embeddings/embeddings_esmc6b_3dizero"]}
+{"name":"esmc6b_3di_widehead","base":"runs/esmc6b_3di_gated_boundary/config.json","set":["num_filters=64","hidden_size=128"]}
+{"name":"esmc6b_3di_struct32","base":"runs/esmc6b_3di_gated_boundary/config.json","set":["struct_proj_size=32"]}
+{"name":"esmc6b_3di_seed1","base":"runs/esmc6b_3di_gated_boundary/config.json","set":["seed=1"]}
+{"name":"esmc6b_3di_seed2","base":"runs/esmc6b_3di_gated_boundary/config.json","set":["seed=2"]}
