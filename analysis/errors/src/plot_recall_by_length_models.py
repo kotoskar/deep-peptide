@@ -63,23 +63,23 @@ PALETTE = {
 }
 
 
-def recall_smoothed(df, task):
-    """Per-integer recall over lengths 5..50, count-weighted ±WIN smoothing
-    (same convention as the stacked plot): recall(L) = Σmatched[L-WIN..L+WIN]/Σn[..].
-    Returns (xs, recall array, total-n array)."""
+# Fixed 5-aa bins (last one 45-50 to cover the cap at 50): averages neighbouring lengths
+# so single-length noise on thin tails doesn't read as a scary cliff.
+BIN_EDGES = [5, 10, 15, 20, 25, 30, 35, 40, 45, 51]   # [lo, hi) pairs; last bin 45..50
+BIN_CENTERS = [(BIN_EDGES[i] + BIN_EDGES[i + 1] - 1) / 2 for i in range(len(BIN_EDGES) - 1)]
+BIN_LABELS = [f"{BIN_EDGES[i]}-{BIN_EDGES[i+1]-1}" for i in range(len(BIN_EDGES) - 1)]
+
+
+def recall_binned(df, task):
+    """Count-weighted recall in fixed 5-aa bins. Returns (centers, recall, n-per-bin)."""
     t = df[(df["kind"] == "true") & (df["task"] == task)]
-    xs = np.arange(LMIN, LMAX + 1)
-    matched = np.zeros(len(xs)); n = np.zeros(len(xs))
-    for k, L in enumerate(xs):
-        sub = t[t["length"] == L]
-        n[k] = len(sub); matched[k] = sub["matched"].sum()
-    rec = np.full(len(xs), np.nan)
-    for k in range(len(xs)):
-        lo, hi = max(0, k - WIN), min(len(xs), k + WIN + 1)
-        tot = n[lo:hi].sum()
-        if tot > 0:
-            rec[k] = matched[lo:hi].sum() / tot
-    return xs, rec, n
+    rec, npb = [], []
+    for i in range(len(BIN_EDGES) - 1):
+        lo, hi = BIN_EDGES[i], BIN_EDGES[i + 1]
+        sub = t[(t["length"] >= lo) & (t["length"] < hi)]
+        npb.append(len(sub))
+        rec.append(sub["matched"].mean() if len(sub) else np.nan)
+    return np.array(BIN_CENTERS), np.array(rec), np.array(npb)
 
 
 # task -> (output filename, title noun)
@@ -94,25 +94,23 @@ def plot_task(task, dframes):
     fig, ax = plt.subplots(figsize=(10, 5.4))
     print(f"=== {task} ===")
     for run in ordered:
-        xs, rec, _ = recall_smoothed(dframes[run], task)
+        xs, rec, _ = recall_binned(dframes[run], task)
         is_win = run == WINNER
         is_base = run == BASELINE
         bold = is_win or is_base
-        ax.plot(xs, rec,
+        ax.plot(xs, rec, marker="o", markersize=5 if bold else 3,
                 lw=3.2 if bold else 1.4,
                 zorder=10 if is_win else 9 if is_base else 3,
                 color="black" if is_win else ("#404040" if is_base else PALETTE.get(run, "#999999")),
                 linestyle="--" if is_base else "-",
                 alpha=1.0 if bold else 0.8,
                 label=LABELS.get(run, run))
-        # sparse coarse-bin print for the log
-        def at(lo, hi):
-            t = dframes[run]; s = t[(t.kind == "true") & (t.task == task) & (t.length >= lo) & (t.length <= hi)]
-            return f"{s.matched.mean():.3f}" if len(s) else "nan"
-        print(f"{run:42s} 5={at(5,5)} 6-10={at(6,10)} 11-20={at(11,20)} 21-30={at(21,30)} 31-50={at(31,50)}")
+        print(f"{run:42s} " + " ".join(f"{lab}={v:.3f}" if not np.isnan(v) else f"{lab}=nan"
+                                       for lab, v in zip(BIN_LABELS, rec)))
     fname, noun = TASK_OUT[task]
-    ax.set_xlim(LMIN, LMAX); ax.set_ylim(0, 1)
-    ax.set_xlabel(f"true {noun} length (aa)"); ax.set_ylabel("recall (±3 matching, ±2 aa smoothed)")
+    ax.set_xticks(BIN_CENTERS); ax.set_xticklabels(BIN_LABELS, fontsize=8)
+    ax.set_xlim(LMIN - 0.5, LMAX + 0.5); ax.set_ylim(0, 1)
+    ax.set_xlabel(f"true {noun} length (aa, 5-aa bins)"); ax.set_ylabel("recall (±3 matching)")
     ax.set_title(f"Recall by {noun} length, per model")
     ax.grid(alpha=.3); ax.legend(fontsize=7.5, ncol=2, loc="lower center", framealpha=.9)
     fig.tight_layout()
