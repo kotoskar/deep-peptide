@@ -104,6 +104,7 @@ The following run folders have `test_metrics.json` (included in `canonical_metri
 - `esm2_lora_lstmcnncrf` (test_drift=0.0000, trusted=True)
 - `esm2_lora_lstmcnncrf_r4_last2_qv` (test_drift=None, trusted=True)
 - `esmc6b_3di_gated_boundary` (test_drift=0.0000, trusted=True)
+- `esmc6b_3di_gated_boundary_seq512` (test_drift=0.0000, trusted=True)
 - `esmc6b_boundary_bond` (test_drift=0.0000, trusted=True)
 - `esmc6b_boundary_only` (test_drift=0.0000, trusted=True)
 - `esmc6b_boundary_w3` (test_drift=0.0000, trusted=True)

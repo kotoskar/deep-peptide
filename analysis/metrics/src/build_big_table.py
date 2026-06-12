@@ -70,6 +70,7 @@ LABELS = {
     "esmc6b_boundary_only": "ESM-C 6B + boundary-голова (без bond)",
     "esmc6b_boundary_w3": "ESM-C 6B + boundary-голова, окно W3 (без bond)",
     "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary",
+    "esmc6b_3di_gated_boundary_seq512": "ESM-C 6B ⊕ 3Di gated + boundary (seq_proj 512)",
     "train_run_esm2_conv": "ESM2 + многомасштабный проектор (multiscale)",
     "train_run_esm2_only_homo": "ESM2 (обучение только на Homo, 40 эпох)",
     "train_run_esm2_plus_proj_gated": "ESM2+ + трёхветочный gated-проектор",
