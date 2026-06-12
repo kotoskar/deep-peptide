@@ -28,25 +28,36 @@ def counts(t, task):
     return np.array([(s.length == L).sum() for L in range(LMIN, LMAX + 1)])
 
 
+def _smooth(a, win=1):
+    """Light ±win moving average so the per-integer counts read as a continuous curve."""
+    out = np.zeros_like(a, dtype=float)
+    for k in range(len(a)):
+        lo, hi = max(0, k - win), min(len(a), k + win + 1)
+        out[k] = a[lo:hi].mean()
+    return out
+
+
 def main():
     t = pd.read_csv(SEG)
     xs = np.arange(LMIN, LMAX + 1)
-    npep = counts(t, "peptides")
-    npro = counts(t, "propeptides")
+    npep = _smooth(counts(t, "peptides"))
+    npro = _smooth(counts(t, "propeptides"))
+    npep_raw, npro_raw = counts(t, "peptides"), counts(t, "propeptides")
 
     fig, ax = plt.subplots(figsize=(10, 4.6))
-    w = 0.42
-    ax.bar(xs - w / 2, npep, w, color="#2b6cb0", label=f"peptides (n={npep.sum()})")
-    ax.bar(xs + w / 2, npro, w, color="#c05621", label=f"propeptides (n={npro.sum()})")
-    ax.set_xlim(LMIN - 0.5, LMAX + 0.5)
+    ax.fill_between(xs, npep, color="#2b6cb0", alpha=0.35, zorder=2)
+    ax.plot(xs, npep, color="#2b6cb0", lw=2, alpha=0.9, label=f"peptides (n={npep_raw.sum()})", zorder=3)
+    ax.fill_between(xs, npro, color="#c05621", alpha=0.35, zorder=2)
+    ax.plot(xs, npro, color="#c05621", lw=2, alpha=0.9, label=f"propeptides (n={npro_raw.sum()})", zorder=3)
+    ax.set_xlim(LMIN, LMAX); ax.set_ylim(0, None)
     ax.set_xlabel("true segment length (aa)")
-    ax.set_ylabel("number of true segments (test set)")
+    ax.set_ylabel("number of true segments (test set, ±1 aa smoothed)")
     ax.set_title("How many true segments per length — support behind the recall-by-length curves")
-    ax.grid(axis="y", alpha=.3)
+    ax.grid(alpha=.3)
     ax.legend()
     # mark the thin tails the recall edges rely on
-    for lo, hi, txt in [(5, 10, "short tail"), (40, 50, "long tail")]:
-        ax.axvspan(lo - 0.5, hi + 0.5, color="grey", alpha=0.07)
+    for lo, hi in [(5, 10), (40, 50)]:
+        ax.axvspan(lo, hi, color="grey", alpha=0.07, zorder=1)
     fig.tight_layout()
     out = FIG / "length_support_counts.png"
     fig.savefig(out, dpi=140); plt.close(fig)

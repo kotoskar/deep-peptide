@@ -44,12 +44,13 @@ LABELS = {
     "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary ★",
 }
 WINNER = "esmc6b_3di_gated_boundary"   # the NEW best — drawn bold black
+BASELINE = "train_run_esm2"            # also drawn bold (grey) to show total progress made
 # Draw winner last/on top; keep a stable order for the rest.
 ORDER = list(LABELS.keys())
 
 # Distinct qualitative colors (tab20-ish), explicitly avoiding two similar blues.
 PALETTE = {
-    "train_run_esm2": "#7f7f7f",                       # grey baseline
+    "train_run_esm2": "#404040",                       # baseline (bold dashed, set in plot)
     "esm2_telescoping_segmental": "#ff7f0e",           # orange
     "esm2_aho_mid_fusion_raw_m64": "#2ca02c",          # green
     "esm2_aho_emission_fusion": "#d62728",             # red
@@ -95,11 +96,14 @@ def plot_task(task, dframes):
     for run in ordered:
         xs, rec, _ = recall_smoothed(dframes[run], task)
         is_win = run == WINNER
+        is_base = run == BASELINE
+        bold = is_win or is_base
         ax.plot(xs, rec,
-                lw=3.2 if is_win else 1.5,
-                zorder=10 if is_win else 3,
-                color="black" if is_win else PALETTE.get(run, "#999999"),
-                alpha=1.0 if is_win else 0.85,
+                lw=3.2 if bold else 1.4,
+                zorder=10 if is_win else 9 if is_base else 3,
+                color="black" if is_win else ("#404040" if is_base else PALETTE.get(run, "#999999")),
+                linestyle="--" if is_base else "-",
+                alpha=1.0 if bold else 0.8,
                 label=LABELS.get(run, run))
         # sparse coarse-bin print for the log
         def at(lo, hi):
