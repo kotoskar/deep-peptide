@@ -91,11 +91,29 @@ def style(run):
                 marker="o", markersize=5 if (is_w or is_b) else 3)
 
 
+def _f1_labels():
+    """run -> ' (F1 0.69)' suffix from the big table (new±3 all, fallback old)."""
+    import csv
+    bt = ROOT / "analysis" / "metrics" / "big_metrics_table.csv"
+    out = {}
+    if bt.exists():
+        for r in csv.DictReader(open(bt)):
+            v = r.get("new_f1_all") or ""
+            if v in ("", "N/A"):
+                v = r.get("old_f1_all") or ""
+            try:
+                out[r["run"]] = f" (F1 {float(v):.2f})"
+            except ValueError:
+                out[r["run"]] = ""
+    return out
+
+
 def main():
     dframes = {p.name[:-len("__segments.csv")]: pd.read_csv(p)
                for p in sorted(STATS.glob("*__segments.csv"))}
     ordered = [r for r in ORDER if r in dframes] + [r for r in dframes if r not in ORDER]
     has_pred = any("tp_pred" in d.kind.values for d in dframes.values())
+    f1lab = _f1_labels()
 
     fig, axes = plt.subplots(3, 2, figsize=(13, 11), sharex=True)
     x = np.array(CENTERS)
@@ -113,7 +131,8 @@ def main():
             ax = axes[ri][col]
             for run in ordered:
                 y = binstat(dframes[run], task, "true", value)
-                ax.plot(x, y, label=LABELS.get(run, run), **style(run))
+                lab = LABELS.get(run, run) + (f1lab.get(run, "") if (ri == 1 and col == 0) else "")
+                ax.plot(x, y, label=lab, **style(run))
             ax.set_ylim(0, 1)
             if col == 0:
                 ax.set_ylabel(f"{value} (±3)")
