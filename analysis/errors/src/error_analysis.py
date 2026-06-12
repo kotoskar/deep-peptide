@@ -162,10 +162,14 @@ def analyse_run(run: str, device: str) -> Tuple[pd.DataFrame, dict]:
                              "kind": "true", "length": gr["length"], "matched": gr["matched"]})
                 agg[task]["tp" if gr["matched"] else "fn"] += 1
             for pi, m in enumerate(pred_matched):
+                ps, pe = pred_segs[pi]
+                # Emit BOTH matched (tp_pred) and unmatched (fp_pred) predictions with
+                # their PREDICTED length, so precision-by-predicted-length is computable
+                # (precision@len = tp_pred / (tp_pred + fp_pred) in that bin).
+                rows.append({"run": run, "protein_id": pid, "organism": org, "task": task,
+                             "kind": "tp_pred" if m else "fp_pred",
+                             "length": pe - ps + 1, "matched": bool(m)})
                 if not m:
-                    ps, pe = pred_segs[pi]
-                    rows.append({"run": run, "protein_id": pid, "organism": org, "task": task,
-                                 "kind": "fp_pred", "length": pe - ps + 1, "matched": False})
                     agg[task]["fp"] += 1
     df = pd.DataFrame(rows)
     # validation gate vs published test_metrics.json (window=3)
