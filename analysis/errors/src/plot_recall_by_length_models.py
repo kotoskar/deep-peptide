@@ -27,7 +27,7 @@ FIG = ROOT / "texs" / "error_analysis" / "figures"
 FIG.mkdir(parents=True, exist_ok=True)
 
 LEN_LABELS = ["5", "6-10", "11-20", "21-30", "31-50"]
-BINS = {"5": (5, 5), "6-10": (6, 10), "11-20": (11, 20), "21-30": (21, 30), "31-50": (31, 50)}
+LMIN, LMAX, WIN = 5, 50, 2  # per-integer length range + ±WIN smoothing (as in the stacked plot)
 
 # Short display labels; runs without an entry fall back to the folder name.
 LABELS = {
@@ -36,28 +36,49 @@ LABELS = {
     "esm2_aho_mid_fusion_raw_m64": "ESM2 Aho mid-fusion",
     "esm2_aho_emission_fusion": "ESM2 Aho emis-fusion",
     "esm2_aho_emission_fusion_h32": "ESM2 Aho emis-fusion h32",
-    "train_run_esm2+3di_proj": "ESM2+3Di proj",
-    "train_run_esm2+3di_proj_gated_conv": "ESM2+3Di proj gated conv",
+    "train_run_esm2+3di_proj": "ESM2+3Di proj (raw)",
+    "train_run_esm2+3di_proj_gated_conv": "ESM2+3Di gated conv",
     "train_run_esm2_aft_single_gated": "ESM2 AFT single gated",
     "train_run_esmc_600m": "ESM-C 600M",
-    "esmc6b_boundary_bond": "ESM-C 6B + boundary/bond ★",
+    "esmc6b_boundary_bond": "ESM-C 6B + boundary (old best)",
+    "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary ★",
 }
-# Draw winner (if present) bold/on top; keep a stable order for the rest.
+WINNER = "esmc6b_3di_gated_boundary"   # the NEW best — drawn bold black
+# Draw winner last/on top; keep a stable order for the rest.
 ORDER = list(LABELS.keys())
 
+# Distinct qualitative colors (tab20-ish), explicitly avoiding two similar blues.
+PALETTE = {
+    "train_run_esm2": "#7f7f7f",                       # grey baseline
+    "esm2_telescoping_segmental": "#ff7f0e",           # orange
+    "esm2_aho_mid_fusion_raw_m64": "#2ca02c",          # green
+    "esm2_aho_emission_fusion": "#d62728",             # red
+    "esm2_aho_emission_fusion_h32": "#9467bd",         # purple
+    "train_run_esm2+3di_proj": "#8c564b",              # brown
+    "train_run_esm2+3di_proj_gated_conv": "#e377c2",   # pink
+    "train_run_esm2_aft_single_gated": "#bcbd22",      # olive
+    "train_run_esmc_600m": "#17becf",                  # cyan
+    "esmc6b_boundary_bond": "#1f77b4",                 # blue (old best)
+}
 
-def lenbin(L):
-    for lab, (lo, hi) in BINS.items():
-        if lo <= L <= hi:
-            return lab
-    return None
 
-
-def recall_by_bin(df, task):
-    t = df[(df["kind"] == "true") & (df["task"] == task)].copy()
-    t["lenbin"] = t["length"].apply(lenbin)
-    return [t[t["lenbin"] == lab]["matched"].mean() if len(t[t["lenbin"] == lab]) else np.nan
-            for lab in LEN_LABELS]
+def recall_smoothed(df, task):
+    """Per-integer recall over lengths 5..50, count-weighted ±WIN smoothing
+    (same convention as the stacked plot): recall(L) = Σmatched[L-WIN..L+WIN]/Σn[..].
+    Returns (xs, recall array, total-n array)."""
+    t = df[(df["kind"] == "true") & (df["task"] == task)]
+    xs = np.arange(LMIN, LMAX + 1)
+    matched = np.zeros(len(xs)); n = np.zeros(len(xs))
+    for k, L in enumerate(xs):
+        sub = t[t["length"] == L]
+        n[k] = len(sub); matched[k] = sub["matched"].sum()
+    rec = np.full(len(xs), np.nan)
+    for k in range(len(xs)):
+        lo, hi = max(0, k - WIN), min(len(xs), k + WIN + 1)
+        tot = n[lo:hi].sum()
+        if tot > 0:
+            rec[k] = matched[lo:hi].sum() / tot
+    return xs, rec, n
 
 
 # task -> (output filename, title noun)
@@ -68,28 +89,31 @@ TASK_OUT = {
 
 
 def plot_task(task, dframes):
-    runs = {run: recall_by_bin(df, task) for run, df in dframes.items()}
-    ordered = [r for r in ORDER if r in runs] + [r for r in runs if r not in ORDER]
-    x = np.arange(len(LEN_LABELS))
-    fig, ax = plt.subplots(figsize=(9, 5))
-    cmap = plt.get_cmap("tab10")
+    ordered = [r for r in ORDER if r in dframes] + [r for r in dframes if r not in ORDER]
+    fig, ax = plt.subplots(figsize=(10, 5.4))
     print(f"=== {task} ===")
-    for i, run in enumerate(ordered):
-        winner = run == "esmc6b_boundary_bond"
-        ax.plot(x, runs[run], marker="o",
-                lw=3.0 if winner else 1.6, zorder=5 if winner else 2,
-                color="black" if winner else cmap(i % 10),
+    for run in ordered:
+        xs, rec, _ = recall_smoothed(dframes[run], task)
+        is_win = run == WINNER
+        ax.plot(xs, rec,
+                lw=3.2 if is_win else 1.5,
+                zorder=10 if is_win else 3,
+                color="black" if is_win else PALETTE.get(run, "#999999"),
+                alpha=1.0 if is_win else 0.85,
                 label=LABELS.get(run, run))
-        print(f"{run:42s} " + "  ".join(f"{lab}={v:.3f}" if not np.isnan(v) else f"{lab}=nan"
-                                        for lab, v in zip(LEN_LABELS, runs[run])))
+        # sparse coarse-bin print for the log
+        def at(lo, hi):
+            t = dframes[run]; s = t[(t.kind == "true") & (t.task == task) & (t.length >= lo) & (t.length <= hi)]
+            return f"{s.matched.mean():.3f}" if len(s) else "nan"
+        print(f"{run:42s} 5={at(5,5)} 6-10={at(6,10)} 11-20={at(11,20)} 21-30={at(21,30)} 31-50={at(31,50)}")
     fname, noun = TASK_OUT[task]
-    ax.set_xticks(x); ax.set_xticklabels(LEN_LABELS)
-    ax.set_xlabel(f"true {noun} length (aa)"); ax.set_ylabel("recall (±3 matching)")
-    ax.set_title(f"Recall by {noun} length, per model"); ax.set_ylim(0, 1)
-    ax.grid(axis="y", alpha=.3); ax.legend(fontsize=8, ncol=2, loc="lower center")
+    ax.set_xlim(LMIN, LMAX); ax.set_ylim(0, 1)
+    ax.set_xlabel(f"true {noun} length (aa)"); ax.set_ylabel("recall (±3 matching, ±2 aa smoothed)")
+    ax.set_title(f"Recall by {noun} length, per model")
+    ax.grid(alpha=.3); ax.legend(fontsize=7.5, ncol=2, loc="lower center", framealpha=.9)
     fig.tight_layout()
     out = FIG / fname
-    fig.savefig(out, dpi=130); plt.close(fig)
+    fig.savefig(out, dpi=140); plt.close(fig)
     print(f"wrote {out}  ({len(ordered)} models)\n")
 
 

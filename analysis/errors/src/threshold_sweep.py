@@ -47,6 +47,7 @@ MODELS = {
     "esmc6b_boundary_bond": "ESM-C 6B + boundary/bond ★",
     "esmc6b_telescoping": "ESM-C 6B + telescoping",
     "train_run_esm2+3di_proj_gated_conv": "ESM2 + 3Di (proj gated conv)",
+    "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary ★new",
 }
 WINDOWS = [0, 1, 2, 3, 4, 5]
 
