@@ -14,6 +14,7 @@ from .crf_models import (
     LSTMCNNCRFAhoMidFusion,
     LSTMCNNCRFAhoStateBias,
     LSTMCNNCRFBoundaryBondLoss,
+    LSTMCNNCRFGated3DiBoundary,
     LSTMCNNCRFESM2LoRA,
     LSTMCNNCRFTelescopingSegmental,
 )
