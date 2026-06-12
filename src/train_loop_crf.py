@@ -19,6 +19,7 @@ from src.models import (
     LSTMCNNCRFAhoMidFusion,
     LSTMCNNCRFAhoStateBias,
     LSTMCNNCRFBoundaryBondLoss,
+    LSTMCNNCRFGated3DiBoundary,
     LSTMCNNCRFESM2LoRA,
     LSTMCNNCRFTelescopingSegmental,
 )
@@ -371,6 +372,31 @@ def get_model(args: argparse.Namespace):
             bond_hidden_size=args.bond_hidden_size,
             bond_dropout=args.bond_dropout,
             bond_zero_init=args.bond_zero_init,
+        )
+    elif args.model == 'lstmcnncrf_gated3di_boundary':
+        model = LSTMCNNCRFGated3DiBoundary(
+            input_size=args.embedding_dim,
+            seq_input_size=getattr(args, 'seq_input_size', 2560),
+            struct_input_size=getattr(args, 'struct_input_size', 20),
+            seq_proj_size=getattr(args, 'seq_proj_size', 256),
+            struct_proj_size=getattr(args, 'struct_proj_size', 32),
+            dropout_projector=getattr(args, 'projector_dropout', 0.4),
+            residual_scale=getattr(args, 'gated_residual_scale', 0.1),
+            struct_branch_dropout=getattr(args, 'struct_branch_dropout', 0.3),
+            gate_bias=getattr(args, 'gated_gate_bias', -2.5),
+            struct_conv_kernel=getattr(args, 'struct_conv_kernel', 5),
+            boundary_state_hidden_size=args.boundary_state_hidden_size,
+            boundary_state_dropout=args.boundary_state_dropout,
+            boundary_state_scale=args.boundary_state_scale,
+            boundary_state_zero_init=not args.boundary_state_no_zero_init,
+            boundary_window=getattr(args, 'boundary_window', 1),
+            num_labels=3 if 'with_propeptides' in args.label_type else 2,
+            num_states=101 if 'with_propeptides' in args.label_type else 51,
+            n_filters=args.num_filters,
+            hidden_size=args.hidden_size,
+            filter_size=args.kernel_size,
+            dropout_input=args.dropout,
+            dropout_conv1=args.conv_dropout,
         )
     elif args.model == 'lstmcnncrf_esm2_lora':
         model = LSTMCNNCRFESM2LoRA(

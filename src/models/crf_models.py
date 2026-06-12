@@ -2544,6 +2544,130 @@ class LSTMCNNCRFBoundaryBondLoss(CRFBaseModel):
             return probs, viterbi_paths, path_probs
 
 
+class LSTMCNNCRFGated3DiBoundary(CRFBaseModel):
+    """Gated 3Di residual fusion + the winner's boundary-aware state-emission head.
+
+    Combines the proven gated structural fusion (GatedResidualConvProjectedLSTMCNN, the
+    feature extractor of `lstmcnncrf_gated3diresidual_conv`: a sequence branch + a gated
+    3Di residual branch with a small Conv1d) with `BoundaryStateEmissionHead` from the
+    project-best boundary model (start_1..W / inside / end_1..W state biases). No bond
+    loss (shown to be dead weight). Intended for ESM-C 6B (2560) ⊕ 3Di (20) = 2580 input,
+    layout [B, C, L] with channels [seq | struct].
+    """
+    def __init__(
+        self,
+        input_size: int = 2580,
+        seq_input_size: int = 2560,
+        struct_input_size: int = 20,
+        seq_proj_size: int = 256,
+        struct_proj_size: int = 32,
+        dropout_projector: float = 0.4,
+        dropout_input: float = 0.25,
+        n_filters: int = 64,
+        filter_size: int = 3,
+        dropout_conv1: float = 0.15,
+        hidden_size: int = 128,
+        num_lstm_layers: int = 1,
+        num_labels: int = 2,
+        num_states: int = 61,
+        residual_scale: float = 0.1,
+        struct_branch_dropout: float = 0.3,
+        gate_bias: float = -2.5,
+        struct_conv_kernel: int = 5,
+        boundary_state_hidden_size: int = 64,
+        boundary_state_dropout: float = 0.1,
+        boundary_state_scale: float = 1.0,
+        boundary_state_zero_init: bool = True,
+        boundary_window: int = 1,
+    ) -> None:
+        super().__init__(num_labels, num_states)
+
+        self.feature_extractor = GatedResidualConvProjectedLSTMCNN(
+            input_size=input_size,
+            seq_input_size=seq_input_size,
+            struct_input_size=struct_input_size,
+            seq_proj_size=seq_proj_size,
+            struct_proj_size=struct_proj_size,
+            dropout_projector=dropout_projector,
+            dropout_input=dropout_input,
+            n_filters=n_filters,
+            filter_size=filter_size,
+            dropout_conv1=dropout_conv1,
+            hidden_size=hidden_size,
+            num_lstm_layers=num_lstm_layers,
+            residual_scale=residual_scale,
+            struct_branch_dropout=struct_branch_dropout,
+            gate_bias=gate_bias,
+            struct_conv_kernel=struct_conv_kernel,
+        )
+        self.feature_size = int(n_filters) * 2
+        self.boundary_window = int(boundary_window)
+        self.features_to_emissions = nn.Linear(self.feature_size, num_labels)
+        self.boundary_to_state = BoundaryStateEmissionHead(
+            feature_size=self.feature_size,
+            num_labels=num_labels,
+            hidden_size=boundary_state_hidden_size,
+            dropout=boundary_state_dropout,
+            zero_init=boundary_state_zero_init,
+            window=self.boundary_window,
+        )
+        self.boundary_state_scale = float(boundary_state_scale)
+        self.num_labels = int(num_labels)
+        self.num_states = int(num_states)
+
+        allowed_transitions, allowed_start, allowed_end = self.get_crf_constraints(
+            self.max_len, self.min_len, n_branches=2 if num_labels == 3 else 1
+        )
+        self.crf = CRF(
+            num_states,
+            batch_first=True,
+            allowed_transitions=allowed_transitions,
+            allowed_start=allowed_start,
+            allowed_end=allowed_end,
+        )
+
+    # Identical state-bias mapping as the boundary model (start/inside/end window W).
+    _add_boundary_state_emissions = LSTMCNNCRFBoundaryBondLoss._add_boundary_state_emissions
+
+    def forward(
+        self,
+        embeddings,
+        mask,
+        targets=None,
+        skip_marginals: bool = False,
+        top_k: int = 1,
+        decode: bool = True,
+        return_probs: bool = True,
+    ):
+        mask = mask.bool()
+        features = self.feature_extractor(embeddings, mask)          # [B, L, F]
+        coarse_emissions = self.features_to_emissions(features)      # [B, L, num_labels]
+        emissions = self._repeat_emissions(coarse_emissions)         # [B, L, num_states]
+        boundary_logits = self.boundary_to_state(features)
+        emissions = self._add_boundary_state_emissions(emissions, boundary_logits)
+
+        loss = None
+        if targets is not None:
+            targets = targets.long()
+            loss = self.crf(emissions=emissions, tags=targets, mask=mask, reduction="mean") * -1
+
+        viterbi_paths = path_probs = None
+        if decode:
+            viterbi_paths, path_probs = self.crf.decode(emissions=emissions, mask=mask, top_k=top_k)
+
+        probs = None
+        if return_probs:
+            probs = (
+                self.crf.compute_marginal_probabilities(emissions, mask)
+                if not skip_marginals
+                else torch.softmax(emissions, dim=-1)
+            )
+
+        if targets is not None:
+            return probs, viterbi_paths, loss
+        return probs, viterbi_paths, path_probs
+
+
 class LSTMCNNCRFTelescopingSegmental(nn.Module):
     """LSTM-CNN + CRF with length-aware telescoping segment emissions.
 
