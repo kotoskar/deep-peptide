@@ -169,7 +169,7 @@ def main():
     def ref(run):
         r = bt.get(run, {})
         return tuple(float(r.get(k)) if r.get(k) not in (None, "", "N/A") else None
-                     for k in ("new_p_all", "new_r_all", "new_f1_all"))
+                     for k in ("p_all", "r_all", "new_f1_all"))
 
     print(f"=== self-check: ensemble({args.selfcheck} WITH ITSELF) must match solo ===")
     (st, sa), n = ensemble_pair(args.selfcheck, args.selfcheck, device)

@@ -43,8 +43,16 @@ LABELS = {
     "train_run_esmc_600m": "ESM-C 600M",
     "esmc6b_boundary_bond": "ESM-C 6B + boundary (old best)",
     "esmc6b_3di_gated_boundary": "ESM-C 6B ⊕ 3Di gated + boundary ★",
+    # очередь экспериментов (2026-06-13) — варианты 3Di gated boundary
+    "esmc6b_3di_struct32": "↳ struct_proj 32",
+    "esmc6b_3di_widehead": "↳ wide head (f64/h128)",
+    "esmc6b_3di_gated_boundary_seq512": "↳ seq_proj 512",
+    "esmc6b_3di_zeroctrl": "↳ 3Di обнулён (контроль)",
 }
 WINNER, BASELINE = "esmc6b_3di_gated_boundary", "train_run_esm2"
+# 4 запуска из очереди рисуем поверх winner/baseline — отдельная палитра, чтобы отличались
+QUEUE_RUNS = ["esmc6b_3di_struct32", "esmc6b_3di_widehead",
+              "esmc6b_3di_gated_boundary_seq512", "esmc6b_3di_zeroctrl"]
 PALETTE = {
     "train_run_esm2": "#404040",
     "esm2_telescoping_segmental": "#ff7f0e",
@@ -56,6 +64,11 @@ PALETTE = {
     "train_run_esm2_aft_single_gated": "#bcbd22",
     "train_run_esmc_600m": "#17becf",
     "esmc6b_boundary_bond": "#1f77b4",
+    # очередь: насыщенные различимые цвета
+    "esmc6b_3di_struct32": "#e6194B",          # красный — лучший на тесте из очереди
+    "esmc6b_3di_widehead": "#3cb44b",          # зелёный
+    "esmc6b_3di_gated_boundary_seq512": "#911eb4",  # фиолетовый
+    "esmc6b_3di_zeroctrl": "#999999",          # серый — контроль
 }
 ORDER = list(LABELS.keys())
 
@@ -82,13 +95,13 @@ def true_counts(df, task):
 
 
 def style(run):
-    is_w, is_b = run == WINNER, run == BASELINE
-    return dict(lw=3.2 if (is_w or is_b) else 1.4,
+    is_w, is_b, is_q = run == WINNER, run == BASELINE, run in QUEUE_RUNS
+    return dict(lw=3.2 if (is_w or is_b) else (2.0 if is_q else 1.4),
                 color="black" if is_w else ("#404040" if is_b else PALETTE.get(run, "#999")),
-                linestyle="--" if is_b else "-",
-                zorder=10 if is_w else 9 if is_b else 3,
-                alpha=1.0 if (is_w or is_b) else 0.8,
-                marker="o", markersize=5 if (is_w or is_b) else 3)
+                linestyle="--" if is_b else ("-." if is_q else "-"),
+                zorder=10 if is_w else 9 if is_b else (7 if is_q else 3),
+                alpha=1.0 if (is_w or is_b) else (0.95 if is_q else 0.6),
+                marker="o", markersize=5 if (is_w or is_b) else (4 if is_q else 3))
 
 
 def _f1_labels():
@@ -100,7 +113,7 @@ def _f1_labels():
         for r in csv.DictReader(open(bt)):
             v = r.get("new_f1_all") or ""
             if v in ("", "N/A"):
-                v = r.get("old_f1_all") or ""
+                v = r.get("bug_f1_all") or ""
             try:
                 out[r["run"]] = f" (F1 {float(v):.2f})"
             except ValueError:

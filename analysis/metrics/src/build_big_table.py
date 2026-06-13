@@ -130,6 +130,10 @@ def add_telescoping(canon):
 def main():
     corr = load_csv(A / "corrected_metrics.csv")
     canon = load_csv(A / "canonical_metrics.csv")
+    vpath = A / "valid_corrected_metrics.csv"
+    vcorr = load_csv(vpath) if vpath.exists() else {}
+    if not vcorr:
+        print("  [warn] valid_corrected_metrics.csv not found yet → val F1 columns = N/A")
     if "esmc6b_telescoping" not in canon:
         add_telescoping(canon)
 
@@ -138,61 +142,61 @@ def main():
     for run in runs:
         c = corr.get(run, {})
         k = canon.get(run, {})
+        vc = vcorr.get(run, {})
         trusted = str(k.get("test_mcc_auc_trusted", "")).lower() == "true"
         row = {"run": run, "label": LABELS.get(run, run)}
         for cls in ("all", "peptides", "propeptides"):
-            # СТАРАЯ P/R/F1: corrected.orig_*, иначе train-time published из canonical
+            # F1 ВАЛ — исправленный матчер ±3 на ВАЛИДАЦИИ (ведущая метрика отбора моделей)
+            row[f"val_f1_{cls}"] = vc.get(f"corr_{cls}_f1") or "N/A"
+            # F1 ТЕСТ (нов.) = исправленный матчер; F1 ТЕСТ (баг) = оригинальный баговый матчер.
+            # P/R показываем ТОЛЬКО исправленные (тестовые); старые P/R не выводим.
             if c:
-                row[f"old_f1_{cls}"] = c.get(f"orig_{cls}_f1")
-                row[f"old_p_{cls}"] = c.get(f"orig_{cls}_precision")
-                row[f"old_r_{cls}"] = c.get(f"orig_{cls}_recall")
+                row[f"bug_f1_{cls}"] = c.get(f"orig_{cls}_f1")          # единственная «баговая» колонка
                 row[f"new_f1_{cls}"] = c.get(f"corr_{cls}_f1")
-                row[f"new_p_{cls}"] = c.get(f"corr_{cls}_precision")
-                row[f"new_r_{cls}"] = c.get(f"corr_{cls}_recall")
-            else:  # невосстановимая модель — только published старая, новой нет
-                row[f"old_f1_{cls}"] = k.get(f"f1_{cls}")
-                row[f"old_p_{cls}"] = k.get(f"precision_{cls}")
-                row[f"old_r_{cls}"] = k.get(f"recall_{cls}")
-                row[f"new_f1_{cls}"] = row[f"new_p_{cls}"] = row[f"new_r_{cls}"] = "N/A"
+                row[f"p_{cls}"] = c.get(f"corr_{cls}_precision")
+                row[f"r_{cls}"] = c.get(f"corr_{cls}_recall")
+            else:  # невосстановимая модель — только published «баговая» F1, исправленных нет
+                row[f"bug_f1_{cls}"] = k.get(f"f1_{cls}")
+                row[f"new_f1_{cls}"] = row[f"p_{cls}"] = row[f"r_{cls}"] = "N/A"
             # MCC/AUC: residue-level, единственные, только если доверяем
             row[f"mcc_{cls}"] = k.get(f"mcc_{cls}") if trusted else "N/A"
             row[f"auc_{cls}"] = k.get(f"auc_{cls}") if trusted else "N/A"
         wide.append(row)
 
-    # --- CSV ---
+    # --- CSV --- порядок колонок: val_f1 | test_f1(нов.) | test_f1(баг) | P | R | MCC | AUC
     cols = ["run", "label"]
     for cls in ("all", "peptides", "propeptides"):
-        for m in ("old_f1", "new_f1", "old_p", "new_p", "old_r", "new_r", "mcc", "auc"):
+        for m in ("val_f1", "new_f1", "bug_f1", "p", "r", "mcc", "auc"):
             cols.append(f"{m}_{cls}")
     with open(A / "big_metrics_table.csv", "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=cols)
+        w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(wide)
 
     # --- Markdown: 3 подтаблицы ---
     def subtable(cls, title):
         L = [f"### {title}", "",
-             "| Эксперимент | F1 стар. | F1 нов. | P стар. | P нов. | R стар. | R нов. | MCC | AUC |",
-             "|:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+             "| Эксперимент | F1 вал. | F1 тест | F1 тест (баг) | P | R | MCC | AUC |",
+             "|:--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
         for r in wide:
-            L.append("| {lab} | {f1o} | {f1n} | {po} | {pn} | {ro} | {rn} | {mcc} | {auc} |".format(
+            L.append("| {lab} | {f1v} | {f1n} | {f1b} | {p} | {rc} | {mcc} | {auc} |".format(
                 lab=r["label"],
-                f1o=f(r[f"old_f1_{cls}"]), f1n=f(r[f"new_f1_{cls}"]),
-                po=f(r[f"old_p_{cls}"]), pn=f(r[f"new_p_{cls}"]),
-                ro=f(r[f"old_r_{cls}"]), rn=f(r[f"new_r_{cls}"]),
+                f1v=f(r[f"val_f1_{cls}"]), f1n=f(r[f"new_f1_{cls}"]), f1b=f(r[f"bug_f1_{cls}"]),
+                p=f(r[f"p_{cls}"]), rc=f(r[f"r_{cls}"]),
                 mcc=f(r[f"mcc_{cls}"]), auc=f(r[f"auc_{cls}"])))
         return "\n".join(L)
 
     n_old_only = sum(1 for r in wide if r["run"] in UNRECOVERABLE)
     header = f"""# Единая сводная таблица метрик по всем экспериментам
 
-> **Как читать.** Метрика поиска пептидов с допуском ±3 по разрезам считается двумя
-> способами: **стар.** — как в оригинальном DeepPeptide (с багом затенения переменной,
-> занижает recall на ~2–4 п.п.; значения сопоставимы со статьёй) и **нов.** —
-> исправленный матчер. Деление «стар./нов.» относится ТОЛЬКО к P/R/F1 (баг живёт в
-> сегментном матчере). **MCC и AUC** считаются на уровне остатков (residue-level) и
-> единственны — у них нет версий «стар./нов.». MCC/AUC берутся из свежего fp32-инференса
-> и приводятся только там, где он воспроизводит train-time P/R/F1 (drift ≤ 0.015); иначе N/A.
+> **Как читать (порядок колонок).** **F1 вал.** — исправленный матчер ±3 на ВАЛИДАЦИИ
+> (кластер 3); это методически правильная метрика отбора моделей, идёт первой. **F1 тест** —
+> тот же исправленный матчер ±3 на тесте (кластер 4). **F1 тест (баг)** — единственная
+> «баговая» колонка: оригинальный матчер DeepPeptide с багом затенения переменной (занижает
+> recall на ~2–4 п.п.; значения сопоставимы со статьёй) — оставлена для сверки с публикацией.
+> **P / R** — precision/recall ИСПРАВЛЕННОГО матчера на тесте (старые баговые P/R не выводим).
+> **MCC и AUC** — residue-level, единственны (без деления стар./нов.); из свежего fp32-инференса,
+> приводятся только там, где он воспроизводит train-time P/R/F1 (drift ≤ 0.015), иначе N/A.
 >
 > Методику расчёта см. в `texs/error_analysis/methodology.md`.
 

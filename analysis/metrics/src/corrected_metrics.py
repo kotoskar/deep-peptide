@@ -43,9 +43,9 @@ def prf(tp, fn, fp):
     return p, r, f
 
 
-def score_run(run: str, device: str) -> dict:
+def score_run(run: str, device: str, partition: str = "test") -> dict:
     run_dir = Path("runs") / run
-    preds, names, data, _ = run_inference(run_dir, device)
+    preds, names, data, _ = run_inference(run_dir, device, partition=partition)
     # accumulate (tp,fn,fp) per task for both metrics
     orig = {"peptides": [0, 0, 0], "propeptides": [0, 0, 0]}
     corr = {"peptides": [0, 0, 0], "propeptides": [0, 0, 0]}
@@ -75,6 +75,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", nargs="*", default=CANON)
     ap.add_argument("--device", type=int, default=0)
+    ap.add_argument("--partition", choices=["test", "val"], default="test",
+                    help="which split to score (val = validation cluster 3)")
+    ap.add_argument("--out", default="analysis/metrics/corrected_metrics.csv",
+                    help="output CSV path")
+    ap.add_argument("--merge", action="store_true",
+                    help="merge into --out by run (update/append) instead of overwriting all rows")
     args = ap.parse_args()
     device = f"cuda:{args.device}" if torch.cuda.is_available() else "cpu"
     rows = []
@@ -82,18 +88,25 @@ def main() -> int:
         if not (Path("runs") / run / "model.pt").exists():
             print(f"[skip] {run}: no model.pt"); continue
         try:
-            rows.append(score_run(run, device))
+            rows.append(score_run(run, device, partition=args.partition))
             r = rows[-1]
-            print(f"[OK] {run}  f1_all orig={r['orig_all_f1']:.3f} corr={r['corr_all_f1']:.3f} "
+            print(f"[OK] {run} [{args.partition}]  f1_all orig={r['orig_all_f1']:.3f} corr={r['corr_all_f1']:.3f} "
                   f"(Δrecall_all={r['corr_all_recall']-r['orig_all_recall']:+.3f})")
         except Exception as e:
             print(f"[FAIL] {run}: {type(e).__name__}: {e}")
     if not rows:
         print("no rows"); return 1
     cols = list(rows[0].keys())
-    with open("analysis/metrics/corrected_metrics.csv", "w", newline="") as f:
+    out_path = Path(args.out)
+    if args.merge and out_path.exists():
+        existing = {r["run"]: r for r in csv.DictReader(open(out_path))}
+        for r in rows:
+            existing[r["run"]] = r
+        rows = list(existing.values())
+        cols = list(next(iter(existing.values())).keys())
+    with open(out_path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader(); w.writerows(rows)
-    print(f"\nWrote analysis/corrected_metrics.csv ({len(rows)} runs)")
+    print(f"\nWrote {out_path} ({len(rows)} runs, partition={args.partition}, merge={args.merge})")
     return 0
 
 

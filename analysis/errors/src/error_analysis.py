@@ -114,14 +114,15 @@ def _group(segs: List[Tuple[int, int]]) -> List[List[Tuple[int, int]]]:
     return groups
 
 
-def run_inference(run_dir: Path, device: str):
+def run_inference(run_dir: Path, device: str, partition: str = "test"):
     args = load_run_args(run_dir, SimpleNamespace(batch_size=None, device=None))
     if device.startswith("cuda"):
         torch.backends.cudnn.benchmark = False
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
-    _, _, test_loader = get_dataloaders(args, device=device)
+    _, valid_loader, test_loader = get_dataloaders(args, device=device)
+    loader = valid_loader if partition == "val" else test_loader
     model = get_model(args).to(device)
     if getattr(args, "feature_extractor", None) == "LSTMCNN" and hasattr(model, "feature_extractor"):
         bilstm = getattr(model.feature_extractor, "biLSTM", None)
@@ -136,10 +137,10 @@ def run_inference(run_dir: Path, device: str):
         if not set(inc.missing_keys).issubset(buf) or inc.unexpected_keys:
             raise
     model.eval()
-    _, _, preds, _, _ = run_dataloader(test_loader, model, optimizer=None, do_train=False,
-                                       device=device, collect_outputs=True, desc=f"infer {run_dir.name}")
-    data = test_loader.dataset.data
-    names = test_loader.dataset.names
+    _, _, preds, _, _ = run_dataloader(loader, model, optimizer=None, do_train=False,
+                                       device=device, collect_outputs=True, desc=f"infer {run_dir.name} [{partition}]")
+    data = loader.dataset.data
+    names = loader.dataset.names
     return preds, names, data, args.label_type
 
 
