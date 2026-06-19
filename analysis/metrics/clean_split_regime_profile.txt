@@ -1,0 +1,35 @@
+pooled true segments 23613 over folds {2,5}, 6 models
+
+=== RECALL by length (pooled {2}+{5}; cell = recall, n=true segs) ===
+  length         baseline_es   esmc_600m     esmc_6b esmc6b_boun esmc6b_3di_ esmc6b_3di_   n
+  5-9                  0.576       0.555       0.602       0.636       0.742       0.746    706
+  10-14                0.588       0.530       0.642       0.658       0.713       0.707    623
+  15-19                0.483       0.415       0.434       0.524       0.596       0.610    431
+  20-24                0.590       0.577       0.655       0.607       0.667       0.683    603
+  25-29                0.725       0.758       0.765       0.780       0.822       0.815    697
+  30-34                0.637       0.575       0.428       0.601       0.748       0.582    318
+  35-39                0.521       0.498       0.362       0.456       0.596       0.514    329
+  40-44                0.336       0.349       0.262       0.362       0.577       0.493    149
+  45-50                0.308       0.228       0.033       0.283       0.391       0.374     92
+
+=== RECALL by type (pooled {2}+{5}; cell = recall, n=true segs) ===
+  type           baseline_es   esmc_600m     esmc_6b esmc6b_boun esmc6b_3di_ esmc6b_3di_   n
+  propep               0.553       0.568       0.579       0.590       0.668       0.686   2332
+  pep                  0.621       0.540       0.549       0.643       0.742       0.663   1616
+
+=== RECALL by new2026 (pooled {2}+{5}; cell = recall, n=true segs) ===
+  new2026        baseline_es   esmc_600m     esmc_6b esmc6b_boun esmc6b_3di_ esmc6b_3di_   n
+  False                0.584       0.543       0.558       0.600       0.690       0.665   3453
+  True                 0.563       0.648       0.628       0.693       0.756       0.758    495
+
+=== RECALL by genus (pooled {2}+{5}; cell = recall, n=true segs) ===
+  genus          baseline_es   esmc_600m     esmc_6b esmc6b_boun esmc6b_3di_ esmc6b_3di_   n
+  other                0.524       0.540       0.527       0.579       0.647       0.637   2700
+  Conus                0.695       0.620       0.721       0.715       0.797       0.793    463
+  Homo                 0.481       0.497       0.497       0.448       0.622       0.552    143
+  Arabidopsis          0.675       0.596       0.640       0.675       0.789       0.825    114
+  Cyriopagopus         0.872       0.739       0.748       0.788       0.982       0.765    226
+  Mus                  0.517       0.500       0.500       0.539       0.617       0.592    128
+  Aplysia              0.833       0.477       0.598       0.776       0.925       0.925    174
+
+wrote clean_split_regime_profile_raw.csv
