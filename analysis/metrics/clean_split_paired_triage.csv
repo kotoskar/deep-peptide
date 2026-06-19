@@ -1,0 +1,13 @@
+contrast,fold,dF1,lo,hi,p_gt0,n_common
+head: 6B+boundary vs 6B-plain,2,0.0532,0.0301,0.0764,1.0,1193
+head: 6B+boundary vs 6B-plain,5,0.0685,0.0463,0.0902,1.0,1168
+plain pLM: 6B vs ESM2,2,0.0742,0.0464,0.103,1.0,1174
+plain pLM: 6B vs ESM2,5,-0.0111,-0.044,0.0201,0.263,1151
+plain pLM: 6B vs 600M,2,0.0279,0.0004,0.0548,0.9772,1193
+plain pLM: 6B vs 600M,5,-0.0212,-0.0484,0.0077,0.0722,1168
+compression(confound): zeroctrl vs boundary,2,0.007,-0.0118,0.0248,0.7748,1193
+compression(confound): zeroctrl vs boundary,5,0.0487,0.0258,0.0748,1.0,1168
+3Di trade(net): winner vs zeroctrl,2,0.0151,0.0008,0.0305,0.9812,1172
+3Di trade(net): winner vs zeroctrl,5,-0.0184,-0.0326,-0.0053,0.0022,1150
+CLEAN compression: winner(256) vs nocompress(2560),2,-0.0012,-0.0145,0.012,0.4342,1172
+CLEAN compression: winner(256) vs nocompress(2560),5,-0.0044,-0.0273,0.0242,0.3378,1150
