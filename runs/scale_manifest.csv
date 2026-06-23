@@ -1,0 +1,16 @@
+name,tag,frac,n_train,n_train_avail,n_eval_dev_test
+scale_baseline_40,baseline,0.40,2102,5314,3542
+scale_baseline_55,baseline,0.55,2914,5314,3542
+scale_baseline_70,baseline,0.70,3679,5314,3542
+scale_baseline_85,baseline,0.85,4527,5314,3542
+scale_baseline_100,baseline,1.00,5314,5314,3542
+scale_proj_40,proj,0.40,2131,5384,3595
+scale_proj_55,proj,0.55,2952,5384,3595
+scale_proj_70,proj,0.70,3726,5384,3595
+scale_proj_85,proj,0.85,4586,5384,3595
+scale_proj_100,proj,1.00,5384,5384,3595
+scale_3di_40,3di,0.40,2088,5287,3529
+scale_3di_55,3di,0.55,2897,5287,3529
+scale_3di_70,3di,0.70,3660,5287,3529
+scale_3di_85,3di,0.85,4504,5287,3529
+scale_3di_100,3di,1.00,5287,5287,3529
