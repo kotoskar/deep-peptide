@@ -152,13 +152,13 @@ DeepPeptide -- разумная архитектура, но она не лиш�
 В исходном коде подсчёта метрик была найдена ошибка из-за переиспользования имён переменных во вложенном цикле. Функция \texttt{get\_counts\_for\_protein} (файл \texttt{src/utils/manuscript\_metrics.py}) перебирает истинные пептиды во внешнем цикле и предсказанные во внутреннем, используя дважды одни и те же имена \texttt{idx} и \texttt{row}:
 
 \begin{lstlisting}
-for idx, row in true_df.iterrows():          # idx -- true peptide index
+for idx, row in true_df.iterrows():          # idx - true peptide index
     true_start, true_stop = row['start'], row['stop']
     for idx, row in pred_df.iterrows():       # idx rewrited with prediction index
         pred_start, pred_stop = row['start'], row['stop']
         ...
         if start_match and stop_match:
-            true_df.loc[idx, 'matched'] = True  # BUG: idx -- prediction index, not true
+            true_df.loc[idx, 'matched'] = True  # BUG: idx - prediction index, not true
             pred_df.loc[idx, 'matched'] = True
             break
 \end{lstlisting}
