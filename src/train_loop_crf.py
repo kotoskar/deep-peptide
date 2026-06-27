@@ -390,6 +390,7 @@ def get_model(args: argparse.Namespace):
             boundary_state_scale=args.boundary_state_scale,
             boundary_state_zero_init=not args.boundary_state_no_zero_init,
             boundary_window=getattr(args, 'boundary_window', 1),
+            seq_only=getattr(args, 'gated_seq_only', False),
             num_labels=3 if 'with_propeptides' in args.label_type else 2,
             num_states=101 if 'with_propeptides' in args.label_type else 51,
             n_filters=args.num_filters,
@@ -846,7 +847,8 @@ def parse_arguments():
     
     p.add_argument('--residue_gate_bias', type=float, default=-2.5)
     p.add_argument('--struct_gate_bias', type=float, default=-2.5)
-    
+    p.add_argument('--gated_seq_only', action='store_true', help='Gated-3Di projector: use ONLY the sequence adapter (LayerNorm+reproject), no struct/3Di branch. Isolates the adapter for ablations.')
+
     p.add_argument('--model', '-m', type=str, default='lstmcnncrf')
 
     p.add_argument('--out_dir', '-od', type=str, help='name that will be added to the runs folder output', default='runs/train_run')

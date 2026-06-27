@@ -1169,43 +1169,49 @@ class GatedResidualConvSplitProjector(nn.Module):
         struct_branch_dropout: float = 0.3,
         gate_bias: float = -2.5,
         struct_conv_kernel: int = 5,
+        seq_only: bool = False,
     ):
         super().__init__()
         self.seq_input_size = seq_input_size
         self.struct_input_size = struct_input_size
         self.residual_scale = residual_scale
         self.struct_branch_dropout = struct_branch_dropout
+        self.seq_only = seq_only
 
         self.seq_projector = EmbeddingProjector(
             input_size=seq_input_size,
             proj_size=seq_proj_size,
             dropout=dropout,
         )
-        self.struct_projector = EmbeddingProjector(
-            input_size=struct_input_size,
-            proj_size=struct_proj_size,
-            dropout=dropout,
-        )
-
-        pad = struct_conv_kernel // 2
-        self.struct_conv = nn.Conv1d(
-            struct_proj_size,
-            struct_proj_size,
-            kernel_size=struct_conv_kernel,
-            padding=pad,
-        )
-        self.struct_conv_act = nn.GELU()
-        self.struct_conv_dropout = nn.Dropout(dropout)
-
-        self.struct_to_seq = nn.Conv1d(struct_proj_size, seq_proj_size, kernel_size=1)
-
-        self.gate_ln = nn.LayerNorm(seq_proj_size + struct_proj_size)
-        self.gate_dropout = nn.Dropout(dropout)
-        self.gate = nn.Linear(seq_proj_size + struct_proj_size, seq_proj_size)
         self.out_ln = nn.LayerNorm(seq_proj_size)
 
-        nn.init.zeros_(self.gate.weight)
-        nn.init.constant_(self.gate.bias, gate_bias)
+        # Structural branch — built and used only when fusing 3Di. seq_only=True
+        # isolates the sequence adapter (LayerNorm+reproject) with no struct path.
+        if not seq_only:
+            self.struct_projector = EmbeddingProjector(
+                input_size=struct_input_size,
+                proj_size=struct_proj_size,
+                dropout=dropout,
+            )
+
+            pad = struct_conv_kernel // 2
+            self.struct_conv = nn.Conv1d(
+                struct_proj_size,
+                struct_proj_size,
+                kernel_size=struct_conv_kernel,
+                padding=pad,
+            )
+            self.struct_conv_act = nn.GELU()
+            self.struct_conv_dropout = nn.Dropout(dropout)
+
+            self.struct_to_seq = nn.Conv1d(struct_proj_size, seq_proj_size, kernel_size=1)
+
+            self.gate_ln = nn.LayerNorm(seq_proj_size + struct_proj_size)
+            self.gate_dropout = nn.Dropout(dropout)
+            self.gate = nn.Linear(seq_proj_size + struct_proj_size, seq_proj_size)
+
+            nn.init.zeros_(self.gate.weight)
+            nn.init.constant_(self.gate.bias, gate_bias)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         expected = self.seq_input_size + self.struct_input_size
@@ -1215,9 +1221,13 @@ class GatedResidualConvSplitProjector(nn.Module):
             )
 
         seq = embeddings[:, : self.seq_input_size, :]
-        struct = embeddings[:, self.seq_input_size : expected, :]
-
         seq = self.seq_projector(seq)
+
+        if self.seq_only:
+            seq_t = seq.transpose(1, 2)              # [B, L, D_seq]
+            return self.out_ln(seq_t).transpose(1, 2)  # [B, D_seq, L]
+
+        struct = embeddings[:, self.seq_input_size : expected, :]
         struct = self.struct_projector(struct)
 
         # local structural patterns before gating
@@ -1262,6 +1272,7 @@ class GatedResidualConvProjectedLSTMCNN(nn.Module):
         struct_branch_dropout: float = 0.3,
         gate_bias: float = -2.5,
         struct_conv_kernel: int = 5,
+        seq_only: bool = False,
     ):
         super().__init__()
         if input_size != seq_input_size + struct_input_size:
@@ -1279,6 +1290,7 @@ class GatedResidualConvProjectedLSTMCNN(nn.Module):
             struct_branch_dropout=struct_branch_dropout,
             gate_bias=gate_bias,
             struct_conv_kernel=struct_conv_kernel,
+            seq_only=seq_only,
         )
 
         self.backbone = LSTMCNN(
@@ -2579,6 +2591,7 @@ class LSTMCNNCRFGated3DiBoundary(CRFBaseModel):
         boundary_state_scale: float = 1.0,
         boundary_state_zero_init: bool = True,
         boundary_window: int = 1,
+        seq_only: bool = False,
     ) -> None:
         super().__init__(num_labels, num_states)
 
@@ -2593,6 +2606,7 @@ class LSTMCNNCRFGated3DiBoundary(CRFBaseModel):
             n_filters=n_filters,
             filter_size=filter_size,
             dropout_conv1=dropout_conv1,
+            seq_only=seq_only,
             hidden_size=hidden_size,
             num_lstm_layers=num_lstm_layers,
             residual_scale=residual_scale,
