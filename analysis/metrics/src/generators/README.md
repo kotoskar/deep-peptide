@@ -16,7 +16,8 @@ Paths inside are repo-root-relative. GPU scripts set
 |---|---|
 | `report_figs_data.py` | `data_distributions.png`, `fold_divergence.png` (per-fold length profiles) |
 | `report_figs_v2.py` | `scoreboard.png` (also writes a 1-panel `trades.png` — run `trades_fig.py` AFTER) |
-| `trades_fig.py` | `trades.png` (2-panel ΔP/ΔR) — **run after** `report_figs_v2.py` |
+| `trades_fig.py` | `trades.png` (2-panel ΔP/ΔR: 3Di + bond) — **run after** `report_figs_v2.py` |
+| `trades_3di_fig.py` | `trades_3di.png` (single panel, 3Di trade only, no bond) |
 | `report_fig_tolerance.py` | `tolerance.png` |
 | `report_fig_interaction.py` | `interaction.png` |
 | `bylength_fig.py` | `bylength.png` (5 ladder models incl. the gated adapter) |
