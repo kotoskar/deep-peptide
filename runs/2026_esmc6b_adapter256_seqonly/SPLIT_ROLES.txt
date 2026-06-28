@@ -1,0 +1,1 @@
+2026 clean-protocol split. train=[0,3,4,6] valid=[1] model_select(test)=[2]. Fold 5 = SEALED. ADAPTER ISOLATION ablation: gated_seq_only=True (no struct/3Di), seq_proj_size=256. Clone of esmc6b_3di_zeroctrl recipe.
