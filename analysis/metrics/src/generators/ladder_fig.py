@@ -6,40 +6,30 @@ Reads clean_tol_* (base/6B/orange/green/nocompress) + adapter256_tol_perprotein 
 import warnings; warnings.filterwarnings("ignore")
 import os, numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
-rng=np.random.default_rng(42); FOLDS=[2,5]; TOLS=[3,2,1,0]
+rng=np.random.default_rng(42); FOLDS=[2,5]
+ALLTOLS=[0,1,2,3,4,5]; TOLPLOT=[5,4,3,2,1,0]; REFTOL=3  # tol panel shows ±5..±0; retention normalized to ±3
 OUT="analysis/metrics/figures/ladder/"; os.makedirs(OUT,exist_ok=True); REPORT="texs/Overleaf/figures/"
-T=pd.read_csv("analysis/metrics/clean_tol_true.csv"); P=pd.read_csv("analysis/metrics/clean_tol_pred.csv")
-A2=pd.read_csv("analysis/metrics/adapter256_tol_perprotein.csv")
+E=pd.read_csv("analysis/metrics/ladder_tol_ext.csv")  # per-protein tp/fn/fp at tols 0..5, 6 models
 plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sans","font.size":11,
  "axes.titlesize":12.5,"axes.titleweight":"bold","axes.titlelocation":"center","axes.titlepad":9,
  "axes.labelsize":11,"axes.edgecolor":"#bbb","axes.linewidth":1.0,"axes.spines.top":False,
  "axes.spines.right":False,"axes.grid":True,"grid.color":"#ececec","xtick.color":"#555",
  "ytick.color":"#555","legend.frameon":False,"legend.fontsize":9.5}); INK="#1a1a1a"; MUTE="#8a9099"
 
-def ct_counts(model):  # clean_tol model -> {(fold,protein): {tol:[tp,fn,fp]}}
-    t=T[(T.model==model)&(T.fold.isin(FOLDS))]; q=P[(P.model==model)&(P.fold.isin(FOLDS))]; out={}
-    for tol in TOLS:
-        tg=t.groupby(["fold","protein"])[f"m{tol}"].agg(tp="sum",ntrue="size")
-        pg=q.groupby(["fold","protein"])[f"m{tol}"].agg(mp="sum",npred="size")
-        d=tg.join(pg,how="outer").fillna(0.0); d["fn"]=d.ntrue-d.tp; d["fp"]=d.npred-d.mp
-        for (f,p),r in d.iterrows(): out.setdefault((f,p),{})[tol]=[r.tp,r.fn,r.fp]
-    return out
-def a2_counts():
-    out={}
-    for _,r in A2.iterrows():
-        out[(r.fold,r.protein)]={t:[r[f"tp{t}"],r[f"fn{t}"],r[f"fp{t}"]] for t in TOLS}
-    return out
+def ext_counts(model):  # model -> {(fold,protein): {tol:[tp,fn,fp]}} from ladder_tol_ext.csv (tols 0..5)
+    s=E[(E.model==model)&(E.fold.isin(FOLDS))]
+    return {(r.fold,r.protein):{t:[r[f"tp{t}"],r[f"fn{t}"],r[f"fp{t}"]] for t in ALLTOLS} for _,r in s.iterrows()}
 
 # rungs in climbing order + the control
 RUNGS=[("baseline_esm2","База: ESM-2 + CRF","#9aa3ad"),
        ("esmc_6b","+ ESM-C 6B (замена pLM)","#5b8bc0"),
        ("esmc6b_boundary","+ boundary-голова","#e0913f"),
-       ("__A2__","+ gated-адаптер (256)","#9a78c2"),
+       ("adapter256","+ gated-адаптер (256)","#9a78c2"),
        ("esmc6b_3di_gated_boundary","+ 3Di","#4ca37a")]
 DISP=["База\nESM-2 + CRF","+ ESM-C 6B\n(замена pLM)","+ boundary-\nголова","+ gated-адаптер\n(256)","+ 3Di"]
 CTRL=("esmc6b_3di_nocompress","без сжатия (2560) — контроль","#5fae93")
-C={m:(a2_counts() if m=="__A2__" else ct_counts(m)) for m,_,_ in RUNGS}
-C[CTRL[0]]=ct_counts(CTRL[0])
+C={m:ext_counts(m) for m,_,_ in RUNGS}
+C[CTRL[0]]=ext_counts(CTRL[0])
 common=set.intersection(*[set(C[m].keys()) for m in C]); common=sorted(common)
 print(f"common proteins = {len(common)}")
 def f1(a):
@@ -120,22 +110,26 @@ for k in range(1,7): draw_ladder(k)
 def draw_tol(upto):
     fig,(ax1,ax2)=plt.subplots(1,2,figsize=(13,4.8))
     rdy={0:0,1:0,2:0,3:7,4:-7}  # stagger adapter/3Di retention labels so they don't collide
+    np_=len(TOLPLOT); i3=TOLPLOT.index(REFTOL); last=np_-1  # ±0 position
     for i in range(min(upto,5)):
-        m,nm,col=RUNGS[i]; ys=[F1(m,t) for t in TOLS]; ret=[y/ys[0] for y in ys]
-        ax1.plot(range(4),ys,"o-",color=col,lw=2,ms=6.5,mec="white",mew=1.1,label=nm)
-        ax2.plot(range(4),ret,"o-",color=col,lw=2,ms=6.5,mec="white",mew=1.1,label=nm)
-        ax2.annotate(f"{ret[-1]:.2f}",(3,ret[-1]),textcoords="offset points",xytext=(8,rdy[i]),
+        m,nm,col=RUNGS[i]; ys=[F1(m,t) for t in TOLPLOT]; ref=F1(m,REFTOL); ret=[y/ref for y in ys]
+        ax1.plot(range(np_),ys,"o-",color=col,lw=2,ms=6,mec="white",mew=1.1,label=nm)
+        ax2.plot(range(np_),ret,"o-",color=col,lw=2,ms=6,mec="white",mew=1.1,label=nm)
+        ax2.annotate(f"{ret[last]:.2f}",(last,ret[last]),textcoords="offset points",xytext=(8,rdy[i]),
                      fontsize=8.3,color=col,weight="bold")
     if upto>=6:  # 6th step: nocompress as a dashed curve (legend only, no right-side number — crowded)
-        m=CTRL[0]; ys=[F1(m,t) for t in TOLS]; ret=[y/ys[0] for y in ys]
-        ax1.plot(range(4),ys,"--o",color=CTRL[2],lw=2,ms=6.5,mec="white",mew=1.1,label="без сжатия (256→2560)")
-        ax2.plot(range(4),ret,"--o",color=CTRL[2],lw=2,ms=6.5,mec="white",mew=1.1,label="без сжатия (256→2560)")
+        m=CTRL[0]; ys=[F1(m,t) for t in TOLPLOT]; ref=F1(m,REFTOL); ret=[y/ref for y in ys]
+        ax1.plot(range(np_),ys,"--o",color=CTRL[2],lw=2,ms=6,mec="white",mew=1.1,label="без сжатия (256→2560)")
+        ax2.plot(range(np_),ret,"--o",color=CTRL[2],lw=2,ms=6,mec="white",mew=1.1,label="без сжатия (256→2560)")
     for ax in (ax1,ax2):
-        ax.set_xticks(range(4)); ax.set_xticklabels([f"±{t}" for t in TOLS]); ax.grid(axis="x",alpha=0)
+        ax.set_xticks(range(np_)); ax.set_xticklabels([f"±{t}" for t in TOLPLOT]); ax.grid(axis="x",alpha=0)
         ax.set_xlabel("допуск совпадения границ"); ax.tick_params(length=0)
-    ax1.set_ylim(0.28,0.72); ax1.set_ylabel("F1"); ax1.set_title("(а) F1 при ужесточении допуска")
+        ax.axvline(i3,color="#aaa",ls="--",lw=1.2,zorder=0)  # mark the ±3 (detection) level
+    ax2.axhline(1.0,color="#aaa",ls="--",lw=1.0,zorder=0)    # ±3 reference (=1.0)
+    ax1.set_ylim(0.28,0.74); ax1.set_ylabel("F1"); ax1.set_title("(а) F1 при ужесточении допуска")
+    ax1.annotate("±3",(i3,0.74),textcoords="offset points",xytext=(4,-2),ha="left",va="top",fontsize=8,color="#999")
     ax1.legend(loc="lower left",fontsize=8.3)
-    ax2.set_ylim(0.45,1.02); ax2.set_ylabel("доля сохранённого F1  (F1@±0 / F1@±3)")
+    ax2.set_ylim(0.45,1.12); ax2.set_ylabel("доля F1 относительно ±3  (F1@±tol / F1@±3)")
     ax2.set_title("(б) Доля сохранённого F1 (точность границ)")
     fig.suptitle("Точность границ по шагам: каждый шаг добавляет одну ломаную (объединение фолдов {2} и {5})",
                  fontsize=13,weight="bold",color=INK,y=1.02)

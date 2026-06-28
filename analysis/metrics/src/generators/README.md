@@ -23,7 +23,7 @@ Paths inside are repo-root-relative. GPU scripts set
 | `datascale_plot.py` | `datascale_curve.png` |
 | `datascale_tol_plot.py` | `datascale_tolerance.png` |
 | `sim_fig_report.py` | `similarity.png` |
-| `ladder_fig.py` | `figures/ladder/` — `ladder.png`, `ladder_tol.png` + build-up frames `f1..f6` |
+| `ladder_fig.py` | `figures/ladder/` — `ladder.png`, `ladder_tol.png` (tolerance panel spans ±5..±0, retention normalized to ±3) + build-up frames `f1..f6`. Reads `ladder_tol_ext.csv`. |
 
 ## Data generators (GPU inference → CSVs)
 | script | produces |
@@ -35,6 +35,7 @@ Paths inside are repo-root-relative. GPU scripts set
 | `sim_identity.py` | `similarity/identity_2026.csv` (needleall segment identity to train) |
 | `datascale_curve.py` | `datascale_curve.csv` |
 | `datascale_tol2.py` | `datascale_tol_perprotein.csv` |
+| `ladder_tol_ext_eval.py` | `ladder_tol_ext.csv` (per-protein tp/fn/fp at tols 0..5 for the 6 ladder-tol models; feeds `ladder_fig.py`) |
 
 ## Gated-adapter ablation pipeline (isolates the gated seq-adapter)
 | script | role |
