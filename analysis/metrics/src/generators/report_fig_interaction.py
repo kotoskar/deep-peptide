@@ -50,7 +50,7 @@ for name,d in pts.items():
                 xytext=(14,0),ha="left",va="center",fontsize=10.5,color=d["col"],weight="bold")
     pd_,plo,phi=paired_delta(d["head"],d["plain"])
     print(f"{name}: plain={p0:.3f} [{l0:.3f},{h0:.3f}]  head={p1:.3f} [{l1:.3f},{h1:.3f}]  Δ={dt:+.3f}  (paired CI [{plo:+.3f},{phi:+.3f}])")
-ax.set_xticks(x); ax.set_xticklabels(["без boundary-головы\n(базовый CRF)","+ boundary-голова"],fontsize=10.5)
+ax.set_xticks(x); ax.set_xticklabels(["без boundary-головы","+ boundary-голова"],fontsize=10.5)
 ax.set_xlim(-0.45,1.85); ax.set_ylim(0.53,0.70); ax.set_ylabel("F1")
 ax.grid(axis="x",alpha=0); ax.tick_params(length=0); ax.legend(loc="upper left",title="эмбеддинг")
 ax.set_title(ptitle("F1 без boundary-головы и с ней для двух эмбеддингов\n(95 % ДИ)"),fontsize=13.5,loc="center",pad=12)
