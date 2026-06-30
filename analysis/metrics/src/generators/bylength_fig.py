@@ -3,8 +3,10 @@ pooled {2,5}, common protein set, ladder colors. Reads clean_tol_* + adapter256_
 Writes bylength.png to analysis/metrics/figures/ + texs/Overleaf/figures/.
 """
 import warnings; warnings.filterwarnings("ignore")
+import os, sys; sys.path.insert(0, os.path.dirname(__file__))
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from _pres import MODEL_LABELS, COLORS, PRES, title as ptitle, outdirs
 FIG="analysis/metrics/figures/"; OUT="texs/Overleaf/figures/"; FOLDS=[2,5]
 T=pd.read_csv(FIG.replace("figures/","")+"clean_tol_true.csv")
 P=pd.read_csv(FIG.replace("figures/","")+"clean_tol_pred.csv")
@@ -18,11 +20,8 @@ plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sa
  "axes.labelsize":10.5,"axes.edgecolor":"#bbb","axes.linewidth":1.0,"axes.spines.top":False,
  "axes.spines.right":False,"axes.grid":True,"grid.color":"#ececec","xtick.color":"#555",
  "ytick.color":"#555","legend.frameon":False,"legend.fontsize":8.5}); INK="#1a1a1a"
-MODELS=[("baseline_esm2","ESM-2 (база)","#9aa3ad"),
-        ("esmc_6b","ESM-C 6B","#5b8bc0"),
-        ("esmc6b_boundary","6B + boundary","#e0913f"),
-        ("adapter256","6B + boundary + gated (256)","#9a78c2"),
-        ("esmc6b_3di_gated_boundary","6B + boundary + gated + 3Di","#4ca37a")]
+MODELS=[(m,MODEL_LABELS[m],COLORS[m]) for m in
+        ("baseline_esm2","esmc_6b","esmc6b_boundary","adapter256","esmc6b_3di_gated_boundary")]
 def pset(m): return set(zip(Tt[(Tt.model==m)&(Tt.fold.isin(FOLDS))].fold,Tt[(Tt.model==m)&(Tt.fold.isin(FOLDS))].protein))
 common=set.intersection(*[pset(m) for m,_,_ in MODELS])
 LB=["5-9","10-14","15-19","20-24","25-29","30-34","35-39","40-44","45-50"]
@@ -50,10 +49,10 @@ for ax,(kind,lab,mi) in zip(axs,[("F1","F1",0),("P","Точность",1),("R","
         r=bylen(m); ks=[k for k in LB if k in r]; xs=np.arange(len(ks))
         ax.plot(xs,[r[k][mi] for k in ks],"o-",color=col,label=nm,ms=4.8,lw=1.8)
     ax.set_xticks(range(len(keys_present))); ax.set_xticklabels(keys_present,rotation=45,fontsize=8)
-    ax.set_title(lab); ax.set_xlabel("длина сегмента (аминокислот)"); ax.set_ylim(0,1); ax.grid(axis="x",alpha=0)
+    ax.set_title(ptitle(lab)); ax.set_xlabel("длина сегмента (аминокислот)"); ax.set_ylim(0,1); ax.grid(axis="x",alpha=0)
 axs[0].set_ylabel("значение метрики"); axs[0].legend(loc="lower center",fontsize=7.8)
-fig.suptitle("F1, точность и полнота в зависимости от длины сегмента (объединение фолдов {2} и {5})",
+fig.suptitle(ptitle("F1, точность и полнота в зависимости от длины сегмента (объединение фолдов {2} и {5})"),
              fontsize=14,weight="bold",color=INK,y=1.02)
 fig.tight_layout(rect=[0,0,1,0.95])
-fig.savefig(FIG+"bylength.png",bbox_inches="tight"); fig.savefig(OUT+"bylength.png",bbox_inches="tight")
-print(f"wrote bylength.png (5 ladder models incl adapter, common n={len(common)})")
+for d in outdirs(): fig.savefig(d+"bylength.png",bbox_inches="tight")
+print(f"wrote bylength.png (5 ladder models incl adapter, common n={len(common)})", "(PRES)" if PRES else "")

@@ -4,11 +4,17 @@ Renders: climbing F1 ladder + matching tolerance pair, plus incremental build-up
 Reads clean_tol_* (base/6B/orange/green/nocompress) + adapter256_tol_perprotein (A2). No GPU.
 """
 import warnings; warnings.filterwarnings("ignore")
-import os, numpy as np, pandas as pd
+import os, sys; sys.path.insert(0, os.path.dirname(__file__))
+import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from _pres import PRES, title as ptitle
 rng=np.random.default_rng(42); FOLDS=[2,5]
 ALLTOLS=[0,1,2,3,4,5]; TOLPLOT=[5,4,3,2,1,0]; REFTOL=3  # tol panel shows ±5..±0; retention normalized to ±3
-OUT="analysis/metrics/figures/ladder/"; os.makedirs(OUT,exist_ok=True); REPORT="texs/Overleaf/figures/"
+PRES_DIR="presentation/figures/"
+OUT=("presentation/figures/ladder/" if PRES else "analysis/metrics/figures/ladder/"); os.makedirs(OUT,exist_ok=True)
+REPORT="texs/Overleaf/figures/"
+def final_dirs(name):  # where the final (upto==6) figure lands
+    return [PRES_DIR+name, OUT+name] if PRES else [OUT+name, REPORT+name]
 E=pd.read_csv("analysis/metrics/ladder_tol_ext.csv")  # per-protein tp/fn/fp at tols 0..5, 6 models
 plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sans","font.size":11,
  "axes.titlesize":12.5,"axes.titleweight":"bold","axes.titlelocation":"center","axes.titlepad":9,
@@ -21,12 +27,12 @@ def ext_counts(model):  # model -> {(fold,protein): {tol:[tp,fn,fp]}} from ladde
     return {(r.fold,r.protein):{t:[r[f"tp{t}"],r[f"fn{t}"],r[f"fp{t}"]] for t in ALLTOLS} for _,r in s.iterrows()}
 
 # rungs in climbing order + the control
-RUNGS=[("baseline_esm2","База: ESM-2 + CRF","#9aa3ad"),
+RUNGS=[("baseline_esm2","Бейзлайн: ESM-2 + CRF","#9aa3ad"),
        ("esmc_6b","+ ESM-C 6B (замена pLM)","#5b8bc0"),
        ("esmc6b_boundary","+ boundary-голова","#e0913f"),
        ("adapter256","+ gated-адаптер (256)","#9a78c2"),
        ("esmc6b_3di_gated_boundary","+ 3Di","#4ca37a")]
-DISP=["База\nESM-2 + CRF","+ ESM-C 6B\n(замена pLM)","+ boundary-\nголова","+ gated-адаптер\n(256)","+ 3Di"]
+DISP=["Бейзлайн\nESM-2 + CRF","+ ESM-C 6B\n(замена pLM)","+ boundary-\nголова","+ gated-адаптер\n(256)","+ 3Di"]
 CTRL=("esmc6b_3di_nocompress","без сжатия (2560) — контроль","#5fae93")
 C={m:ext_counts(m) for m,_,_ in RUNGS}
 C[CTRL[0]]=ext_counts(CTRL[0])
@@ -78,8 +84,9 @@ def draw_ladder(upto):
         m,nm,col=RUNGS[i]; lo,hi=f1ci[m]
         ax.errorbar(i,f1pt[m],yerr=[[f1pt[m]-lo],[hi-f1pt[m]]],fmt="o",color=col,ms=12,mec="white",
                     mew=1.6,ecolor=col,elinewidth=2,capsize=4,zorder=3)
-        ax.annotate(f"{f1pt[m]:.3f}",(i,hi),textcoords="offset points",xytext=(0,8),ha="center",
-                    fontsize=9,color=MUTE,weight="bold")
+        if not PRES:
+            ax.annotate(f"{f1pt[m]:.3f}",(i,hi),textcoords="offset points",xytext=(0,8),ha="center",
+                        fontsize=9,color=MUTE,weight="bold")
         if i>0 and deltas[i] is not None:
             mid=(f1pt[keys[i-1]]+f1pt[keys[i]])/2
             ax.annotate(f"Δ={deltas[i]:+.03f}",(i-0.5,mid),textcoords="offset points",
@@ -95,14 +102,17 @@ def draw_ladder(upto):
         dcomp=float(f"{cy:.3f}")-float(f"{f1pt[keys[4]]:.3f}")  # nocompress - green, matches shown values
         ax.annotate(f"Δ={dcomp:+.03f}",(cx,clo),textcoords="offset points",xytext=(0,-7),ha="center",
                     va="top",fontsize=8.2,color="#3f7a60",weight="bold")
-        ax.annotate("без сжатия\n→ сжатие 16× бесплатно",(cx,cy),
-                    textcoords="offset points",xytext=(15,0),fontsize=7.4,color="#3f7a60",
-                    style="italic",ha="left",va="center")
-    ax.set_title("Итеративное улучшение модели: что добавляет каждый шаг\n(исправл. метрика, объединение фолдов {2} и {5}, 95 % ДИ)",fontsize=12.5,pad=12)
-    fig.text(0.5,-0.04,"Прирости значимы в среднем по объединению фолдов; устойчив на обоих фолдах только шаг boundary-головы.",
-             ha="center",fontsize=7.6,color=MUTE)
+        if not PRES:
+            ax.annotate("без сжатия\n→ сжатие 16× бесплатно",(cx,cy),
+                        textcoords="offset points",xytext=(15,0),fontsize=7.4,color="#3f7a60",
+                        style="italic",ha="left",va="center")
+    ax.set_title(ptitle("Итеративное улучшение модели: что добавляет каждый шаг\n(исправл. метрика, объединение фолдов {2} и {5}, 95 % ДИ)"),fontsize=12.5,pad=12)
+    if not PRES:
+        fig.text(0.5,-0.04,"Прирости значимы в среднем по объединению фолдов; устойчив на обоих фолдах только шаг boundary-головы.",
+                 ha="center",fontsize=7.6,color=MUTE)
     fig.tight_layout(); fig.savefig(OUT+f"ladder_f{upto}.png",bbox_inches="tight")
-    if upto==6: fig.savefig(OUT+"ladder.png",bbox_inches="tight"); fig.savefig(REPORT+"ladder.png",bbox_inches="tight")
+    if upto==6:
+        for p in final_dirs("ladder.png"): fig.savefig(p,bbox_inches="tight")
     plt.close(fig)
 for k in range(1,7): draw_ladder(k)
 
@@ -126,15 +136,17 @@ def draw_tol(upto):
         ax.set_xlabel("допуск совпадения границ"); ax.tick_params(length=0)
         ax.axvline(i3,color="#aaa",ls="--",lw=1.2,zorder=0)  # mark the ±3 (detection) level
     ax2.axhline(1.0,color="#aaa",ls="--",lw=1.0,zorder=0)    # ±3 reference (=1.0)
-    ax1.set_ylim(0.28,0.74); ax1.set_ylabel("F1"); ax1.set_title("(а) F1 при ужесточении допуска")
-    ax1.annotate("±3",(i3,0.74),textcoords="offset points",xytext=(4,-2),ha="left",va="top",fontsize=8,color="#999")
+    ax1.set_ylim(0.28,0.74); ax1.set_ylabel("F1"); ax1.set_title(ptitle("(а) F1 при ужесточении допуска"))
+    if not PRES:
+        ax1.annotate("±3",(i3,0.74),textcoords="offset points",xytext=(4,-2),ha="left",va="top",fontsize=8,color="#999")
     ax1.legend(loc="lower left",fontsize=8.3)
     ax2.set_ylim(0.45,1.12); ax2.set_ylabel("доля F1 относительно ±3  (F1@±tol / F1@±3)")
-    ax2.set_title("(б) Доля сохранённого F1 (точность границ)")
-    fig.suptitle("Точность границ по шагам: каждый шаг добавляет одну ломаную (объединение фолдов {2} и {5})",
+    ax2.set_title(ptitle("(б) Доля сохранённого F1 (точность границ)"))
+    fig.suptitle(ptitle("Точность границ по шагам: каждый шаг добавляет одну ломаную (объединение фолдов {2} и {5})"),
                  fontsize=13,weight="bold",color=INK,y=1.02)
     fig.tight_layout(rect=[0,0,1,0.95]); fig.savefig(OUT+f"ladder_tol_f{upto}.png",bbox_inches="tight")
-    if upto==6: fig.savefig(OUT+"ladder_tol.png",bbox_inches="tight"); fig.savefig(REPORT+"ladder_tol.png",bbox_inches="tight")
+    if upto==6:
+        for p in final_dirs("ladder_tol.png"): fig.savefig(p,bbox_inches="tight")
     plt.close(fig)
 for k in range(1,7): draw_tol(k)
 print(f"wrote {OUT} : ladder.png + ladder_tol.png + frames f1..f6")

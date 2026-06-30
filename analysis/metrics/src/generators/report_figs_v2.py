@@ -4,8 +4,10 @@ data_distributions (genus common names), interaction (footnote fixed), datascale
 Run: env/bin/python this.py
 """
 import warnings; warnings.filterwarnings("ignore")
+import os, sys; sys.path.insert(0, os.path.dirname(__file__))
 import re, numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from _pres import MODEL_LABELS, COLORS, PRES, title as ptitle, outdirs
 FIG="analysis/metrics/figures/"; OUT="texs/Overleaf/figures/"; FOLDS=[2,5]
 rng=np.random.default_rng(42)
 plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sans","font.size":11,
@@ -30,13 +32,10 @@ def f1pr(tp,fn,fp):
     p=tp/(tp+fp) if tp+fp else 0; r=tp/(tp+fn) if tp+fn else 0
     return (2*p*r/(p+r) if p+r else 0),p,r
 
-LAD=[("baseline_esm2","ESM-2 (база)","#c2c7cd","ladder"),
-     ("esmc_600m","ESM-C 600M","#a9c6e0","ladder"),
-     ("esmc_6b","ESM-C 6B","#5b8bc0","ladder"),
-     ("esmc6b_boundary","6B + boundary  (без gated-проектора)","#e0913f","ladder"),
-     ("esmc6b_3di_gated_boundary","6B + boundary + gated + 3Di  (полная)","#4ca37a","ladder"),
-     ("esmc6b_3di_zeroctrl","gated, 3Di выкл  (контроль)","#9a78c2","control"),
-     ("esmc6b_3di_nocompress","gated, без сжатия  (контроль)","#5fae93","control")]
+LAD_M=[("baseline_esm2","ladder"),("esmc_600m","ladder"),("esmc_6b","ladder"),
+       ("esmc6b_boundary","ladder"),("esmc6b_3di_gated_boundary","ladder"),
+       ("esmc6b_3di_zeroctrl","control"),("esmc6b_3di_nocompress","control")]
+LAD=[(m,MODEL_LABELS[m],COLORS[m],role) for m,role in LAD_M]
 cprot=common([m for m,_,_,_ in LAD])
 
 def model_pp(m, which):  # per-(fold,protein) arrays of tp/fn/fp at tol=3 on common set
@@ -69,21 +68,29 @@ for ax,(kind,lab) in zip(axs,[("f1","F1"),("p","Точность (precision)"),(
             ax.plot(pt,yi,"o",mfc="white",mec=col,mew=2.0,ms=9,zorder=3)   # hollow = control
         else:
             ax.plot(pt,yi,"o",color=col,ms=9,mec="white",mew=1.2,zorder=3) # filled = ladder
-        ax.text(hi+0.006,yi,f"{pt:.3f}",va="center",ha="left",fontsize=8.5,color=MUTE)
+        if not PRES:
+            ax.text(hi+0.006,yi,f"{pt:.3f}",va="center",ha="left",fontsize=8.5,color=MUTE)
     # dashed separator + honest note: the step INTO the gated cluster is not isolated
     ax.axhline(ypos[oi]+0.5,color="#c4c4c4",ls="--",lw=1.0,alpha=0.8,zorder=0)
-    ax.set_yticks(range(len(LAD))); ax.set_yticklabels([vals[i][0] for i in f1order] if kind=="f1" else [])
-    ax.set_title(lab); ax.set_xlim(0.45,0.82); ax.grid(axis="y",alpha=0); ax.tick_params(length=0)
-    if kind=="f1":
+    ax.set_yticks(range(len(LAD))); ax.set_yticklabels([vals[i][0] for i in f1order] if kind=="f1" else [],fontsize=8.0)
+    ax.set_title(ptitle(lab)); ax.set_xlim(0.45,0.82); ax.grid(axis="y",alpha=0); ax.tick_params(length=0)
+    if kind=="f1" and not PRES:
         ax.text(0.452,ypos[oi]+0.55,"↑ gated-адаптер: +0.022 (изолировано абляцией)\nзначимо в среднем, но прирост в осн. на фолде 5",
                 fontsize=7.0,color="#8a6a2a",va="bottom",ha="left",style="italic")
-fig.suptitle("Точность, полнота и F1 моделей на объединении отложенных фолдов {2} и {5}",
+fig.suptitle(ptitle("Точность, полнота и F1 моделей на объединении отложенных фолдов {2} и {5}"),
              fontsize=14,weight="bold",color=INK,y=1.02)
-fig.text(0.5,0.945,f"допуск ±3, исправленная метрика, 95 % ДИ · n={len(cprot)} белков · отсортировано по F1  ·  "
-         "полые ○ — контроли gated-модели (3Di выкл / без сжатия): обе ложатся на полную модель → 3Di и сжатие нейтральны",
-         ha="center",fontsize=8.0,color=MUTE)
-fig.tight_layout(rect=[0,0,1,0.92]); fig.savefig(FIG+"scoreboard.png",bbox_inches="tight"); fig.savefig(OUT+"scoreboard.png",bbox_inches="tight")
-print("scoreboard.png")
+if not PRES:
+    fig.text(0.5,0.945,f"допуск ±3, исправленная метрика, 95 % ДИ · n={len(cprot)} белков · отсортировано по F1  ·  "
+             "полые ○ — контроли gated-модели (3Di выкл / без сжатия): обе ложатся на полную модель → 3Di и сжатие нейтральны",
+             ha="center",fontsize=8.0,color=MUTE)
+fig.tight_layout(rect=[0,0,1,0.92])
+for d in outdirs(): fig.savefig(d+"scoreboard.png",bbox_inches="tight")
+print("scoreboard.png", "(PRES)" if PRES else "")
+
+# presentation uses effects_slopes (3Di+bond) and the dedicated bylength figure;
+# the stale trades/bylength below are report-only and overwritten by their own scripts.
+if PRES:
+    raise SystemExit
 
 # ===== 2. TRADES (3Di) ΔP/ΔR by type, pooled, Russian =====
 WIN,ZERO="esmc6b_3di_gated_boundary","esmc6b_3di_zeroctrl"

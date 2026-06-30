@@ -4,8 +4,10 @@ Reads per-protein corrected ±3 tp/fn/fp from gpu_fig_data.py (one source, commo
 ESM2: esm2_boundary - baseline_esm2 ;  6B: esmc6b_boundary - esmc_6b. No GPU.
 """
 import warnings; warnings.filterwarnings("ignore")
+import os, sys; sys.path.insert(0, os.path.dirname(__file__))
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from _pres import PRES, title as ptitle, outdirs
 FIG="analysis/metrics/figures/"; OUT="texs/Overleaf/figures/"; rng=np.random.default_rng(42)
 plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sans","font.size":11,
  "axes.titlesize":12,"axes.titleweight":"bold","axes.titlelocation":"center","axes.titlepad":9,
@@ -51,6 +53,7 @@ for name,d in pts.items():
 ax.set_xticks(x); ax.set_xticklabels(["без boundary-головы\n(базовый CRF)","+ boundary-голова"],fontsize=10.5)
 ax.set_xlim(-0.45,1.85); ax.set_ylim(0.53,0.70); ax.set_ylabel("F1")
 ax.grid(axis="x",alpha=0); ax.tick_params(length=0); ax.legend(loc="upper left",title="эмбеддинг")
-ax.set_title("F1 без boundary-головы и с ней для двух эмбеддингов\n(95 % ДИ)",fontsize=13.5,loc="center",pad=12)
-fig.tight_layout(); fig.savefig(FIG+"interaction.png",bbox_inches="tight"); fig.savefig(OUT+"interaction.png",bbox_inches="tight")
-print(f"interaction done (n_common={len(common)})")
+ax.set_title(ptitle("F1 без boundary-головы и с ней для двух эмбеддингов\n(95 % ДИ)"),fontsize=13.5,loc="center",pad=12)
+fig.tight_layout()
+for d in outdirs(): fig.savefig(d+"interaction.png",bbox_inches="tight")
+print(f"interaction done (n_common={len(common)})", "(PRES)" if PRES else "")

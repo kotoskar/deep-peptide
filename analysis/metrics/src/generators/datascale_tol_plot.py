@@ -4,11 +4,13 @@
 Descriptive titles only. Run: env/bin/python this.py
 """
 import warnings; warnings.filterwarnings("ignore"); import pandas as pd, numpy as np
+import os, sys; sys.path.insert(0, os.path.dirname(__file__))
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+from _pres import PRES, title as ptitle, outdirs
 D=pd.read_csv("analysis/metrics/datascale_tol_perprotein.csv")
 rng=np.random.default_rng(42)
 COL={"baseline":"#9aa3ad","proj":"#9a78c2","3di":"#4ca37a"}
-LAB={"baseline":"ESM-2 (базовая)","proj":"ESM-C 6B + boundary + gated (3Di выкл)","3di":"ESM-C 6B + boundary + gated + 3Di"}
+LAB={"baseline":"ESM-2 (бейзлайн)","proj":"ESM-C 6B + boundary + gated(256), 3Di выкл","3di":"ESM-C 6B + boundary + gated(256) + 3Di"}
 plt.rcParams.update({"figure.dpi":150,"savefig.dpi":150,"font.family":"DejaVu Sans","font.size":11,
  "axes.titlesize":12,"axes.titleweight":"bold","axes.titlelocation":"center","axes.titlepad":9,
  "axes.labelsize":10.5,"axes.edgecolor":"#bbb","axes.linewidth":1.0,
@@ -44,7 +46,7 @@ for idx,(lab,col,ls,mk) in [(1,("допуск ±3","#9a78c2","-","o")),(2,("до
                  fontsize=9.5,color=col,weight="bold",ha="left",va="center")
 ax1.set_xlabel("число белков в обучающей выборке"); ax1.set_ylabel("F1"); ax1.legend(loc="center right")
 ax1.set_xlim(right=xs[-1]+700)
-ax1.set_title("(а) ESM-C 6B: F1 при допусках ±3 и ±0"); ax1.grid(axis="x",alpha=0.3); ax1.tick_params(length=0)
+ax1.set_title(ptitle("(а) ESM-C 6B: F1 при допусках ±3 и ±0")); ax1.grid(axis="x",alpha=0.3); ax1.tick_params(length=0)
 # (b) retention 3 models with CI
 lastx=None; dy={"baseline":0,"proj":9,"3di":-9}  # stagger labels so proj/3di don't overlap
 for tag in ["baseline","proj","3di"]:
@@ -56,9 +58,10 @@ for tag in ["baseline","proj","3di"]:
                  fontsize=9,color=COL[tag],weight="bold",ha="left",va="center")
 ax2.set_xlim(right=(lastx or 5400)+900)
 ax2.set_xlabel("число белков в обучающей выборке"); ax2.set_ylabel("доля сохранённого F1  (F1@±0 / F1@±3)")
-ax2.set_title("(б) Доля сохранённого F1 при точном совпадении"); ax2.legend(loc="lower right")
+ax2.set_title(ptitle("(б) Доля сохранённого F1 при точном совпадении")); ax2.legend(loc="lower right")
 ax2.grid(axis="x",alpha=0.3); ax2.tick_params(length=0)
-fig.suptitle("F1 при допусках ±3 и ±0 в зависимости от числа белков в обучающей выборке (объединение фолдов {2} и {5}, 95 % ДИ)",
+fig.suptitle(ptitle("F1 при допусках ±3 и ±0 в зависимости от числа белков в обучающей выборке (объединение фолдов {2} и {5}, 95 % ДИ)"),
              fontsize=13.5,weight="bold",color="#1a1a1a",y=1.02)
-fig.tight_layout(rect=[0,0,1,0.95]); fig.savefig("analysis/metrics/figures/datascale_tolerance.png",bbox_inches="tight"); fig.savefig("texs/Overleaf/figures/datascale_tolerance.png",bbox_inches="tight")
-print("wrote datascale_tolerance.png (with CIs)")
+fig.tight_layout(rect=[0,0,1,0.95])
+for d in outdirs(): fig.savefig(d+"datascale_tolerance.png",bbox_inches="tight")
+print("wrote datascale_tolerance.png (with CIs)", "(PRES)" if PRES else "")
