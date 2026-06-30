@@ -27,12 +27,12 @@ def ext_counts(model):  # model -> {(fold,protein): {tol:[tp,fn,fp]}} from ladde
     return {(r.fold,r.protein):{t:[r[f"tp{t}"],r[f"fn{t}"],r[f"fp{t}"]] for t in ALLTOLS} for _,r in s.iterrows()}
 
 # rungs in climbing order + the control
-RUNGS=[("baseline_esm2","Бейзлайн: ESM-2 + CRF","#9aa3ad"),
-       ("esmc_6b","+ ESM-C 6B (замена pLM)","#5b8bc0"),
+RUNGS=[("baseline_esm2","Бейзлайн: ESM-2","#9aa3ad"),
+       ("esmc_6b","ESM-2 → ESM-C 6B","#5b8bc0"),
        ("esmc6b_boundary","+ boundary-голова","#e0913f"),
        ("adapter256","+ gated-адаптер (256)","#9a78c2"),
        ("esmc6b_3di_gated_boundary","+ 3Di","#4ca37a")]
-DISP=["Бейзлайн\nESM-2 + CRF","+ ESM-C 6B\n(замена pLM)","+ boundary-\nголова","+ gated-адаптер\n(256)","+ 3Di"]
+DISP=["Бейзлайн\nESM-2","ESM-2 →\nESM-C 6B","+ boundary-\nголова","+ gated-адаптер\n(256)","+ 3Di"]
 CTRL=("esmc6b_3di_nocompress","без сжатия (2560) — контроль","#5fae93")
 C={m:ext_counts(m) for m,_,_ in RUNGS}
 C[CTRL[0]]=ext_counts(CTRL[0])
