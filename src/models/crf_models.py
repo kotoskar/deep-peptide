@@ -1214,6 +1214,19 @@ class GatedResidualConvSplitProjector(nn.Module):
             nn.init.constant_(self.gate.bias, gate_bias)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        if self.seq_only:
+            # No structural branch exists in this mode (never built in __init__), so
+            # accept plain, unconcatenated sequence embeddings -- no need to carry a
+            # (disabled) structural channel through the dataset just to satisfy a
+            # shape check.
+            if embeddings.size(1) != self.seq_input_size:
+                raise ValueError(
+                    f"Expected sequence-only embeddings with C={self.seq_input_size}, got {embeddings.size(1)}"
+                )
+            seq = self.seq_projector(embeddings)
+            seq_t = seq.transpose(1, 2)              # [B, L, D_seq]
+            return self.out_ln(seq_t).transpose(1, 2)  # [B, D_seq, L]
+
         expected = self.seq_input_size + self.struct_input_size
         if embeddings.size(1) != expected:
             raise ValueError(
@@ -1222,10 +1235,6 @@ class GatedResidualConvSplitProjector(nn.Module):
 
         seq = embeddings[:, : self.seq_input_size, :]
         seq = self.seq_projector(seq)
-
-        if self.seq_only:
-            seq_t = seq.transpose(1, 2)              # [B, L, D_seq]
-            return self.out_ln(seq_t).transpose(1, 2)  # [B, D_seq, L]
 
         struct = embeddings[:, self.seq_input_size : expected, :]
         struct = self.struct_projector(struct)
@@ -1275,7 +1284,13 @@ class GatedResidualConvProjectedLSTMCNN(nn.Module):
         seq_only: bool = False,
     ):
         super().__init__()
-        if input_size != seq_input_size + struct_input_size:
+        if seq_only:
+            if input_size != seq_input_size:
+                raise ValueError(
+                    f"input_size ({input_size}) must equal seq_input_size ({seq_input_size}) when seq_only=True "
+                    "(no structural channel is expected in the input)"
+                )
+        elif input_size != seq_input_size + struct_input_size:
             raise ValueError(
                 f"input_size ({input_size}) must equal seq_input_size + struct_input_size ({seq_input_size + struct_input_size})"
             )

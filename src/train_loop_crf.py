@@ -571,6 +571,32 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
     scaler = GradScaler("cuda", enabled=(use_amp and amp_dtype == torch.float16))
 
     previous_best = -100000000000
+    best_val_metrics = None
+    start_epoch = 0
+
+    # Optional resume: opt-in via args.resume (default off, so existing callers/scripts
+    # are unaffected). Granularity = the periodic checkpoint cadence below (every 10
+    # epochs, plus epoch 0) -- no per-batch/per-epoch state is kept, so a resume can
+    # redo up to ~9 epochs of the interrupted run.
+    if getattr(args, 'resume', False) and os.path.isdir(args.checkpoints_dir):
+        ckpt_files = [f for f in os.listdir(args.checkpoints_dir) if f.startswith('model_') and f.endswith('.pth')]
+        if ckpt_files:
+            latest_epoch = max(int(f[len('model_'):-len('.pth')]) for f in ckpt_files)
+            ckpt = torch.load(f'{args.checkpoints_dir}/model_{latest_epoch}.pth', map_location=device)
+            if isinstance(ckpt, dict) and 'model_state_dict' in ckpt:
+                model.load_state_dict(ckpt['model_state_dict'])
+                if 'optimizer_state_dict' in ckpt:
+                    optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            else:
+                # backward-compat: older checkpoints are a raw model state_dict (no optimizer state)
+                model.load_state_dict(ckpt)
+            start_epoch = latest_epoch + 1
+            best_metrics_path = os.path.join(args.out_dir, 'valid_metrics.json')
+            if os.path.exists(best_metrics_path):
+                best_val_metrics = json.load(open(best_metrics_path))
+                previous_best = (best_val_metrics['f1 peptides'] + best_val_metrics['f1 propeptides']) / 2
+            print(f"[resume] loaded {args.checkpoints_dir}/model_{latest_epoch}.pth, "
+                  f"resuming at epoch {start_epoch} (previous_best={previous_best})", flush=True)
 
     run['hparams'] = {
         'num_epochs': args.epochs,
@@ -580,7 +606,8 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
         'homo_only': args.homo_only
     }
 
-    epoch_bar = tqdm(range(args.epochs), desc='epochs', dynamic_ncols=True)
+    epoch_bar = tqdm(range(start_epoch, args.epochs), initial=start_epoch, total=args.epochs,
+                      desc='epochs', dynamic_ncols=True)
     for epoch in epoch_bar:
         train_loss, train_probs, train_preds, train_peptides, train_labels = run_dataloader(
             train_loader,
@@ -624,7 +651,11 @@ def train(args, train_partitions: List[int] = [0,1,2], valid_partitions: List[in
             f"propep={valid_metrics.get('f1 propeptides', 0.0):.4f}"
         )
         if ((epoch + 1) % 10 == 0) or epoch == 0:
-            torch.save(model.state_dict(), f'{args.checkpoints_dir}/model_{epoch}.pth')    
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'epoch': epoch,
+            }, f'{args.checkpoints_dir}/model_{epoch}.pth')
 
         # Best checkpoint selection
         stopping_metric = (valid_metrics['f1 peptides'] + valid_metrics['f1 propeptides'])/2
