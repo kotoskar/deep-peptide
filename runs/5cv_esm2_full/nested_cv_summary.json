@@ -1,0 +1,19 @@
+{
+  "name": "5cv_esm2_full",
+  "n_cells": 20,
+  "mean_epoch": 63.5,
+  "std_epoch": 21.738881005434042,
+  "per_outer_f1_all": {
+    "0": 0.6208,
+    "1": 0.6338,
+    "2": 0.5855,
+    "3": 0.5891,
+    "4": 0.6311
+  },
+  "cv_f1_all_mean": 0.6120809692218032,
+  "cv_f1_all_std": 0.02314791194237607,
+  "cv_f1_peptides_mean": 0.5859593525547174,
+  "cv_f1_peptides_std": 0.0764711291214291,
+  "cv_f1_propeptides_mean": 0.6264857369727044,
+  "cv_f1_propeptides_std": 0.03581565413128259
+}

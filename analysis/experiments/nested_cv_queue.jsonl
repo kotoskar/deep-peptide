@@ -1,0 +1,2 @@
+{"name": "5cv_baseline_esm2", "base": "runs/2026_baseline_esm2/config.json", "emb": "data/uniprot_2026/embeddings/emb_esm2", "split": "data/uniprot_2026/graphpart_assignments_5motif.esm2covered.csv", "set": {}}
+{"name": "5cv_esmc6b_plain", "base": "runs/2026_esmc_6b/config.json", "emb": "data/uniprot_2022/embeddings/embeddings_esmc6b", "split": "data/uniprot_2026/graphpart_assignments_5motif.esmc6bcovered.csv", "set": {}}

@@ -63,3 +63,7 @@ data/uniprot_2022/scaling/
 
 # local operational notes, not project docs
 /NESTED_CV_RESUME.md
+
+# ---- Raw driver/training stdout logs (huge tqdm spam, regenerable by rerunning) ----
+/logs/
+/nested_cv_driver.log

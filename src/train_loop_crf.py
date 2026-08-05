@@ -1,4 +1,5 @@
 import json
+import math
 import pickle
 from typing import Dict, List, Tuple
 import os
@@ -761,19 +762,30 @@ def run_dataloader(
             with torch.amp.autocast("cuda", enabled=use_amp, dtype=amp_dtype):
                 pos_probs, pos_preds, loss = model(embeddings, mask, label, skip_marginals=True, decode=False, return_probs=False)
 
-            if use_scaler:
-                scaler.scale(loss).backward()
+            if not torch.isfinite(loss):
+                # Non-finite loss (nan/inf): skip backward+step entirely so it can't
+                # poison the weights. Model stays at last good state, training continues.
+                optimizer.zero_grad(set_to_none=True)
+                tqdm.write(f"[nan-guard] non-finite loss at batch {idx}, skipping optimizer step")
             else:
-                loss.backward()
+                if use_scaler:
+                    scaler.scale(loss).backward()
+                else:
+                    loss.backward()
 
-            if use_scaler:
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
-                optimizer.step()
+                if use_scaler:
+                    scaler.unscale_(optimizer)
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
+                if not torch.isfinite(grad_norm):
+                    # Loss was finite but gradients blew up (e.g. one bad batch under AMP).
+                    # Same treatment: drop the update, keep the model, keep training.
+                    optimizer.zero_grad(set_to_none=True)
+                    tqdm.write(f"[nan-guard] non-finite grad norm at batch {idx}, skipping optimizer step")
+                elif use_scaler:
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    optimizer.step()
 
         else:
             with torch.no_grad():
@@ -786,7 +798,8 @@ def run_dataloader(
             labels.append(label.detach().cpu().numpy())
             preds.extend(pos_preds)
         batch_loss = float(loss.item())
-        epoch_loss.append(batch_loss)
+        if math.isfinite(batch_loss):
+            epoch_loss.append(batch_loss)
         running_loss = sum(epoch_loss) / max(1, len(epoch_loss))
 
         if progress is not None:
