@@ -142,9 +142,9 @@ def main() -> int:
         r"\midrule",
     ]
     for label, mean, std, gap in rows:
-        # Compact form for the main text: the fold-level spread is already in
-        # tab:main-results and repeating it here only costs width.
-        cells = " & ".join(f"${m:.3f}$" for m in mean)
+        # The appendix text introduces this table as the sweep "with the fold-level
+        # standard deviation on every cell", so every cell carries it.
+        cells = " & ".join(f"${m:.3f} \\pm {s:.3f}$" for m, s in zip(mean, std))
         tex.append(f"{label} & {cells} & ${gap:+.3f}$ \\\\")
     tex += [r"\bottomrule", r"\end{tabular}"]
     tex_path = outdir / "tolerance_table.tex"
