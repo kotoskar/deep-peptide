@@ -22,6 +22,27 @@ echo "=== $(date -u +%FT%TZ) driver start: out=$OUT_NAME conc=$CONC gpus=$GPUS =
 nvidia-smi || { echo "no GPU visible -- stopping before spending anything"; exit 1; }
 python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())"
 
+# ---- 0. CUDA MPS (optional) ------------------------------------------------
+# Without MPS the driver time-slices between processes: kernels from different
+# cells never overlap, so ten cells get roughly one cell's throughput plus
+# switching overhead. That is exactly what the CONC=10 calibration measured --
+# 962 s per epoch against ~180 s for two cells, with 25 GB of VRAM and half the
+# cores idle. MPS lets the kernels run concurrently, which for a 224k-parameter
+# model should be a multiple rather than a few percent.
+if [ "${MPS:-0}" = "1" ]; then
+  if command -v nvidia-cuda-mps-control >/dev/null; then
+    export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-mps-log
+    mkdir -p "$CUDA_MPS_PIPE_DIRECTORY" "$CUDA_MPS_LOG_DIRECTORY"
+    if nvidia-cuda-mps-control -d; then
+      echo "MPS daemon started"
+    else
+      echo "MPS daemon FAILED to start -- continuing without it"
+    fi
+  else
+    echo "MPS: nvidia-cuda-mps-control not present -- continuing without it"
+  fi
+fi
+
 # ---- 0. resource sampler ---------------------------------------------------
 # The console shows peaks only while the job is alive, and the first smoke run
 # came home with no usage numbers at all. Sample them ourselves, every 10 s, so
@@ -90,6 +111,7 @@ echo "cells finished: $done_cells / 20"
 # that is missing fails the upload and buries the reason. Ship the logs too, so a
 # failed run still comes back explaining itself.
 kill $SAMPLER_PID 2>/dev/null || true
+[ "${MPS:-0}" = "1" ] && { echo quit | nvidia-cuda-mps-control 2>/dev/null || true; }
 mkdir -p "runs/$OUT_NAME" logs
 echo "--- peak usage over the run ---"
 awk -F'\t' '

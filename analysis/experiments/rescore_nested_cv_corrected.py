@@ -80,7 +80,7 @@ import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional
+from typing import Dict, Optional
 
 import pandas as pd
 
@@ -201,15 +201,31 @@ def score_cell(run_dir: Path, device: str) -> dict:
     return out
 
 
-def aggregate_corrected(name: str) -> Optional[dict]:
+def aggregate_corrected(name: str, partial: bool = False) -> Optional[dict]:
     cells = []
     for o, k in cell_pairs():
         p = Path("runs") / name / f"outer{o}_inner{k}" / "cell_result_corrected.json"
         if p.exists():
             cells.append(json.load(open(p)))
-    if len(cells) < len(cell_pairs()):
-        print(f"[{name}] only {len(cells)}/{len(cell_pairs())} corrected cells present, skipping aggregate")
-        return None
+    n_expected = len(cell_pairs())
+    partial_outers = None
+    if len(cells) < n_expected:
+        if not partial:
+            print(f"[{name}] only {len(cells)}/{n_expected} corrected cells present, skipping aggregate")
+            return None
+        # Aggregate only over outer folds whose four inner cells are all present.
+        # A per-outer mean taken over two inner folds instead of four is not the
+        # protocol's estimate and must not be averaged together with ones that are.
+        by_outer: Dict[int, int] = {}
+        for c in cells:
+            by_outer[c["outer"]] = by_outer.get(c["outer"], 0) + 1
+        partial_outers = sorted(o for o, n in by_outer.items() if n == N_FOLDS - 1)
+        if not partial_outers:
+            print(f"[{name}] partial: no outer fold has all {N_FOLDS - 1} inner cells, skipping aggregate")
+            return None
+        cells = [c for c in cells if c["outer"] in partial_outers]
+        print(f"[{name}] PARTIAL aggregate over outer folds {partial_outers} "
+              f"({len(cells)}/{n_expected} cells) -- not comparable to a full 5-fold mean")
     df = pd.DataFrame(cells)
     if not df["_sanity_matches_published"].all():
         bad = df[~df["_sanity_matches_published"]][["outer", "inner"]].to_dict("records")
@@ -228,6 +244,8 @@ def aggregate_corrected(name: str) -> Optional[dict]:
         "cv_f1_all_mean_original": float(per_outer["test_orig_all_f1"].mean()),
         "cv_f1_all_std_original": float(per_outer["test_orig_all_f1"].std()),
         "all_cells_sanity_ok": bool(df["_sanity_matches_published"].all()),
+        "complete": partial_outers is None,
+        "outer_folds": partial_outers if partial_outers is not None else sorted(df["outer"].unique().tolist()),
     }
     json.dump(summary, open(Path("runs") / name / "nested_cv_summary_corrected.json", "w"), indent=2)
     print(
@@ -242,6 +260,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--names", nargs="+", required=True, help="e.g. 5cv_baseline_esm2 5cv_esm2_boundary ...")
     ap.add_argument("--device", type=int, default=0)
+    ap.add_argument(
+        "--partial",
+        action="store_true",
+        help="aggregate a run that is missing cells, over the outer folds that are complete",
+    )
     ap.add_argument(
         "--aggregate-only", action="store_true",
         help="skip inference, just re-aggregate existing cell_result_corrected.json files",
@@ -276,7 +299,7 @@ def main() -> int:
                     f"corr_f1={result['test_corr_all_f1']:.4f} "
                     f"(published={result['_published_test_f1_all']})"
                 )
-        aggregate_corrected(name)
+        aggregate_corrected(name, partial=args.partial)
 
     return 0
 
