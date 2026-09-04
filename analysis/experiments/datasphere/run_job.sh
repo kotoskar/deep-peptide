@@ -66,9 +66,14 @@ echo "queue exited rc=$queue_rc"
 # The periodic checkpoints are not -- they exist only to resume a dying cell.
 done_cells=$(find "runs/$OUT_NAME" -name cell_result.json 2>/dev/null | wc -l)
 echo "cells finished: $done_cells / 20"
+# results.tar must exist even when the queue produced nothing: a declared output
+# that is missing fails the upload and buries the reason. Ship the logs too, so a
+# failed run still comes back explaining itself.
+mkdir -p "runs/$OUT_NAME" logs
 find "runs/$OUT_NAME" \( -name 'cell_result.json' -o -name 'config.json' \
      -o -name '*metrics*.json' -o -name 'model.pt' -o -name 'all_metrics.txt' \) \
-     -print0 | tar -cf results.tar --null -T -
+     -print0 2>/dev/null | tar -cf results.tar --null -T - || tar -cf results.tar --files-from /dev/null
+tar -rf results.tar logs 2>/dev/null || true
 ls -la results.tar
 echo "=== $(date -u +%FT%TZ) driver done ==="
 exit "$queue_rc"
