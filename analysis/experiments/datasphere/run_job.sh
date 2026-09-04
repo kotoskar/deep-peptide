@@ -22,6 +22,26 @@ echo "=== $(date -u +%FT%TZ) driver start: out=$OUT_NAME conc=$CONC gpus=$GPUS =
 nvidia-smi || { echo "no GPU visible -- stopping before spending anything"; exit 1; }
 python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())"
 
+# ---- 0. resource sampler ---------------------------------------------------
+# The console shows peaks only while the job is alive, and the first smoke run
+# came home with no usage numbers at all. Sample them ourselves, every 10 s, so
+# sizing the next run does not depend on someone watching a dashboard.
+mkdir -p logs
+{
+  while true; do
+    ts=$(date +%s)
+    gpu=$(nvidia-smi --query-gpu=index,utilization.gpu,memory.used \
+          --format=csv,noheader,nounits 2>/dev/null | tr '\n' ';')
+    read -r _ mem_total _ < <(grep MemTotal /proc/meminfo)
+    read -r _ mem_avail _ < <(grep MemAvailable /proc/meminfo)
+    load=$(cut -d' ' -f1 /proc/loadavg)
+    echo -e "${ts}\t${gpu}\tram_used_mb=$(( (mem_total - mem_avail) / 1024 ))\tload=${load}"
+    sleep 10
+  done
+} >> logs/usage.tsv 2>&1 &
+SAMPLER_PID=$!
+trap 'kill $SAMPLER_PID 2>/dev/null || true' EXIT
+
 # ---- 1. reassemble the embeddings -----------------------------------------
 # Shipped as three tars because a single job input file is capped at 5 GiB.
 echo "disk before extract:"; df -h . | tail -1
@@ -69,11 +89,26 @@ echo "cells finished: $done_cells / 20"
 # results.tar must exist even when the queue produced nothing: a declared output
 # that is missing fails the upload and buries the reason. Ship the logs too, so a
 # failed run still comes back explaining itself.
+kill $SAMPLER_PID 2>/dev/null || true
 mkdir -p "runs/$OUT_NAME" logs
-find "runs/$OUT_NAME" \( -name 'cell_result.json' -o -name 'config.json' \
-     -o -name '*metrics*.json' -o -name 'model.pt' -o -name 'all_metrics.txt' \) \
-     -print0 2>/dev/null | tar -cf results.tar --null -T - || tar -cf results.tar --files-from /dev/null
-tar -rf results.tar logs 2>/dev/null || true
-ls -la results.tar
+echo "--- peak usage over the run ---"
+awk -F'\t' '
+  { for (i = 2; i < NF - 1; i++) { n = split($i, g, /, */); if (n >= 3) {
+        if (g[2] + 0 > util[g[1]]) util[g[1]] = g[2] + 0
+        if (g[3] + 0 > vram[g[1]]) vram[g[1]] = g[3] + 0 } }
+    sub(/ram_used_mb=/, "", $(NF-1)); if ($(NF-1) + 0 > ram) ram = $(NF-1) + 0
+    sub(/load=/, "", $NF);           if ($NF + 0 > ld)      ld  = $NF + 0 }
+  END { for (i in vram) printf "gpu%s peak util %d%% peak vram %d MiB\n", i, util[i], vram[i]
+        printf "peak ram %d MiB, peak 1-min load %.1f, %d samples\n", ram, ld, NR }
+' logs/usage.tsv 2>/dev/null || true
+
+# One tar built from one file list: `tar -r` is unavailable in a busybox tar and
+# that is why logs/ silently never reached home from the smoke run.
+{ find "runs/$OUT_NAME" \( -name 'cell_result.json' -o -name 'config.json' \
+       -o -name '*metrics*.json' -o -name 'model.pt' -o -name 'all_metrics.txt' \) 2>/dev/null
+  find logs -type f 2>/dev/null
+} > /tmp/results_files.txt
+tar -cf results.tar -T /tmp/results_files.txt || tar -cf results.tar --files-from /dev/null
+ls -la results.tar; tar -tf results.tar | wc -l
 echo "=== $(date -u +%FT%TZ) driver done ==="
 exit "$queue_rc"
