@@ -37,6 +37,13 @@ env:
 cloud-instance-types:
   - g2.1
 
+# 9.1 GiB of inputs plus 9.2 GiB of unpacked embeddings did not fit the default
+# working disk -- the first smoke run died on extraction. 100 Gb is the minimum
+# the client accepts.
+working-storage:
+  type: SSD
+  size: 150Gb
+
 inputs:
   - code.tar
   # Three tars, not one directory: a single job input file is capped at 5 GiB and

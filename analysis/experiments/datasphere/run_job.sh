@@ -9,6 +9,9 @@
 #   PAIRS      subset of "o,k" cells           default all 20
 #   EPOCHS     override epochs (smoke runs)    default unset -> the config's 100
 set -euo pipefail
+# The job captures stdout but not stderr, so a failure in here was invisible:
+# the smoke run died silently right after the torch check. Fold stderr in.
+exec 2>&1
 
 OUT_NAME="${OUT_NAME:-5cv_baseline_esm2_fp32}"
 CONC="${CONC:-8}"
@@ -21,10 +24,16 @@ python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cu
 
 # ---- 1. reassemble the embeddings -----------------------------------------
 # Shipped as three tars because a single job input file is capped at 5 GiB.
+echo "disk before extract:"; df -h . | tail -1
 mkdir -p "$EMB"
 for t in emb_part0.tar emb_part1.tar emb_part2.tar; do
-  [ -f "$t" ] || { echo "missing input $t"; exit 1; }
+  [ -f "$t" ] || { echo "missing input $t"; ls -la; exit 1; }
+  echo "extracting $t ($(du -h "$t" | cut -f1))"
   tar -xf "$t" -C "$EMB"
+  # Free each tar as soon as it is unpacked: keeping all three alongside their
+  # contents doubles peak disk for no reason.
+  rm -f "$t"
+  df -h . | tail -1
 done
 n=$(ls "$EMB" | wc -l)
 echo "embeddings reassembled: $n files"
