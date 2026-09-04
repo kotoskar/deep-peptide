@@ -22,6 +22,14 @@ echo "=== $(date -u +%FT%TZ) driver start: out=$OUT_NAME conc=$CONC gpus=$GPUS =
 nvidia-smi || { echo "no GPU visible -- stopping before spending anything"; exit 1; }
 python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())"
 
+# Ten cells each taking as many intraop threads as there are cores oversubscribes
+# the machine: with MPS on, load hit 67.7 on 28 vCPU. Cap the per-process thread
+# count when THREADS is set.
+if [ -n "${THREADS:-}" ]; then
+  export OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" OPENBLAS_NUM_THREADS="$THREADS"
+  echo "thread cap: OMP_NUM_THREADS=$THREADS"
+fi
+
 # ---- 0. CUDA MPS (optional) ------------------------------------------------
 # Without MPS the driver time-slices between processes: kernels from different
 # cells never overlap, so ten cells get roughly one cell's throughput plus

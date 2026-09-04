@@ -1,0 +1,59 @@
+# Full fp32 re-run of the ESM-2 nested-CV baseline, 20 cells.
+#
+# Why this job exists: runs/5cv_baseline_esm2 is the only run in the grid trained
+# with bf16 autocast (amp=true, inherited from runs/2026_baseline_esm2), while all
+# four variants are fp32. Every effect the paper reports is measured against it, so
+# every effect is confounded with a change of training precision. This re-runs the
+# baseline with amp pinned to false.
+#
+# Submit from the repo root:
+#   datasphere project job execute -p <PROJECT_ID> -c analysis/experiments/datasphere/config.yaml
+name: cv-baseline-esm2-fp32-mps2
+desc: 5x4 nested CV, ESM-2 base, fp32, 20 cells, CUDA MPS, 2x A100
+
+# The repo code travels as a tar and is unpacked first, so nothing depends on
+# undocumented local-module syncing.
+cmd: >
+  tar -xf code.tar &&
+  OUT_NAME=5cv_baseline_esm2_fp32 MPS=1 CONC=20 GPUS=0,1
+  bash analysis/experiments/datasphere/run_job.sh
+
+env:
+  vars:
+    NO_AIM: "1"
+    PYTHONPATH: "."
+  python:
+    type: manual
+    version: "3.10"
+    requirements-file: requirements.txt
+    # The entrypoint is bash, so the client cannot infer a root module; name the
+    # python entry the queue actually calls.
+    root-paths:
+      - analysis/experiments/train_nested_cell.py
+
+# One A100 80 GB. Eight cells at ~7 GB each is 56 GB, leaving headroom.
+# g2.2 (2x A100) with CONC=16 GPUS=0,1 costs the same in total and halves the
+# wall-clock; the queue already round-robins CUDA_VISIBLE_DEVICES over GPUS.
+cloud-instance-types:
+  - g2.2
+
+# 9.1 GiB of inputs plus 9.2 GiB of unpacked embeddings did not fit the default
+# working disk -- the first smoke run died on extraction. 100 Gb is the minimum
+# the client accepts.
+working-storage:
+  type: SSD
+  size: 150Gb
+
+inputs:
+  - code.tar
+  # Three tars, not one directory: a single job input file is capped at 5 GiB and
+  # the client zips without compression, so 9.2 GiB in one entry is rejected.
+  - emb_part0.tar
+  - emb_part1.tar
+  - emb_part2.tar
+  - data/uniprot_2026/labeled_sequences.csv
+  - data/uniprot_2026/graphpart_assignments_5motif.esm2covered.csv
+  - runs/2026_baseline_esm2/config.json
+
+outputs:
+  - results.tar
