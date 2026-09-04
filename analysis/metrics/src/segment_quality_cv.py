@@ -171,13 +171,34 @@ def score_cell(records, lengths, keep=None):
     tp_at = {t: defaultdict(int) for t in TASKS}      # task -> {threshold: tp}
     site_tp = {t: defaultdict(int) for t in TASKS}    # task -> {(end, tol): tp}
     site_n = {t: defaultdict(int) for t in TASKS}     # task -> {("true"/"pred", end): n}
-    res = {t: defaultdict(int) for t in TASKS}        # residue-level counts
+    res = {t: defaultdict(int) for t in TASKS}        # residue-level counts, per task
+    res_any = defaultdict(int)                        # "in any segment" -- see below
+    seen_prot = set()
     struct = {t: defaultdict(int) for t in TASKS}
     per_segment = {}                                  # (name, task, ts, te) -> dict
 
     for rec in records:
         name = rec["name"]
         L = lengths.get(name)
+        # The combined residue view is a SINGLE binary task ("this residue is inside
+        # some annotated segment"), not the sum of the two per-task confusion
+        # matrices: summing them counts every non-segment residue as a true
+        # negative once per task, i.e. twice, which inflates MCC.
+        T_any, P_any = set(), set()
+        for task in TASKS:
+            for a, b in rec[task]["true"]:
+                T_any.update(range(int(a), int(b) + 1))
+            for a, b in rec[task]["pred"]:
+                P_any.update(range(int(a), int(b) + 1))
+        if name not in seen_prot:
+            seen_prot.add(name)
+            tp_any = len(T_any & P_any)
+            res_any["tp"] += tp_any
+            res_any["fp"] += len(P_any) - tp_any
+            res_any["fn"] += len(T_any) - tp_any
+            if L is not None:
+                res_any["tn"] += max(0, L - len(T_any | P_any))
+                res_any["n_prot"] += 1
         for task in TASKS:
             true = [(int(a), int(b)) for a, b in rec[task]["true"]]
             pred = [(int(a), int(b)) for a, b in rec[task]["pred"]]
@@ -206,16 +227,19 @@ def score_cell(records, lengths, keep=None):
                 if b:
                     bin_iou[(task, b)].append(v)
                 # A boundary that IS the chain terminus cannot be overshot, so its
-                # error is half-truncated by construction; 32% of annotated peptide
+                # error is half-truncated by construction; ~29% of annotated peptide
                 # ends are the C-terminus and they are placed almost for free.
-                # Keeping an interior-only copy makes the start/end contrast valid.
-                interior = ts != 1 and (L is None or te != L)
+                # The filter is PER END: a segment whose end is the C-terminus still
+                # has an informative start, and dropping it from the start
+                # distribution as well would compare two different populations --
+                # which is the very confound this control exists to remove.
                 if ts == 1:
                     anchored[task]["start_at_1"] += 1
+                else:
+                    dstart_in[task].append(ps - ts)
                 if L is not None and te == L:
                     anchored[task]["end_at_terminus"] += 1
-                if interior:
-                    dstart_in[task].append(ps - ts)
+                else:
                     dend_in[task].append(pe - te)
                 for th in IOU_THRESHOLDS:
                     if v >= th:
@@ -378,14 +402,32 @@ def score_cell(records, lengths, keep=None):
             p, r, f = prf(tp, combined[f"site_n_true_{end}"] - tp,
                           combined[f"site_n_pred_{end}"] - tp)
             out[f"all_site_{end}_f1_tol{tol}"] = f
-    rtp, rfp, rfn, rtn = (combined["res_tp"], combined["res_fp"],
-                          combined["res_fn"], combined["res_tn"])
-    p, r, f = prf(rtp, rfn, rfp)
+    # Two residue views, kept apart because they answer different questions.
+    #
+    # `all_*` sums the two per-task confusion matrices, so calling a peptide
+    # residue a propeptide residue is an error. Precision/recall/F1/Jaccard do not
+    # touch TN and are exact under this reading. MCC is deliberately NOT reported
+    # here: TN would be each protein's non-segment residues counted once per task,
+    # i.e. twice, which inflates it.
+    stp, sfp, sfn = combined["res_tp"], combined["res_fp"], combined["res_fn"]
+    p, r, f = prf(stp, sfn, sfp)
     out["all_residue_precision"] = p
     out["all_residue_recall"] = r
     out["all_residue_f1"] = f
-    out["all_residue_jaccard"] = rtp / (rtp + rfp + rfn) if (rtp + rfp + rfn) else float("nan")
-    out["all_residue_mcc"] = mcc(rtp, rtn, rfp, rfn)
+    out["all_residue_jaccard"] = stp / (stp + sfp + sfn) if (stp + sfp + sfn) else float("nan")
+    #
+    # `any_*` is one binary task -- "this residue is inside some annotated
+    # segment" -- with every residue counted exactly once, so TN is well defined
+    # and MCC means what it says. Type confusion is invisible here by design.
+    rtp, rfp, rfn, rtn = (res_any["tp"], res_any["fp"], res_any["fn"], res_any["tn"])
+    p, r, f = prf(rtp, rfn, rfp)
+    out["any_residue_precision"] = p
+    out["any_residue_recall"] = r
+    out["any_residue_f1"] = f
+    out["any_residue_jaccard"] = rtp / (rtp + rfp + rfn) if (rtp + rfp + rfn) else float("nan")
+    out["any_residue_mcc"] = mcc(rtp, rtn, rfp, rfn)
+    out["any_residue_n_total"] = rtp + rfp + rfn + rtn
+    out["any_residue_n_proteins"] = res_any["n_prot"]
     out["all_n_true"] = combined["n_true"]
     out["all_n_pred"] = combined["n_pred"]
 
@@ -506,10 +548,16 @@ def paired_vs_baseline(base_seg, var_seg, gate=PRIMARY_GATE):
     agg = aggregate(rows)
     # A mean +- std over 5 folds hides how consistent the sign is; a 5/5 sign
     # count is p = 0.031 one-sided where 1.4 sigma reads as noise.
-    for k in ("d_iou_mean", "d_abs_dstart_mean", "d_abs_dend_mean"):
+    # "Improved" means a larger IoU but a SMALLER absolute displacement, so the
+    # good direction is not the same sign for the three metrics. Reporting a bare
+    # "n_outer_positive" for all of them inverts two of the three.
+    GOOD_IF_POSITIVE = {"d_iou_mean": True,
+                        "d_abs_dstart_mean": False,
+                        "d_abs_dend_mean": False}
+    for k, good_pos in GOOD_IF_POSITIVE.items():
         if k in agg:
             po = agg[k]["per_outer"]
-            agg[k]["n_outer_positive"] = int(sum(x > 0 for x in po))
+            agg[k]["n_outer_improved"] = int(sum((x > 0) == good_pos for x in po))
             agg[k]["n_outer"] = len(po)
     return agg
 
