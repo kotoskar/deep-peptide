@@ -27,6 +27,12 @@ saves the remaining hours but discards everything computed, since results upload
 end. There is no documented per-job wall-clock cap in the DataSphere limits, so the job is
 not expected to be killed on its own.
 
+One thing *is* observable without waiting: the console's resource graphs. **CPU load around
+10-11 of 28 means MPS and the thread cap are both working** (that is what the winning
+calibration showed); around 15 means MPS never started and the run is on the 55-hour path;
+around 67 means MPS started but the thread cap did not. VRAM sits near 55 GB either way and
+GPU utilisation reads ~100% in all three, so neither of those distinguishes anything.
+
 ## When it lands
 
 The job was submitted with `--async`, so nothing arrives by itself; the archive has to be
