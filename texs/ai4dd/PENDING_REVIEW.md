@@ -855,3 +855,49 @@ git show 141623b:texs/ai4dd/PENDING_REVIEW.md
 ```
 
 Still unchecked there: whether the length-bin fix and the protein-set intersection hold up.
+
+---
+
+## 5. Full precision audit of every run (2026-09-04)
+
+`amp=True` means bf16 autocast during training: `src/train_loop_crf.py:504`,
+`use_amp = getattr(args, "amp", False)`, so `amp_dtype` is inert when `amp` is false.
+The paper never mentions training precision anywhere.
+
+`amp=True` marks the OLDER runs — the project switched to fp32 part-way through, and the
+switch cut across several comparisons that the paper presents as controlled.
+
+| artefact | bf16 side | fp32 side | verdict |
+|---|---|---|---|
+| Tables 1-2, nested CV | `5cv_baseline_esm2` (all 20 cells) | the four variants (80 cells) | **confounded** |
+| Fig. 5 scoreboard, Fig. 7 tolerance | `2026_baseline_esm2`, `2026_esmc_600m` | `2026_esmc_6b` and every addition | **mixed** |
+| ESM-C 6B vs ESM-C 600M (+0.028 / −0.021) | 600M | 6B | **confounded** |
+| ESM-C 6B instead of ESM-2, +0.03 | ESM-2 | ESM-C 6B | **confounded** |
+| boundary head on ESM-2, single split (≈0) | baseline | variant | **confounded** |
+| boundary head on ESM-C 6B (+0.05 / +0.07) | — | both | clean |
+| gated adapter +0.022 | — | both | clean |
+| 3Di channel, bond loss | — | both | clean |
+| Figs. 10-11, data scaling | whole ESM-2 curve (`scale_baseline_*` + `2026_baseline_esm2`) | whole ESM-C curves (`scale_proj_*`, `scale_3di_*`) | within-curve claims clean, between-curve level **confounded** |
+| LoRA vs frozen baseline (appendix D) | both (`esm2_lora_*`, `train_run_esm2`) | — | clean |
+
+### A free estimate of how large the confound is
+
+`runs/train_run_esm2` and `runs/train_run_esm2_100` are the same ESM-2 baseline on the same
+2022 GraphPart split, same architecture (`LSTMCNN`), same epochs (100), lr (1e-4) and batch
+size (48). The only substantive config difference is `amp: True` vs `amp: False`; every other
+differing key is `None` against a default the newer config schema records explicitly.
+
+```
+train_run_esm2      (bf16)  test f1 all = 0.6073
+train_run_esm2_100  (fp32)  test f1 all = 0.5881
+```
+
+bf16 scored **0.019 higher**. If that direction carries over, the paper's effects are
+*understated*, not inflated: every variant is fp32 and is being compared against a baseline
+that bf16 was helping. But `seed` is `None` in both configs, so this is one seed against one
+seed, and 0.019 is the same size as the effects under discussion (+0.024 head, +0.029 adapter,
++0.058 combined). It bounds the confound at roughly the size of what is being measured, which
+is exactly why it cannot be waved away.
+
+The clean fix is one fp32 re-run of `5cv_baseline_esm2`, which is GPU work. The cheap fix is
+to state the difference and this estimate in the paper.
