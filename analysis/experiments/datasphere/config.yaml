@@ -15,7 +15,7 @@ desc: 5x4 nested CV, ESM-2 base architecture, fp32, 20 cells
 # undocumented local-module syncing.
 cmd: >
   tar -xf code.tar &&
-  OUT_NAME=5cv_baseline_esm2_fp32 CONC=8 GPUS=0
+  OUT_NAME=5cv_baseline_esm2_fp32 MPS=1 THREADS=2 CONC=10 GPUS=0
   bash analysis/experiments/datasphere/run_job.sh
 
 env:
@@ -31,9 +31,16 @@ env:
     root-paths:
       - analysis/experiments/train_nested_cell.py
 
-# One A100 80 GB. Eight cells at ~7 GB each is 56 GB, leaving headroom.
-# g2.2 (2x A100) with CONC=16 GPUS=0,1 costs the same in total and halves the
-# wall-clock; the queue already round-robins CUDA_VISIBLE_DEVICES over GPUS.
+# One A100 80 GB. Ten cells at 5.5 GB each peaks at 55 GB; fourteen would not fit.
+# g2.2 would halve the wall clock for the same rubles, but the community is not
+# allowed it: "Instance types g2.2 are not available for your community".
+#
+# MPS and the thread cap are not tuning, they are the difference between 18 and
+# 55 A100-hours. Measured on ten cells x three epochs: 3269 s plain, 1668 s with
+# MPS, 974 s with MPS and OMP_NUM_THREADS=2. Without MPS the driver time-slices
+# between processes, so ten cells deliver one cell's throughput while 25 GB of
+# VRAM sits idle; with MPS the cells finally run at once and then oversubscribe
+# the 28 vCPUs (load 67.7) until the threads are capped.
 cloud-instance-types:
   - g2.1
 
