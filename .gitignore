@@ -78,3 +78,7 @@ texs/**/*.out
 texs/**/*.fls
 texs/**/*.fdb_latexmk
 texs/**/*.synctex.gz
+
+# staged DataSphere job inputs (rebuild with analysis/experiments/datasphere/pack_embeddings.py)
+/emb_part*.tar
+/code.tar
