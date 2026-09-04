@@ -36,8 +36,11 @@ for t in emb_part0.tar emb_part1.tar emb_part2.tar; do
   df -h . | tail -1
 done
 n=$(ls "$EMB" | wc -l)
-echo "embeddings reassembled: $n files"
-[ "$n" -eq 8897 ] || { echo "expected 8897 embedding files, got $n"; exit 1; }
+want=$(cat analysis/experiments/datasphere/emb_count.txt)
+echo "embeddings reassembled: $n files (expected $want)"
+# Not the protein count: 461 of the 8,897 proteins in this split share a sequence
+# with another, and embeddings are keyed by md5(sequence).
+[ "$n" -eq "$want" ] || { echo "expected $want embedding files, got $n"; exit 1; }
 
 # ---- 2. run the queue ------------------------------------------------------
 # amp=false is the whole point of this job: the existing 5cv_baseline_esm2 was

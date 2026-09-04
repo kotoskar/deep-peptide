@@ -22,8 +22,13 @@ for pid, row in d.iterrows():
     h = md5(str(row["sequence"]).encode()).hexdigest() + ".pt"
     if (SRC / h).exists():
         names.append(h)
-names.sort()
-print(f"[pack] {len(names)} embedding files needed", flush=True)
+# Different accessions can carry an identical sequence (461 of them here, e.g.
+# P69556/P69557), and an embedding file is keyed by md5(sequence), so the file
+# count is the number of UNIQUE sequences, not the number of proteins.
+names = sorted(set(names))
+COUNT = pathlib.Path("analysis/experiments/datasphere/emb_count.txt")
+COUNT.write_text(f"{len(names)}\n")
+print(f"[pack] {len(names)} unique embedding files needed -> {COUNT}", flush=True)
 
 # round-robin so the parts come out the same size
 for i in range(N_PARTS):
