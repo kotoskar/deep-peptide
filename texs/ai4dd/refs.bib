@@ -117,13 +117,14 @@
 }
 
 @article{graphpart2023,
-  title={Graph-Part: homology partitioning for biological sequence analysis},
-  author={Teufel, Felix and Refsgaard, Magn{\'u}s Halld{\'o}r and Madsen, Christian Garde and Marcatili, Paolo and Nielsen, Henrik and Winther, Ole and Armenteros, Jos{\'e} Juan Almagro},
+  title={{GraphPart}: homology partitioning for biological sequence analysis},
+  author={Teufel, Felix and G{\'i}slason, Magn{\'u}s Halld{\'o}r and Almagro Armenteros, Jos{\'e} Juan and Johansen, Alexander Rosenberg and Winther, Ole and Nielsen, Henrik},
   journal={NAR Genomics and Bioinformatics},
-  volume={5}, number={4}, pages={lqad088}, year={2023}
+  volume={5}, number={4}, pages={lqad088}, year={2023},
+  doi={10.1093/nargab/lqad088}
 }
 
-% ===== 1. Широкая постановка (агностично к протеазе/организму) =====
+% ===== 1. General problem statement (protease- and organism-agnostic) =====
 @article{mooney2013peptidelocator,
   author  = {Mooney, Catherine and Haslam, Niall J. and Holton, Th{\'e}r{\`e}se A. and Pollastri, Gianluca and Shields, Denis C.},
   title   = {{PeptideLocator}: prediction of bioactive peptides in protein sequences},
@@ -135,7 +136,7 @@
   doi     = {10.1093/bioinformatics/btt103}
 }
 
-% ===== 2. Привязаны к протеазе =====
+% ===== 2. Protease-specific =====
 @article{duckert2004prop,
   author  = {Duckert, Peter and Brunak, S{\o}ren and Blom, Nikolaj},
   title   = {Prediction of proprotein convertase cleavage sites},
@@ -202,7 +203,7 @@
   doi     = {10.1016/j.gpb.2019.08.002}
 }
 
-% ===== 3. Привязаны к организму/типу пептида (нейропептиды) =====
+% ===== 3. Organism- or peptide-type-specific (neuropeptides) =====
 @article{southey2006neuropred,
   author  = {Southey, Bruce R. and Amare, Andinet and Zimmerman, Tyler A. and Rodriguez-Zas, Sandra L. and Sweedler, Jonathan V.},
   title   = {{NeuroPred}: a tool to predict cleavage sites in neuropeptide precursors and provide the masses of the resulting peptides},
@@ -235,7 +236,7 @@
   doi     = {10.1093/bib/bbad077}
 }
 
-% ===== 4. Соседняя задача: сигнальные/транзитные пептиды =====
+% ===== 4. Adjacent task: signal and transit peptides =====
 @article{teufel2022signalp6,
   author  = {Teufel, Felix and Almagro Armenteros, Jos{\'e} Juan and Johansen, Alexander Rosenberg and G{\'i}slason, Magn{\'u}s Halld{\'o}r and Pihl, Silas Irby and Tsirigos, Konstantinos D. and Winther, Ole and Brunak, S{\o}ren and von Heijne, Gunnar and Nielsen, Henrik},
   title   = {{SignalP} 6.0 predicts all five types of signal peptides using protein language models},
@@ -258,7 +259,7 @@
   doi     = {10.26508/lsa.201900429}
 }
 
-% ===== 5. Другая задача: классификация уже выделенных пептидов =====
+% ===== 5. Different task: classifying already-excised peptides =====
 @article{mooney2012peptideranker,
   author  = {Mooney, Catherine and Haslam, Niall J. and Pollastri, Gianluca and Shields, Denis C.},
   title   = {Towards the improved discovery and design of functional peptides: common features of diverse classes permit generalized prediction of bioactivity},
@@ -281,10 +282,14 @@
 }
 
 @article{bpfun2025,
-  author  = {Yang, S. and Shen, H. and Zhang, L.},
+  author  = {Zhu, Lei and Sun, Hao and Yang, Sen},
   title   = {{BPFun}: a deep learning framework for bioactive peptide function prediction using multi-label strategy by transformer-driven and sequence rich intrinsic information},
-  journal = {VERIFY-JOURNAL},
-  year    = {2025}
+  journal = {BMC Bioinformatics},
+  volume  = {26},
+  number  = {1},
+  pages   = {187},
+  year    = {2025},
+  doi     = {10.1186/s12859-025-06190-5}
 }
 
 @article{du2024plm4ace,
