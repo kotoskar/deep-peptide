@@ -1,0 +1,123 @@
+version: 1
+disable_existing_loggers: false
+# colours from https://github.com/tqdm/tqdm/blob/master/tqdm/std.py#L151
+formatters:
+  cli_console:
+    format: "\x1b[37m%(asctime)s - [%(levelname)s] - %(message)s\x1b[0m"
+  cli_shared_file:
+    format: "[CLI]  %(asctime)s - [%(levelname)s] - %(message)s"
+  sys_shared_file:
+    format: "[SYS]  %(asctime)s - %(message)s"
+  sys_file:
+    format: "%(asctime)s  -  %(message)s"
+  program_console_stdout:
+    format: "%(asctime)s - %(message)s"
+  program_console_stderr:
+    format: "\x1b[31m%(asctime)s - %(message)s\x1b[0m"
+  program_shared_file_stdout:
+    format: "[OUT]  %(asctime)s - %(message)s"
+  program_shared_file_stderr:
+    format: "[ERR]  %(asctime)s - %(message)s"
+  program_file:
+    format: "%(message)s"
+handlers:
+  cli_console:
+    class: logging.StreamHandler
+    level: ${LOG_LEVEL}
+    formatter: cli_console
+    stream: ext://sys.stdout
+  cli_shared_file:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: cli_shared_file
+    filename: ${LOG_FILE_PATH}/log.txt
+    encoding: utf8
+  sys_shared_file:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: sys_shared_file
+    filename: ${LOG_FILE_PATH}/log.txt
+    encoding: utf8
+  system.log:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: sys_file
+    filename: ${LOG_FILE_PATH}/system.log
+    encoding: utf8
+  docker_stats.tsv:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_file
+    filename: ${LOG_FILE_PATH}/docker_stats.tsv
+    encoding: utf8
+  gpu_stats.tsv:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_file
+    filename: ${LOG_FILE_PATH}/gpu_stats.tsv
+    encoding: utf8
+  program_console_stdout:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: program_console_stdout
+    stream: ext://sys.stdout
+  program_console_stderr:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: program_console_stderr
+    stream: ext://sys.stderr
+  program_shared_file_stdout:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_shared_file_stdout
+    filename: ${LOG_FILE_PATH}/log.txt
+    encoding: utf8
+  program_shared_file_stderr:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_shared_file_stderr
+    filename: ${LOG_FILE_PATH}/log.txt
+    encoding: utf8
+  program_file_stdout:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_file
+    filename: ${LOG_FILE_PATH}/stdout.txt
+    encoding: utf8
+  program_file_stderr:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_file
+    filename: ${LOG_FILE_PATH}/stderr.txt
+    encoding: utf8
+  job_progress.jsonl:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: program_file
+    filename: ${LOG_FILE_PATH}/job_progress.jsonl
+    encoding: utf8
+loggers:
+  datasphere:
+    level: DEBUG
+    handlers: [cli_console, cli_shared_file]
+  datasphere_file:
+    level: DEBUG
+    handlers: [cli_shared_file]
+  system.log:
+    level: DEBUG
+    handlers: [sys_shared_file, system.log]
+  docker_stats.tsv:
+    level: DEBUG
+    handlers: [docker_stats.tsv]
+  gpu_stats.tsv:
+    level: DEBUG
+    handlers: [ gpu_stats.tsv ]
+  program_stdout:
+    level: DEBUG
+    handlers: [program_console_stdout, program_shared_file_stdout, program_file_stdout]
+  program_stderr:
+    level: DEBUG
+    handlers: [program_console_stderr, program_shared_file_stderr, program_file_stderr]
+  job_progress.jsonl:
+    level: DEBUG
+    handlers: [ job_progress.jsonl ]

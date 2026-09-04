@@ -360,7 +360,7 @@ Proteins & 8449 & 9619 \\
 \quad of which absent in 2022 & --- & 1178 ($\approx$12\%) \\
 Peptide segments & 6372 & 7431 \\
 Propeptide segments & 8211 & 9140 \\
-Median peptide length (residues) & 20--21 & 20--21 \\
+Median peptide length (residues) & 21 & 20 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -416,7 +416,7 @@ The outer loop iterates over true segments and the inner loop over predicted seg
 
 We did not silently patch this function in place, since that would shift absolute numbers without documenting it. Instead we implemented a separate, corrected matcher and used it to re-score the results in this paper: the earlier single-split runs reported in \Cref{sec:app-old-protocol}, except two whose model classes no longer exist in the code and whose checkpoints cannot be rebuilt, and the full $5\times4$ nested-cross-validation grid in \Cref{tab:main-results} (all 100 completed cells across the five configurations), by re-running test-partition inference from each cell's saved checkpoint on the machine that held them. Every table in the main text uses the corrected matcher; the original (buggy) numbers are kept alongside in the released run artifacts for direct comparison with the published methodology, not reproduced here.
 
-Re-scoring the grid also recomputed the original, buggy matcher on the same decoded segments, so that each cell could be checked against the number already published for it. The two agree to $0.0016$ F1 at worst and to $3\times10^{-7}$ at the median, and the aggregate reproduces the published summary exactly.
+Re-scoring the grid also recomputed the original, buggy matcher on the same decoded segments, so that each cell could be checked against the number already published for it. The two agree to $5\times10^{-4}$ F1 at worst, on one cell of the adapter-only run, and to $3\times10^{-7}$ at the median; four of the five configurations reproduce the published aggregate to within $6\times10^{-8}$ and the adapter-only aggregate differs by $4\times10^{-5}$.
 
 Across the five configurations the correction shifts mean F1 by $+0.017$ to $+0.020$, always upward, since the bug was discarding true positives. On ESM-2 it leaves the ordering of the four configurations intact: base $<$ boundary head $<$ adapter $<$ combined, before and after correction. That ordering is not robust, and we would not build an argument on it. The boundary-head/adapter gap is $0.005$ against a fold-level standard deviation of $0.026$; per outer fold the full ordering holds in four folds of five after correction and three of five before it, and on peptides alone it holds in one fold of five. Only the base configuration exists on ESM-C 6B, so no ordering can be stated for that embedding.
 \section{Earlier single-split protocol: unconfirmed observations}
@@ -451,7 +451,7 @@ Data was split into seven GraphPart folds (30\% identity threshold, motif-balanc
 ESM-C 6B instead of ESM-2 & embedding swap & $+0.03$, unstable across folds & helps \\
 Boundary head on ESM-C 6B & decoder addition & $+0.05$, $+0.07$, consistent & helps \\
 Boundary head on ESM-2 & decoder addition & $\approx 0$ (CI includes zero) & no effect \\
-Structural channel (3Di) & extra input & propep.\ $+0.02$ / pep.\ $-0.04$, net trade-off & no effect \\
+Structural channel (3Di) & extra input & propep.\ $+0.02$ / pep.\ $-0.03$, net trade-off & no effect \\
 ESM-C 6B compression 2560$\to$256 & optimization & $\approx 0$, $10\times$ narrower input and $16\times$ fewer trainable parameters & no effect \\
 Gated adapter on ESM-C 6B (pLM re-projection) & input adapter & $+0.022$, CI $[+0.008, +0.038]$ & helps \\
 Bond-prediction auxiliary loss (on ESM-C 6B) & extra loss & pep.\ $-0.05$, net $-0.015$; neutral on ESM-2 & harmful \\
