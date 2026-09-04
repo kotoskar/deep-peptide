@@ -16,11 +16,27 @@ Why it exists: `runs/5cv_baseline_esm2` is the only run in the grid trained with
 autocast, and every effect the paper reports is measured against it, so every effect is
 confounded with a change of training precision. This is the clean comparison.
 
+**Deadline rule.** MPS could not be confirmed from the live log -- `attach` returned nothing
+for a running job, which is consistent with both a cold environment build and a silent MPS
+failure, so it is not evidence either way. It does not need to be observed: with MPS the job
+ends around 19:00-20:00 on 5 Sept, without it around 08:00 on 7 Sept, which is past the
+submission. **So if the job is still EXECUTING at 22:30 on 5 Sept, plan as though MPS
+failed** and take the text-only route for the bf16 confound (item 1 below), so the paper is
+safe regardless. Whether to also cancel the job then is a spending decision: cancelling
+saves the remaining hours but discards everything computed, since results upload only at the
+end. There is no documented per-job wall-clock cap in the DataSphere limits, so the job is
+not expected to be killed on its own.
+
 ## When it lands
 
+The job was submitted with `--async`, so nothing arrives by itself; the archive has to be
+pulled. `attach` replays the whole log and downloads the declared output into the repo root:
+
 ```bash
-tar -xf results.tar                                     # into the repo root
-bash analysis/experiments/datasphere/ingest_any.sh      # auto-detects the new run
+set -a; . ./.env; set +a; export YC_TOKEN="$DS_TOKEN"
+datasphere project job attach --id bt1j9t5c56k5edf1grcs   # replays the log, downloads results.tar
+tar -xf results.tar                                       # into the repo root
+bash analysis/experiments/datasphere/ingest_any.sh        # auto-detects the new run
 ```
 
 `ingest_any.sh` runs the corrected-matcher rescoring, then the tolerance sweep (needs the
