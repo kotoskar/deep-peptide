@@ -1,0 +1,148 @@
+% =====================================================================
+% BRANCH B: what changes in main.tex once the three ESM-C 6B nested-CV runs land.
+%
+% This file is NOT \input anywhere. It is a drop-in kit: the pipeline to score the
+% runs, the table rows, and the sentences to swap in, keyed on one discriminator.
+% main.tex as it stands is branch A and mentions no pending cells anywhere.
+%
+% Expected run directories (names from run_esmc_queue.sh):
+%   runs/5cv_esmc6b_boundary      head only
+%   runs/5cv_esmc6b_adapter_only  adapter only
+%   runs/5cv_esmc6b_full          both
+%
+% ---------------------------------------------------------------------
+% 1. PIPELINE (from the repo root, GPU needed for step 2 only, ~minutes per run)
+%
+%   # corrected +-3 matcher, writes runs/<name>/nested_cv_summary_corrected.json
+%   env/bin/python analysis/metrics/src/corrected_metrics_cv.py \
+%       --models 5cv_esmc6b_boundary 5cv_esmc6b_adapter_only 5cv_esmc6b_full
+%
+%   # tolerance sweep 3..0, caches decoded segments, writes nested_cv_tolerance.json
+%   env/bin/python analysis/metrics/src/tolerance_sweep_cv.py \
+%       --models 5cv_esmc6b_boundary 5cv_esmc6b_adapter_only 5cv_esmc6b_full --check
+%
+%   # shared-segment localization, baseline = ESM-C base (same embedding!)
+%   env/bin/python analysis/metrics/src/boundary_error_cv.py \
+%       --baseline 5cv_esmc6b_plain \
+%       --variants 5cv_esmc6b_boundary 5cv_esmc6b_adapter_only 5cv_esmc6b_full \
+%       --out analysis/metrics/esmc
+%
+%   # figure 1 + tolerance table; the three runs are picked up automatically
+%   env/bin/python analysis/metrics/src/generators/fig_tolerance_cv.py
+%
+%   Numbers to pull per run, from nested_cv_summary_corrected.json:
+%     cv_corr_all_f1_mean / _std, per-outer list, precision, recall at +-3
+%   from nested_cv_tolerance.json:  cv_tol{2,1,0}_all_f1_mean
+%   from analysis/metrics/esmc/boundary_error_cv.json: exact-hit share on shared
+%     segments, base vs variant, per-fold sign count.
+%
+% With eight series, figure 1(a) gets crowded. Fallback: keep the five ESM-2
+% series in figure 1 and put the ESM-C panel in the appendix tolerance figure,
+% or pass --task all and restrict MODELS in the generator to the ESM-C block for
+% a second figure.
+%
+% ---------------------------------------------------------------------
+% 2. TABLE ROWS (tab:main-results, ESM-C 6B block, after the base row)
+%
+%   \checkmark & --- & $P \pm s$ & $R \pm s$ & $F1 \pm s$ & $F1_{\pm2}$ & $F1_{\pm1}$ & $F1_{0}$ & $+g$ \\
+%   --- & \checkmark & ... \\
+%   \checkmark & \checkmark & ... \\
+%
+%   growth g = (F1_0 - base_esm2_F1_0) - (F1_3 - base_esm2_F1_3), i.e. widening of the
+%   gap to the ESM-2 base between +-3 and exact, same definition as the ESM-2 rows.
+%   Base ESM-2: F1_3 = 0.573, F1_0 = 0.345.
+%
+%   Caption: add "The ESM-C 6B block completes the 2x2x2 grid." and change the
+%   results opener from "with the base architecture on ESM-C 6B as a capacity
+%   control" to "and the same factorial on ESM-C 6B".
+%
+% ---------------------------------------------------------------------
+% 3. DISCRIMINATOR
+%
+%   d_head  = F1(esmc head) - F1(esmc base)      vs  +0.024 on ESM-2
+%   d_adapt = F1(esmc adapter) - F1(esmc base)   vs  +0.029 on ESM-2
+%   d_full  = F1(esmc full) - F1(esmc base)      vs  +0.058 on ESM-2
+%   Each with: folds positive out of 5, and std across outer folds.
+%   Also: does the head raise recall on ESM-C under nested CV? On the fixed split it
+%   did (+0.045 R, +0.081 P); on ESM-2 it never has.
+%
+%   Scenario 1  "gain scales with capacity":
+%       d_head > 0.024 by more than its fold std, 5/5 folds positive, and R rises.
+%   Scenario 2  "embedding-agnostic":
+%       d_* within one fold std of the ESM-2 effects, 4-5/5 folds positive.
+%   Scenario 3  "null on ESM-C":
+%       d_* overlaps zero or < 3/5 folds positive.
+%
+% ---------------------------------------------------------------------
+% 4. SENTENCES TO SWAP IN
+%
+% --- Abstract, last sentence (all scenarios replace the current one) ---
+% S1: On higher-capacity ESM-C 6B embeddings the base architecture is statistically
+%     indistinguishable from its ESM-2 counterpart ($0.588\pm0.016$), while the
+%     boundary head gains more there than on ESM-2 ($+d_head$ against $+0.024$),
+%     raising recall as well as precision, so the additions are not a fix for a
+%     weak embedding but something a stronger one uses better.
+% S2: On higher-capacity ESM-C 6B embeddings the base architecture is statistically
+%     indistinguishable from its ESM-2 counterpart ($0.588\pm0.016$), and the two
+%     additions carry over with effects of the same size ($+d_head$, $+d_adapt$,
+%     $+d_full$), so the gains are a property of the decoder, not of the embedding.
+% S3: keep branch-A sentence, then: "...on that embedding neither addition
+%     reaches a confirmed effect under the same protocol."
+%
+% --- Contributions (iii), append ---
+% S1: "; on ESM-C 6B the head's gain grows to $+d_head$."
+% S2: "; the same three gains reproduce on ESM-C 6B within fold spread."
+% S3: nothing.
+%
+% --- Results, paragraph "A richer embedding is not enough on its own" ---
+% Replace everything from "Whether the additions gain more on the richer embedding
+% is open." to the end of the paragraph with:
+% S1: "The additions gain more on the richer embedding. The boundary head is worth
+%     $+d_head$ on ESM-C 6B against $+0.024$ on ESM-2, positive on all five folds,
+%     and here it raises recall ($+R$) as well as precision ($+P$), which it never
+%     does on ESM-2. The adapter moves by $+d_adapt$ and the pair by $+d_full$, so
+%     the best configuration reaches $F1_{full}\pm s$. The single-split experiment
+%     of \Cref{sec:app-old-protocol} pointed the same way and is now confirmed."
+%     Then update the "gives each block a job" sentence: the head is a precision
+%     effect on ESM-2 and a precision-and-recall effect on ESM-C 6B.
+% S2: "The additions carry over unchanged: $+d_head$, $+d_adapt$ and $+d_full$ on
+%     ESM-C 6B against $+0.024$, $+0.029$ and $+0.058$ on ESM-2, each within one
+%     fold standard deviation of its ESM-2 counterpart. What the decoder-side
+%     additions buy does not depend on the width of the embedding they sit on."
+% S3: "On ESM-C 6B neither addition reaches a confirmed effect ($+d_head\pm s$,
+%     $+d_adapt\pm s$, $+d_full\pm s$, intervals overlapping zero). The single-split
+%     experiment of \Cref{sec:app-old-protocol} had suggested $+0.05$ to $+0.07$
+%     for the head; nested cross-validation does not reproduce it, which is the
+%     same lesson the ESM-2 embedding swap taught (\Cref{tab:verdict})."
+%
+% --- Conclusion, first paragraph, append ---
+% S1: "On ESM-C 6B the head's gain grows to $+d_head$ and extends to recall, so
+%     the two blocks are a better use of a richer embedding, not a patch for a
+%     poorer one."
+% S2: "The same gains reproduce on ESM-C 6B, so they belong to the decoder and
+%     not to the embedding."
+% S3: "They do not reproduce on ESM-C 6B under the same protocol; why a richer
+%     embedding leaves less for the additions to correct is open."
+%
+% --- Limitations ---
+% All scenarios: delete "The additions were evaluated under nested cross-validation
+% on ESM-2 only; on ESM-C 6B they have single-split evidence
+% (\Cref{sec:app-old-protocol})." The grid is complete.
+%
+% --- Appendix D (sec:app-old-protocol), two places ---
+% Verdict-table paragraph: "Three of these rows were later re-tested ... Two
+% survived." -> "Four of these rows were later re-tested: the boundary head on
+% ESM-2 and on ESM-C 6B, the adapter, and the embedding swap. <S1: All but the
+% swap survived. / S2: same / S3: The head on ESM-C 6B did not: ... >"
+% Closing paragraph: "is accordingly left as an open question, not stated as a
+% conclusion here." -> S1 "is confirmed in \Cref{sec:results}." / S3 "is not
+% supported by \Cref{sec:results}."
+%
+% --- Header comment of main.tex ---
+% Delete the "ESM-C 6B GRID" note.
+%
+% ---------------------------------------------------------------------
+% 5. PAGE BUDGET
+% Three table rows cost ~0.04 p; the S1 results text is ~0.05 p longer than
+% branch A, S2/S3 about the same. Nothing else grows.
+% =====================================================================

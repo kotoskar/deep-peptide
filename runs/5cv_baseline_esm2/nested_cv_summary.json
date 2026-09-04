@@ -1,6 +1,7 @@
 {
   "name": "5cv_baseline_esm2",
   "n_cells": 20,
+  "complete": true,
   "mean_epoch": 86.05,
   "std_epoch": 11.278647735293541,
   "per_outer_f1_all": {
@@ -15,5 +16,8 @@
   "cv_f1_peptides_mean": 0.5395121546889753,
   "cv_f1_peptides_std": 0.07736497341361272,
   "cv_f1_propeptides_mean": 0.5617385925927646,
-  "cv_f1_propeptides_std": 0.06487303491892213
+  "cv_f1_propeptides_std": 0.06487303491892213,
+  "cv_precision_all_mean": 0.6079857700291471,
+  "cv_recall_all_mean": 0.5137742889981184,
+  "note": "F1 here is the training-time (original, uncorrected) matcher at +-3; the corrected-matcher rescoring is done at home from each cell's model.pt."
 }

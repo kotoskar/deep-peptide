@@ -10,7 +10,9 @@ flanking-motif-balanced split.
 Usage (from repo root, PYTHONPATH=.):
   env/bin/python analysis/experiments/train_nested_cell.py \
       --base runs/<x>/config.json --emb <embeddings_dir> --split <covered_split.csv> \
+      [--data <labeled_sequences.csv>, default 2026] \
       --out <model_name> --outer 0 --inner 1 --n_folds 5 [--set k=v ...]
+NO_AIM=1 in the environment disables aim tracking (recommended when cells run concurrently).
 """
 import argparse, json, os, sys
 
@@ -23,6 +25,8 @@ def main():
     ap.add_argument("--base", required=True, help="Path to a base runs/<x>/config.json to clone architecture/hparams from")
     ap.add_argument("--emb", required=True, help="embeddings_dir override")
     ap.add_argument("--split", required=True, help="partitioning_file override (5-fold covered split)")
+    ap.add_argument("--data", default="data/uniprot_2026/labeled_sequences.csv",
+                    help="data_file override (labeled_sequences.csv of the release being trained on)")
     ap.add_argument("--out", required=True, help="model name; cell goes to runs/<out>/outer{o}_inner{i}")
     ap.add_argument("--outer", type=int, required=True)
     ap.add_argument("--inner", type=int, required=True)
@@ -44,7 +48,7 @@ def main():
     cfg = json.load(open(a.base))
     cfg.update({
         "embeddings_dir": a.emb,
-        "data_file": "data/uniprot_2026/labeled_sequences.csv",
+        "data_file": a.data,
         "partitioning_file": a.split,
         "out_dir": out_dir,
         "checkpoints_dir": f"{out_dir}/checkpoints",
@@ -63,13 +67,19 @@ def main():
           f"test(outer)={test_partitions}", flush=True)
 
     from src.train_loop_crf import train
-    try:
-        from aim import Run
-        run = Run()
-    except Exception:
-        class _D(dict):
-            def track(self, *x, **k): pass
-        run = _D()
+
+    class _NoAim(dict):
+        def track(self, *x, **k): pass
+
+    # aim keeps a .aim repo in cwd; several concurrent cells writing to it is not
+    # worth the risk on a server, so NO_AIM=1 (set by run_cv_queue.sh) skips it.
+    run = _NoAim()
+    if os.environ.get("NO_AIM", "0") != "1":
+        try:
+            from aim import Run
+            run = Run()
+        except Exception:
+            pass
 
     best_val_metrics, test_metrics = train(
         Namespace(**cfg),

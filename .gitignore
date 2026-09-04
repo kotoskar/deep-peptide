@@ -67,3 +67,14 @@ data/uniprot_2022/scaling/
 # ---- Raw driver/training stdout logs (huge tqdm spam, regenerable by rerunning) ----
 /logs/
 /nested_cv_driver.log
+
+# ---- LaTeX build artifacts (regenerable by recompiling); scoped to texs/ so a
+# stray *.log elsewhere is not hidden by accident. The built PDF is kept.
+texs/**/*.aux
+texs/**/*.bbl
+texs/**/*.blg
+texs/**/*.log
+texs/**/*.out
+texs/**/*.fls
+texs/**/*.fdb_latexmk
+texs/**/*.synctex.gz

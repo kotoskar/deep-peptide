@@ -1,0 +1,427 @@
+\documentclass{article}
+
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+\usepackage{hyperref}
+\usepackage{xspace}
+\usepackage{bm}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,shapes.geometric,backgrounds}
+\definecolor{oursorange}{RGB}{224,145,63}
+\definecolor{lightgray}{RGB}{230,230,230}
+\definecolor{pepblue}{RGB}{76,155,232}
+\definecolor{emitgray}{RGB}{150,150,150}
+\definecolor{spine}{RGB}{200,200,200}
+\definecolor{headerbg}{RGB}{60,64,72}
+\definecolor{frozenblue}{RGB}{120,135,155}
+\definecolor{crfbg}{RGB}{247,247,250}
+
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+\usepackage[dblblindworkshop]{neurips_2026}
+\workshoptitle{AI for Drug Discovery (NeurIPS 2026)}
+
+% Workshop instructions ask for the first-page footnote to name the workshop
+% rather than the main conference.
+\makeatletter
+\renewcommand{\@noticestring}{%
+  Submitted to the AI for Drug Discovery workshop (NeurIPS 2026).%
+}
+\makeatother
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsfonts}
+
+\usepackage[capitalize,noabbrev]{cleveref}
+
+\lstset{
+  keepspaces=true, extendedchars=true,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{blue!60!black},
+  commentstyle=\color{gray},
+  numbers=left, numberstyle=\tiny\color{gray}, numbersep=6pt,
+  breaklines=true, frame=single, language=Python, showstringspaces=false,
+  morecomment=[l]{\#}
+}
+
+% Placeholder for a not-yet-finished number in a table.
+\newcommand{\Pending}{pending}
+% Fallback for a figure that may not be present in a given build.
+\newcommand{\MaybeImage}[2]{%
+  \IfFileExists{#1}{\begin{center}\includegraphics[width=#2\linewidth]{#1}\end{center}}%
+  {\begin{center}\fbox{\parbox[c][2.2cm][c]{0.8\linewidth}{\centering\small Figure not found:\\\texttt{\detokenize{#1}}}}\end{center}}%
+}
+
+\begin{document}
+
+\title{Sharper Boundaries: Position-Aware CRF Emissions and an Embedding
+Adapter for Predicting Proteolytic Peptides and Propeptides}
+
+\maketitle
+
+\begin{abstract}
+Proteolysis cuts precursor proteins into mature peptides and propeptides; predicting where is a sequence segmentation task with direct applications in proteomics, vaccine design, and disease research. The strongest existing approach couples frozen protein language model (pLM) embeddings with a CNN--BiLSTM encoder and an extended-state linear-chain conditional random field (CRF) decoder, but its CRF emissions are identical for every state of a given segment type at a given position, even though the decoder's own state structure already distinguishes a segment's start, interior, and end. We close this gap with two small, architecturally independent additions: a zero-initialized boundary head that adds position-specific corrections to the relevant CRF emissions, and a lightweight adapter that re-projects the pLM embedding before the encoder. Evaluated with $5\times4$ nested cross-validation on a rebuilt UniProtKB/Swiss-Prot 2026 dataset -- a protocol that keeps epoch selection separate from the outer test fold and averages the reported estimate over five independent folds rather than a single split -- both additions outperform the base architecture on ESM-2 embeddings individually ($+0.024$ and $+0.029$ F1) and combine to a $+0.058$ F1 gain over the $0.573\pm0.025$ base, with little loss from applying them together. A first nested-CV result on higher-capacity ESM-C 6B embeddings shows the base architecture performing statistically indistinguishably from its ESM-2 counterpart ($0.588\pm0.016$); the architectural additions on that embedding, together with a larger set of exploratory ideas from earlier development, are reported in the appendix.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+\textbf{Proteins} are biopolymers made of amino acid residues that carry out structural, catalytic, and regulatory roles in the cell. Misfolded, damaged, or short-lived regulatory proteins, as well as foreign proteins that enter an organism, are routinely subjected to \textbf{proteolysis}: enzymatic cleavage of the protein chain by specialized proteases. This process produces \textbf{peptides}, short fragments that often carry their own biological activity and participate in signaling cascades and immune responses.
+
+\begin{figure}[t]
+\centering
+\MaybeImage{figures/hook_tolerance.png}{0.95}
+\caption{F1 as the boundary-match tolerance is tightened from $\pm3$ to an exact match ($\pm0$), nested cross-validation, base architecture vs.\ our additions. Figure pending re-inference of the nested-CV checkpoints at multiple tolerances (\Cref{sec:matching}); \Cref{tab:main-results} reports the $\pm3$ numbers this figure will extend.}
+\label{fig:hook}
+\end{figure}
+
+Proteomic data typically records only the amino acid sequences of intact proteins, not the products of their cleavage, so predicting where a precursor will be cut -- and which resulting fragments are functional peptides rather than discarded propeptides -- has direct value in several applied settings. In proteomics, such predictions help interpret mass-spectrometry data by matching observed peptides back to precursor proteins and localizing plausible cleavage sites. In vaccine design, the same kind of prediction is useful earlier, at the design stage, to anticipate which fragments a candidate construct will yield in vivo (relevant to multi-epitope vaccine design) and to flag segments prone to unwanted cleavage or accelerated degradation. In disease research, proteolysis is frequently disrupted in neurodegenerative, oncological, and endocrine conditions, producing atypical cleavage patterns; a model of proteolysis can compare expected and observed patterns between healthy and diseased samples and help build hypotheses about how toxic or altered fragments accumulate.
+
+\textbf{Where existing methods fall short.} Computational approaches to this task fall into two groups, and both leave room for improvement (\Cref{sec:related} reviews them in detail). Protease- and organism-specific models cover only a narrow slice of the problem -- a single enzyme, or peptides from a single class of organism -- when in practice the combined effect of every protease active in an organism is what matters. The strongest general-purpose alternative, DeepPeptide~\citep{deeppeptide2023}, poses the task as full sequence segmentation on top of frozen pLM embeddings and an extended-state linear-chain CRF decoder, and remains, to our knowledge, the closest match to this formulation. But its CRF emissions are identical for every state of a given segment type at a given position, even though the decoder's own state graph already distinguishes a segment's start, interior, and end (a segment's path always moves start $\to$ interior $\to$ end) -- the position-specific evidence a well-designed decoder could condition on is simply never computed by the encoder that feeds it.
+
+\textbf{What we do about it.} We close this gap with two small, architecturally independent additions on top of DeepPeptide's pLM~+~CNN--BiLSTM~+~CRF pipeline (\Cref{sec:method}). The boundary head is a compact feed-forward block that reads the encoder's contextual per-residue features and outputs, for each position and each segment type, three numbers indicating how much that position resembles a segment start, interior, or end; these are added as corrections to the corresponding CRF state emissions, and the head is zero-initialized so training starts exactly at the baseline. The adapter is a smaller block placed before the encoder, re-projecting the frozen pLM embedding; the motivation is that pLM embeddings are trained on masked-residue recovery, not on cleavage-site localization, and a small trainable re-projection is a standard way to let a comparatively small downstream head make better use of them.
+
+Because an architectural claim is only as trustworthy as the protocol used to measure it, we evaluate both additions with $5\times4$ nested cross-validation (\Cref{sec:eval}), a protocol that keeps epoch selection separate from the outer test fold and averages the reported estimate over five independent folds rather than reporting a single split -- \Cref{sec:app-old-protocol} discusses an earlier, less rigorous single-split protocol used during development and the instability that motivated moving away from it. We also rebuild the DeepPeptide dataset construction pipeline on a current UniProtKB/Swiss-Prot release (2026) so that this protocol has enough data and species coverage to be informative (\Cref{sec:dataset}).
+
+Our contributions are:
+\begin{itemize}
+  \item A \textbf{boundary head} that adds position-specific corrections to CRF emissions in a pLM~+~CNN--BiLSTM~+~CRF segmentation model, addressing a concrete architectural gap (identical per-type emissions regardless of position within a segment) with a zero-initialized, backward-compatible addition.
+  \item A lightweight \textbf{input adapter} that re-projects frozen pLM embeddings before the encoder, tested both independently and jointly with the boundary head.
+  \item A \textbf{$5\times4$ nested cross-validation protocol}, combined with a rebuilt 2026 dataset, that keeps epoch selection separate from the outer test folds and reports uncertainty across five independent outer folds rather than a single split.
+  \item Confirmed, protocol-validated gains on ESM-2 embeddings ($+0.024$ / $+0.029$ / $+0.058$ F1 for boundary head, adapter, and both respectively), a first nested-CV data point for the base architecture on ESM-C 6B, and a larger set of exploratory findings kept explicitly separate, in the appendix, as unconfirmed.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+Methods for predicting proteolytic peptides fall into three broad classes.
+
+\textbf{Protease-specific models.} These predict cleavage only for a limited set of enzymes, most of which have a known recognition motif. ProP~\citep{duckert2004prop} targets cleavage by the PACE/PC family in animals and plants; PROSPER~\citep{song2012prosper} and its successor PROSPERous~\citep{song2018prosperous} predict cleavage for one chosen enzyme at a time, as does the later ProsperousPlus~\citep{li2023prosperousplus}; DeepCleave~\citep{li2020deepcleave} is restricted to caspases and matrix metalloproteinases; and Procleave~\citep{li2020procleave} likewise handles one enzyme at a time and additionally requires 3D structural input. The shared limitation of this class is scope: in practice, one is usually interested in the combined effect of all proteases active in an organism, not any single enzyme.
+
+\textbf{Organism- or peptide-type-specific models.} A separate class targets neuropeptides or other bioactive fragments specific to a given organism. NeuroPred~\citep{southey2006neuropred} and the species-agnostic DeepNeuropePred~\citep{wang2024deepneuropepred} only detect cleavage near a handful of basic residues; NeuroPred-PLM~\citep{wang2023neuropredplm} does not localize cleavage sites at all but classifies an already-excised sequence. A related group of models finds signal subsequences rather than any bioactive peptide: SignalP~\citep{teufel2022signalp6} and TargetP~\citep{almagro2019targetp} identify the type of signal peptide, which indicates where a protein is trafficked.
+
+\textbf{General-purpose models on pLM embeddings.} \textbf{Protein language models} (pLMs) are transformers trained without supervision on large sequence corpora, typically by masked-residue recovery, and they produce transferable per-residue embeddings: ESM-2~\citep{lin2023esm2}, the earlier ESM line~\citep{esm2_2019}, ESM Cambrian~\citep{esm_cambrian_blog_2024,ESM-family}, and Ankh~\citep{ankh2023}. Compact task-specific heads are then trained on top of these frozen embeddings. Besides \textbf{DeepPeptide}~\citep{deeppeptide2023} itself, this recipe underlies DeepNeuropePred, NeuroPred-PLM, and SignalP~6, as well as models that score already-excised peptides rather than finding them: pLM4ACE~\citep{du2024plm4ace} predicts ACE-inhibitory activity, and BPFun~\citep{bpfun2025} and DeepBP~\citep{zhang2024deepbp} predict broader bioactivity, building on earlier pre-pLM work such as PeptideRanker~\citep{mooney2012peptideranker}. Before pLMs, PeptideLocator~\citep{mooney2013peptidelocator} addressed a problem close to ours, but its output is a per-residue heatmap of similarity to known bioactive peptides rather than an explicit segmentation, and it was the main point of comparison in the original DeepPeptide paper.
+
+\textbf{Baseline architecture: DeepPeptide.} Since we build directly on it throughout this paper (\Cref{sec:method}), DeepPeptide's architecture is worth describing in detail rather than treating as a black box. It first encodes a precursor sequence with a frozen pLM (ESM-2), producing a per-residue embedding that is not fine-tuned during training. This embedding is refined by a CNN--BiLSTM stack: in the reference configuration, a small stack of 1D convolutional filters (32 filters, kernel width 3) mixes nearby residues, followed by a single-layer bidirectional LSTM (hidden size 64 per direction) that propagates longer-range context along the sequence, yielding a contextual per-residue feature vector. These features are consumed by a linear-chain CRF decoder whose state set is extended well beyond the three raw labels $\{\textsf{None}, \textsf{Peptide}, \textsf{Propeptide}\}$: each of the two positive labels is expanded into a chain of states long enough to represent segments up to a fixed maximum length (101 states in total for the 50-residue cap used here, \Cref{sec:dataset}), so that a legal path through the CRF can only realize a contiguous segment of valid length, with dedicated states marking its first and last positions. This makes segmentation, rather than independent per-residue classification, the object the model is directly optimized for -- and it is also where the gap described in \Cref{sec:intro} lives: every state in this extended set that shares a type receives the same emission from the encoder, regardless of whether it marks the start, interior, or end of a segment.
+
+\textbf{Baseline dataset for this task.} Beyond its architecture, DeepPeptide also established the data resource this line of work relies on: precursor sequences from UniProtKB/Swiss-Prot annotated with \texttt{PEPTIDE} and \texttt{PROPEP} feature types, partitioned into homology-aware folds with GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity threshold and additionally balanced by cleavage-flanking motif, then evaluated with the same family of nested cross-validation we adopt (\Cref{sec:eval-protocol}). This gave the field a standardized, already homology-controlled benchmark rather than an ad hoc collection of previously published peptide lists, and both the curated data and the construction pipeline that produced it are public. \Cref{sec:dataset} describes what we do with that resource: rebuilding it on a current UniProtKB/Swiss-Prot release so that it has enough scale and coverage for $5\times4$ nested cross-validation.
+
+Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (\Cref{sec:method}), evaluated under a more conservative protocol (\Cref{sec:eval}) on data rebuilt at greater scale (\Cref{sec:dataset}).
+
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Problem formulation}
+\label{sec:problem}
+
+A precursor protein is a sequence of amino acids
+$$ x = (a_1, a_2, \dots, a_L), \qquad a_t \in \Omega, $$
+where $\Omega$ is the 20-letter amino acid alphabet and $L$ is the sequence length. The task is to predict which contiguous stretches of $x$ become mature \textbf{peptides} after cleavage, and which become \textbf{propeptides} -- auxiliary stretches that are excised during maturation and removed, without themselves being a final active product. Formally, each position is assigned a label
+$$ y_t \in \{\textsf{None},\ \textsf{Peptide},\ \textsf{Propeptide}\}, $$
+and contiguous runs of the same label form typed \textbf{segments} (start, end) pairs:
+$$
+\underbrace{\texttt{MGK}}_{\textsf{None}}\;
+\underbrace{\texttt{RALR}}_{\textsf{Propeptide}}\;
+\underbrace{\texttt{RSGK}}_{\textsf{Peptide}}\;
+\underbrace{\texttt{VR}}_{\textsf{None}}\;
+\underbrace{\texttt{NL}}_{\textsf{Peptide}}
+$$
+How a predicted segment is scored against the ground truth -- including the tolerance used for boundary matching -- is defined later, in \Cref{sec:matching}, alongside the rest of the evaluation protocol; it is an evaluation-time decision rather than part of the task definition itself.
+
+\subsection{Dataset}
+\label{sec:dataset}
+
+As described in \Cref{sec:related}, DeepPeptide's dataset is our starting point. This section covers what we do with it: rebuilding it at greater scale and describing the properties that matter for the modeling and evaluation choices later in the paper.
+
+\textbf{From 2022 to 2026.} The original DeepPeptide dataset was built from \texttt{PEPTIDE} and \texttt{PROPEP} annotations in the 2022 Swiss-Prot release. We rebuilt the dataset with the same methodology on the 2026 release~\citep{uniprot2025}; \Cref{tab:dataset} summarizes the resulting change in scale.
+
+\begin{table}[h]
+\centering
+\caption{Dataset composition: 2022 release (as used by the original DeepPeptide) vs.\ the 2026 release rebuilt for this work.}
+\label{tab:dataset}
+\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lrr}
+\toprule
+ & \textbf{2022} & \textbf{2026} \\
+\midrule
+Proteins & 8449 & 9619 \\
+\quad of which new (absent in 2022) & --- & 1178 ($\approx$12\%) \\
+Peptide subsequences & 6372 & 7431 \\
+Propeptide subsequences & 8211 & 9140 \\
+Peptide length (median, IQR) & 21 (11--31) & 20 (11--30) \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The data is heavily heterogeneous: the 2026 set spans more than a thousand genera, from human, mouse, and rat to plants (Arabidopsis) and venomous animals such as cone snails (Conus, the single most frequent genus, $\approx$900 proteins) and spiders (Cyriopagopus, Lycosa). Peptide and propeptide segment lengths are similarly unevenly distributed (\Cref{fig:datadist}). This heterogeneity matters for evaluation: different families are predicted with markedly different quality, which is part of why a single held-out fold is an unreliable comparison unit (\Cref{sec:app-old-protocol}).
+
+\textbf{Homology-aware splitting.} Sequences of common evolutionary origin (homologs) tend to be similar in both sequence and function; if homologous proteins end up in both training and test data, a model can effectively recognize the test protein by its close relative in training, inflating the apparent quality without reflecting performance on genuinely novel sequences. Folds are therefore built so that pairwise sequence identity between proteins in different folds stays below a threshold, using GraphPart~\citep{graphpart2023} with a 30\% identity threshold (any two proteins in different folds differ at $\ge$70\% of aligned positions).
+
+\textbf{Motif balancing.} Homology alone does not guarantee that folds are otherwise comparable: cleavage sites differ in their flanking biochemistry (different proteases recognize different motifs), and if one motif class happened to concentrate in a single fold, comparisons would be biased. Folds are therefore additionally balanced by cleavage motif: for each segment, the four residues immediately outside its boundaries (two before the start, two after the end) are embedded with ESM-2, concatenated, and clustered with $k$-means ($k=50$) to obtain a per-cleavage-site motif class; each protein is assigned its dominant class, and GraphPart is given these labels as an additional balancing feature alongside the homology constraint.
+
+\textbf{Length filter (5--50 residues).} Only peptides and propeptides of length 5--50 residues are used. The CRF decoder (\Cref{sec:intro}) has a finite state set, one in which the number of states must be fixed in advance to represent segments up to a maximum length; segments longer than 50 residues are a small tail of the length distribution, while segments shorter than 5 residues are essentially unscoreable at a $\pm3$ tolerance (\Cref{sec:matching}). Neither cutoff is architecturally fundamental, but both were kept unchanged from the original methodology for comparability.
+
+\begin{figure}[t]
+\centering
+\MaybeImage{figures/data_distributions.png}{0.9}
+\caption{Composition of the rebuilt 2026 dataset: segment length, type, and genus distributions.}
+\label{fig:datadist}
+\end{figure}
+
+\subsection{Proposed architecture}
+\label{sec:arch}
+
+Both modifications below are added on top of the same DeepPeptide-style base architecture (pLM $\to$ CNN--BiLSTM $\to$ CRF, \Cref{sec:intro}) and target the position-invariant-emission gap identified there, but at different points in the pipeline: one intervenes at the decoder, the other at the input representation. \Cref{fig:arch} summarizes where each addition sits and, concretely, what the boundary head changes about the emissions the CRF decodes.
+
+\begin{figure}[t]
+\centering
+\MaybeImage{figures/architecture_scheme.jpg}{0.92}
+\caption{The full pipeline from sequence to decoded segments, and where the two proposed additions change it (top), with a zoom into the emission step (bottom). The adapter re-projects the frozen pLM embedding before the CNN--BiLSTM encoder; the boundary head reads the encoder's output and adds a position-specific correction to the per-state CRF emissions before decoding (\Cref{sec:boundary-head,sec:adapter}). In the baseline (bottom, shaded), the encoder's per-residue features feed a 3-way None/Peptide/Propeptide emission that is repeated uniformly across every CRF state of a given type; the boundary head instead produces a start/inside/end correction per type that is added on top, giving the start and end states of the CRF chain a different emission from the interior states rather than the same one.}
+\label{fig:arch}
+\end{figure}
+
+\subsubsection{Boundary head}
+\label{sec:boundary-head}
+
+The CRF decoder uses an extended state set in which any valid segment traces a path start $\to$ interior $\to$ end: the first few states of a segment always correspond to its first residues and the last few to its last residues, regardless of the segment's total length. The state graph therefore already distinguishes ``near a boundary'' from ``interior,'' but in the base model every interior state of a given type receives an identical emission, so this positional information is never actually used by the features that feed the CRF.
+
+The boundary head is a small feed-forward block (LayerNorm $\to$ Linear $\to$ GELU $\to$ Linear, hidden size 64 in our configuration) applied on top of the contextual per-residue features produced by the CNN--BiLSTM. For each position and each segment type, it outputs three numbers scoring how much that position resembles a segment start, interior, or end. These scores are added as corrections to the emissions of the corresponding position-fixed CRF states. Initialization matters here: the head's final linear layer is zero-initialized, so at the start of training the model is exactly equivalent to the base model without the head, and it only learns corrections that reduce the training loss. Because the head augments existing CRF emissions rather than replacing them, it cannot make optimization from a random initialization worse than the base model.
+
+\subsubsection{Adapter}
+\label{sec:adapter}
+
+The second modification leaves the decoder untouched and instead acts on the input. Before the per-residue pLM embedding reaches the CNN--BiLSTM, it passes through a small trainable block, LayerNorm $\to$ Linear $\to$ GELU, which re-projects it and typically reduces its dimensionality (1280 $\to$ 256 for ESM-2 in our configuration). The motivation differs from that of the boundary head: a pLM embedding is trained unsupervised on masked-residue recovery, not on cleavage-site localization, and its feature distribution is tuned neither to this downstream task nor to the comparatively small CNN--BiLSTM--CRF head that consumes it. A lightweight trainable adapter placed before the main network is standard practice in transfer learning: it lets the model renormalize and repack features to match the task and the capacity of the downstream network, without touching the pLM's own parameters.
+
+Because the two modifications intervene at different points (decoder vs.\ input), they are tested both separately and jointly (\Cref{sec:results}).
+
+\section{Experiment}
+\label{sec:eval}
+
+\subsection{Matching criterion}
+\label{sec:matching}
+
+Predicted and ground-truth segments are matched separately for peptides and propeptides. A predicted segment counts as a true positive if both its start and its end match the corresponding endpoints of a ground-truth segment of the same type within a tolerance of $\pm\tau$ residues. A predicted segment without such a match is a false positive; an unmatched ground-truth segment is a false negative. Precision, recall, and F1 are computed per type from these counts.
+
+A tolerance is used, rather than requiring an exact match, because the biological significance of a cleavage site is itself a matter of acceptable proximity rather than single-residue precision: database annotations of cleavage sites carry their own experimental uncertainty of a few residues, and for most downstream uses a prediction within a few residues of the true site is practically indistinguishable from an exact hit.
+
+Segment-level matching with a tolerance is also more informative than a purely residue-level score: residue-level accuracy does not directly answer whether a given peptide was found at all, whereas segment-level precision/recall answers that question directly, and sweeping $\tau$ down to an exact match (\Cref{sec:app-old-protocol}) separately quantifies how precisely the boundary itself is localized. Finally, we keep the same criterion as the original DeepPeptide evaluation ($\tau=3$, matched per type) so that our numbers remain directly comparable to the published ones.
+
+\subsection{Protocol: nested cross-validation}
+\label{sec:eval-protocol}
+
+Data is partitioned into folds as described in \Cref{sec:dataset}, following the original DeepPeptide methodology. We evaluate every configuration reported as confirmed in this paper with \textbf{$5\times4$ nested cross-validation}, which keeps epoch selection separate from the outer test fold used for the reported estimate and reports uncertainty across independent outer folds rather than a single split (\Cref{sec:app-old-protocol} describes an earlier, single-split protocol used during development and why we moved away from it).
+
+Five outer folds are formed; for each outer fold $o$, four models are trained, each on the remaining three folds with one of the four remaining folds $i \ne o$ used for validation (epoch selection), and each evaluated on $o$, which that model never saw during training or validation. This gives $5\times4=20$ trained models per configuration. The score for an outer fold is the average over its four inner models; the final estimate is the average over the five outer folds, and the reported spread is the standard deviation across outer folds, not across all 20 cells (the four inner models sharing an outer fold share the same test set and are therefore not independent repeats). This protocol is substantially more expensive than a single split (\Cref{sec:limitations}), but every protein serves as a test example exactly once, and the final estimate is not determined by a single lucky or unlucky fold.
+
+\subsection{Results}
+\label{sec:results}
+
+\Cref{tab:main-results} reports $5\times4$ nested cross-validation F1 ($\pm3$ tolerance, \Cref{sec:matching}) for the base architecture and each modification. These are the only results in this paper that we treat as confirmed, obtained under the nested-CV protocol described in \Cref{sec:eval-protocol}. A substantially larger set of architectural and data variants was explored under an earlier, weaker single-split protocol (\Cref{sec:app-old-protocol}); those findings are reported separately, explicitly as unconfirmed observations rather than results.
+
+\begin{table}[t]
+\centering
+\caption{$5\times4$ nested cross-validation, corrected $\pm3$ matcher (\Cref{sec:eval-metric}). Mean $\pm$ std.\ over the 5 outer folds. Only the ESM-C 6B base configuration is complete; the remaining ESM-C 6B cells are still running.}
+\label{tab:main-results}
+\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+\textbf{Configuration} & \textbf{ESM-2 F1} & \textbf{$\Delta$ vs.\ base} & \textbf{ESM-C 6B F1} \\
+\midrule
+Base (pLM + CNN--BiLSTM + CRF) & $0.573 \pm 0.025$ & -- & $0.588 \pm 0.016$ \\
+\ + Boundary head & $0.597 \pm 0.026$ & $+0.024$ & \Pending \\
+\ + Adapter & $0.602 \pm 0.026$ & $+0.029$ & \Pending \\
+\ + Boundary head + Adapter & $0.630 \pm 0.021$ & $+0.058$ & \Pending \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Both modifications improve F1 individually by a similar amount ($+0.024$ and $+0.029$), and combining them adds $+0.058$ -- close to the sum of the individual effects ($0.024+0.029=0.053$) and clearly larger than either alone. Given that the two modifications intervene at different points in the pipeline (decoder emissions vs.\ input representation, \Cref{sec:arch}), this near-additivity is consistent with the two heads capturing at least partly complementary signal, though we do not have a nested-CV ablation that isolates the interaction term itself, only the four configurations in \Cref{tab:main-results}.
+
+The ESM-C 6B column adds one confirmed data point beyond ESM-2: the base architecture reaches $0.588\pm0.016$ on ESM-C 6B, against $0.573\pm0.025$ on ESM-2. The two intervals overlap substantially, so under nested cross-validation we do not yet see a confirmed benefit from switching to a richer embedding on its own, at the base-architecture level. We deliberately stop the confirmed results here for the remaining cells: whether the boundary head's effect is larger on ESM-C 6B, and whether the modifications continue to combine additively there, are open questions pending completion of those runs -- earlier single-split pilot experiments suggested such an interaction (\Cref{sec:app-old-protocol}), but that protocol is exactly the one we replaced because it was not reliable enough to trust on its own, so we do not carry that claim into the confirmed results here.
+
+\subsection{Analysis}
+\label{sec:analysis}
+
+The two modifications address the same underlying gap identified in \Cref{sec:intro} -- CRF emissions that do not depend on position within a segment -- but from different ends of the pipeline. The boundary head acts directly at the decoder, giving the CRF's already-boundary-aware state structure something position-specific to condition on. The adapter acts upstream, on the assumption that a pLM embedding trained for masked-residue recovery is not automatically in a form well-suited to a small downstream segmentation head, and that a cheap trainable re-projection can partially close that gap. That the two effects combine with little loss (\Cref{sec:results}) is consistent with this separation: neither modification appears to be recovering signal that the other one already captures.
+
+The protocol contribution is, in our view, as important as the architectural one for this class of models: fold-composition noise between held-out splits is large enough (\Cref{sec:app-old-protocol}) that a single comparison cannot reliably separate a real effect from it. Nested cross-validation does not eliminate this noise, but it averages over it across five independent outer folds rather than reporting one draw, which is why we treat only the numbers in \Cref{tab:main-results} as confirmed evidence of impact in this paper. The new ESM-C 6B base result illustrates this from a different angle: it is the first case where the same nested-CV protocol has been applied to both embeddings at the base-architecture level, and the two confirmed numbers ($0.573\pm0.025$ vs.\ $0.588\pm0.016$) are close enough that a lower-power comparison could easily have shown a gap of either sign, purely from fold composition.
+
+We also do not, in this paper, revisit the broader set of ideas explored under the earlier protocol (structural features, an auxiliary bond-prediction loss, a telescopic segment CRF, a known-peptide dictionary, LoRA fine-tuning of the pLM, and embedding compression, among others; \Cref{sec:app-old-protocol}). Some of those looked promising under the single-split protocol; given how unreliable that protocol turned out to be for the two modifications we did carry through nested CV, we do not think single-split results for the remaining ideas are informative enough to report as findings, and we list them only as candidates for future re-testing.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+Starting from the DeepPeptide recipe of frozen pLM embeddings, a CNN--BiLSTM encoder, and an extended-state linear-chain CRF decoder, we identified a specific architectural gap -- CRF emissions that do not depend on position within a segment, despite the decoder's state structure already being boundary-aware -- and addressed it with two small, independent additions: a zero-initialized boundary head at the decoder and a lightweight adapter at the input. Under $5\times4$ nested cross-validation, chosen to keep epoch selection separate from the reported estimate and to average that estimate over independent outer folds, both additions outperform the base architecture on ESM-2 embeddings individually ($+0.024$ and $+0.029$ F1) and combine with little loss when applied together ($+0.058$); a first nested-CV result on ESM-C 6B shows the base architecture performing statistically indistinguishably from its ESM-2 counterpart, with the architectural additions on that embedding still pending. We see this as a contribution to the general pLM~+~CRF segmentation recipe for proteolytic peptide prediction, built on and evaluated against DeepPeptide as the strongest existing baseline, rather than as a correction to it. A broader set of ideas explored earlier under a less rigorous protocol is reported separately in the appendix as unconfirmed observations for future work.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+  \item \textbf{Incomplete grid.} At the time of writing, nested cross-validation on ESM-C 6B embeddings is complete only for the base configuration; the boundary-head, adapter, and combined configurations were still running. \Cref{tab:main-results} reports only these completed cells as confirmed.
+  \item \textbf{No fully sealed holdout beyond the nested structure.} Every protein is used as a test example exactly once across the five outer folds, but there is no additional, entirely untouched split beyond that structure itself.
+  \item \textbf{Uncertainty scope.} The reported standard deviation reflects variation across the five outer folds (i.e.\ fold composition) only, not variation from random seeds or training stochasticity, so the true uncertainty is somewhat larger than what we report.
+  \item \textbf{Compute cost.} The nested-CV protocol is substantially more expensive than a single split: one cell of the grid takes roughly 7--11 GPU-hours, and a full grid (base, boundary head, adapter, combined, across embeddings) is on the order of 150--200 GPU-hours, which limits how many architectural variants can be tested this way in a given amount of time.
+  \item \textbf{Unconfirmed exploratory work.} A larger set of ideas (alternative embeddings beyond ESM-2/ESM-C, a structural 3Di channel, an auxiliary bond-prediction loss, a telescopic segment CRF, a cleavage-motif dictionary, LoRA fine-tuning, and several projector variants) was tested only under the earlier, weaker single-split protocol described in \Cref{sec:app-old-protocol}, and none of it has been re-verified under nested cross-validation.
+\end{itemize}
+
+\section*{Impact Statement}
+This paper improves a computational tool for predicting proteolytic cleavage products from protein sequence. Potential applications include interpreting proteomics data, informing vaccine and peptide-drug design, and studying disease-associated proteolysis; we are not aware of societal risks specific to this work beyond those generally associated with more accurate protein sequence analysis tools.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\newpage
+\appendix
+\section*{Appendix}
+
+\section{Metric implementation bug}
+\label{sec:eval-metric}
+
+While auditing the reference implementation of the matching criterion (\Cref{sec:matching}), we found a bug in the function that implements it (\texttt{get\_counts\_for\_protein}, in the DeepPeptide codebase), reproduced below in simplified form:
+
+\begin{lstlisting}
+for idx, row in true_df.iterrows():      # idx: true-segment index
+    true_start, true_stop = row['start'], row['stop']
+    for idx, row in pred_df.iterrows():  # idx overwritten with pred index
+        pred_start, pred_stop = row['start'], row['stop']
+        ...
+        if start_match and stop_match:
+            true_df.loc[idx, 'matched'] = True  # BUG: idx is now the
+            pred_df.loc[idx, 'matched'] = True   # predicted index, not the true one
+            break
+\end{lstlisting}
+
+The outer loop iterates over true segments and the inner loop over predicted segments, but both reuse the loop variable \texttt{idx}. By the time a match is found, \texttt{idx} refers to the predicted segment, so \texttt{true\_df.loc[idx, 'matched']} marks the wrong true segment. The effect is not large on average (it is partly self-correcting), but it systematically deflates recall and, with it, F1, particularly for proteins where the number of predicted segments exceeds the number of true segments. This bug is present in the upstream DeepPeptide code, not something we introduced.
+
+We did not silently patch this function in place, since that would shift absolute numbers without documenting it. Instead we implemented a separate, corrected matcher and used it to re-score every result in this paper: the earlier single-split runs reported in \Cref{sec:app-old-protocol}, and, subsequently, the full $5\times4$ nested-cross-validation grid in \Cref{tab:main-results} (all 100 completed cells across the five configurations), by re-running test-partition inference from each cell's saved checkpoint on the machine that held them. Every table in the main text uses the corrected matcher; the original (buggy) numbers are kept alongside in the released run artifacts for direct comparison with the published methodology, not reproduced here.
+
+Re-scoring the nested-CV grid included a self-consistency check: for every cell, the matcher was also run in its original (buggy) form and compared against the already-published number for that cell before the corrected number was trusted. All 100 cells passed. Across the five configurations, the correction shifts mean F1 by $+0.017$ to $+0.020$ -- somewhat larger than the $0.01$--$0.015$ estimated earlier from the single-split comparison alone, but consistent in direction (recall was being undercounted, so the fix raises F1) and, as on the single-split runs, it does not change the ranking of configurations: base $<$ boundary head $<$ adapter $<$ combined holds before and after correction, on both embeddings.
+
+
+\section{Earlier single-split protocol: unconfirmed observations}
+\label{sec:app-old-protocol}
+
+This appendix reports findings from an earlier stage of the project, obtained under a single-split protocol that predates the $5\times4$ nested cross-validation adopted for the confirmed results in \Cref{sec:results}. We report them here, explicitly separated from the main results, both because they motivated the switch to nested CV and because several of them describe architectural or data ideas that were never re-tested under the more rigorous protocol. None of the numbers below should be read with the same confidence as \Cref{tab:main-results}.
+
+\subsection{Protocol}
+
+Data was split into seven GraphPart folds (30\% identity threshold, motif-balanced as in \Cref{sec:dataset}), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. \Cref{fig:folds} shows that model rankings were not stable across folds of different composition, and several modifications changed the sign of their measured effect between the two held-out folds -- for example, the effect of a gated adapter variant was close to zero on one fold and $+0.046$ F1 on the other. Because the two held-out folds happened to be complementary in segment-length composition, results below pool them (model-select $\cup$ sealed, $\approx$2{,}300 proteins) to reduce (but not eliminate) this instability; this pooling is why the ``sealed'' fold is not, in practice, a held-out test set independent of model selection.
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fold_divergence.png}{0.7}
+\caption{Fold-composition sensitivity under the single-split protocol: the same set of models ranks differently on different individual folds, reflecting differences in each fold's protein composition rather than genuine differences between models. This instability is the reason we adopted nested cross-validation for the confirmed results in \Cref{sec:results}.}
+\label{fig:folds}
+\end{figure}
+
+\subsection{Verdict table}
+
+\Cref{tab:verdict} summarizes the modifications tested under this protocol, with the corrected matcher (\Cref{sec:eval-metric}) applied throughout. Only the boundary head and the adapter (\Cref{sec:arch}) were subsequently re-tested under nested cross-validation; everything else in this table remains at the confidence level of a single (pooled) split.
+
+\begin{table}[h]
+\centering
+\caption{Modifications tested under the earlier single-split protocol, with their measured effect on F1 (pooled held-out folds) and an informal verdict. None of these effect sizes should be compared directly to the nested-CV numbers in \Cref{tab:main-results}.}
+\label{tab:verdict}
+\small
+\begin{tabular}{p{3.4cm} p{2.1cm} p{4.6cm} p{1.7cm}}
+\toprule
+\textbf{Modification} & \textbf{Type} & \textbf{Measured effect on F1} & \textbf{Verdict} \\
+\midrule
+ESM-C 6B instead of ESM-2 & embedding swap & $+0.03$, unstable across folds & helps \\
+Boundary head on ESM-C 6B & decoder addition & $+0.05$, $+0.07$, consistent & helps \\
+Boundary head on ESM-2 & decoder addition & $\approx 0$ (CI includes zero) & no effect \\
+Structural channel (3Di) & extra input & propep.\ $+0.02$ / pep.\ $-0.04$, net trade-off & no effect \\
+ESM-C 6B compression 2560$\to$256 & optimization & $\approx 0$, $\approx$16$\times$ smaller input & no effect \\
+Bond-prediction auxiliary loss & extra loss & pep.\ $-0.05$, net $-0.015$ & harmful \\
+Telescopic segment CRF & decoder addition & $\approx 0$ & no effect \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Note the apparent tension with \Cref{tab:main-results}: under this earlier protocol, the boundary head on ESM-2 looked like it had no effect, while nested cross-validation resolved a confirmed $+0.024$ F1 gain for the same modification on the same embedding. We read this as evidence that the single-split protocol lacked the statistical power to resolve an effect of this size, not as a contradiction -- and as the clearest illustration of why we do not treat single-split numbers as findings in this paper. Whether the boundary head's effect is specifically larger on richer embeddings (as the ESM-C 6B rows above suggest) is accordingly left as an open question pending the remaining nested-CV runs on ESM-C 6B (\Cref{sec:limitations}), not stated as a conclusion here.
+
+\subsection{Additional exploratory modifications}
+
+A larger set of ideas was tried under the same single-split protocol and did not show a clear, consistent benefit; we list them for completeness and as candidates for future re-testing, without effect-size claims:
+
+\begin{itemize}
+  \item \textbf{Known-peptide dictionary.} An Aho--Corasick index of peptides from the training data was used to flag substring matches in a query sequence, injected into the model in several ways (as an emission bonus, as a separate input channel, as a transition bonus, and via early concatenation with the embedding). No consistent benefit was observed.
+  \item \textbf{Structural features.} Features extracted from predicted 3D structures (via AlphaFold~3~\citep{alphafold3_2024}, with several confidence-based filtering variants) and from the ProstT5~\citep{heinzinger2023prostt5} structural alphabet (3Di, as used in Foldseek~\citep{vankempen2024foldseek}) were tested as additional input channels; results were mixed (\Cref{tab:verdict}).
+  \item \textbf{LoRA fine-tuning.} Low-rank adaptation of the last few pLM layers, instead of using fully frozen embeddings, did not improve quality and made training more expensive.
+  \item \textbf{Projector variants.} Multi-scale and multi-branch projectors between the embedding and the CNN--BiLSTM were tried as alternative re-projection schemes to the adapter in \Cref{sec:adapter}.
+  \item \textbf{Structural-projection width and telescopic CRF.} The width of the structural-feature projection (16/32/48 units) had no measurable effect on quality; the telescopic segment CRF (an alternative decoder formulation scoring whole segments via a relative-position head) performed roughly on par with the base decoder under this protocol.
+\end{itemize}
+
+None of these modifications showed a consistent gain large enough, under the single-split protocol, to justify testing under nested cross-validation ahead of the two reported in the main text. The complete experiment log (including runs not summarized above) is maintained in the project repository rather than reproduced here, since it was collected under a protocol we no longer treat as sufficient evidence on its own.
+
+\subsection{Supplementary figures}
+
+The figures below are from the same earlier development stage as \Cref{tab:verdict} and are included for completeness; none of them should be read as confirmed evidence in the sense of \Cref{sec:results}.
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/scoreboard.png}{0.9}
+\caption{Single-split comparison of models on pooled held-out folds: F1, precision, and recall with bootstrap confidence intervals, from ESM-2 up to the full architecture on ESM-C 6B.}
+\label{fig:scoreboard}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/interaction.png}{0.9}
+\caption{Boundary head $\times$ embedding interaction under the single-split protocol: F1 gain from adding the boundary head on top of ESM-2 vs.\ on top of ESM-C 6B. This is the earlier, unconfirmed version of the interaction question raised in \Cref{sec:results}.}
+\label{fig:interaction}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/tolerance.png}{0.95}
+\caption{Quality as the matching tolerance is tightened from $\pm3$ to an exact match ($\pm0$), single-split protocol, pooled held-out folds.}
+\label{fig:tolerance}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/bylength.png}{0.95}
+\caption{F1, precision, and recall as a function of segment length, single-split protocol, pooled held-out folds.}
+\label{fig:bylength}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/trades.png}{0.95}
+\caption{Precision/recall trade-offs by segment type when adding the 3Di channel or the bond-prediction loss, single-split protocol, pooled held-out folds.}
+\label{fig:trades}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/datascale_curve.png}{0.7}
+\caption{F1 ($\pm3$) vs.\ the number of training proteins, single-split protocol. The base ESM-2 model keeps improving with more data; ESM-C 6B variants saturate early.}
+\label{fig:datascale}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/datascale_tolerance.png}{0.95}
+\caption{Boundary precision vs.\ training-data volume, single-split protocol: the $\pm3$ curve is nearly flat for the strong model, but the exact-match ($\pm0$) curve keeps improving with more data.}
+\label{fig:datascale-tol}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/similarity.png}{0.95}
+\caption{Recall on held-out peptides as a function of (a) how well-represented the protein's genus is in training, and (b) maximum sequence identity to a training segment, single-split protocol. Recall tracks similarity to training data far more than genus frequency.}
+\label{fig:similarity}
+\end{figure}
+
+\end{document}

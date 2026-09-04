@@ -1,0 +1,105 @@
+{
+  "baseline": "5cv_baseline_esm2",
+  "cap": 50,
+  "variants": {
+    "5cv_esm2_boundary": {
+      "abs_gap": {
+        "3": 0.0241,
+        "2": 0.0263,
+        "1": 0.0269,
+        "0": 0.0391
+      },
+      "paired": {
+        "n": 26730,
+        "mean_err_base": 0.6125,
+        "mean_err_variant": 0.5804,
+        "delta": -0.0321,
+        "frac_tighter": 0.1423,
+        "frac_looser": 0.1146,
+        "exact_base": 0.6219,
+        "exact_variant": 0.653,
+        "per_outer_delta": [
+          -0.0172,
+          -0.019,
+          0.0072,
+          -0.1029,
+          -0.0151
+        ]
+      },
+      "localisation": {
+        "base_mean": 0.6883,
+        "variant_mean": 0.637,
+        "base_exact": 0.5861,
+        "variant_exact": 0.6236,
+        "n_localised_base": 32124,
+        "n_localised_variant": 32006
+      }
+    },
+    "5cv_esm2_adapter_only": {
+      "abs_gap": {
+        "3": 0.0293,
+        "2": 0.0323,
+        "1": 0.0304,
+        "0": 0.0509
+      },
+      "paired": {
+        "n": 29051,
+        "mean_err_base": 0.6371,
+        "mean_err_variant": 0.562,
+        "delta": -0.075,
+        "frac_tighter": 0.1366,
+        "frac_looser": 0.0735,
+        "exact_base": 0.6082,
+        "exact_variant": 0.6669,
+        "per_outer_delta": [
+          -0.0902,
+          -0.0704,
+          -0.0491,
+          -0.0832,
+          -0.077
+        ]
+      },
+      "localisation": {
+        "base_mean": 0.6883,
+        "variant_mean": 0.616,
+        "base_exact": 0.5861,
+        "variant_exact": 0.6411,
+        "n_localised_base": 32124,
+        "n_localised_variant": 34562
+      }
+    },
+    "5cv_esm2_full": {
+      "abs_gap": {
+        "3": 0.0577,
+        "2": 0.0591,
+        "1": 0.0571,
+        "0": 0.0862
+      },
+      "paired": {
+        "n": 29132,
+        "mean_err_base": 0.6323,
+        "mean_err_variant": 0.524,
+        "delta": -0.1083,
+        "frac_tighter": 0.1604,
+        "frac_looser": 0.0775,
+        "exact_base": 0.6108,
+        "exact_variant": 0.6973,
+        "per_outer_delta": [
+          -0.0594,
+          -0.1254,
+          -0.0468,
+          -0.164,
+          -0.1026
+        ]
+      },
+      "localisation": {
+        "base_mean": 0.6883,
+        "variant_mean": 0.5802,
+        "base_exact": 0.5861,
+        "variant_exact": 0.6699,
+        "n_localised_base": 32124,
+        "n_localised_variant": 35615
+      }
+    }
+  }
+}
