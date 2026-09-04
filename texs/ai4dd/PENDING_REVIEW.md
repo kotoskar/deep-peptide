@@ -901,3 +901,51 @@ is exactly why it cannot be waved away.
 
 The clean fix is one fp32 re-run of `5cv_baseline_esm2`, which is GPU work. The cheap fix is
 to state the difference and this estimate in the paper.
+
+### 5.1 Where the nested-CV precision split comes from
+
+It is not an accident of one run — it is inherited, silently, by design of the server scripts.
+
+`analysis/experiments/train_nested_cell.py` builds a cell's config by cloning the base:
+
+```python
+cfg = json.load(open(a.base))
+cfg.update({"embeddings_dir": ..., "data_file": ..., "partitioning_file": ...,
+            "out_dir": ..., "checkpoints_dir": ..., "seed": ..., "resume": True})
+for kv in a.set: ...          # only what --set passes
+```
+
+`amp` is never set, so every cell takes the precision of whatever `--base` config it was
+cloned from, and the value is then frozen into the cell's own `config.json`.
+
+`analysis/experiments/nested_cv_queue.jsonl` encodes the split directly:
+
+| queue entry | base config | amp | `set` |
+|---|---|---|---|
+| `5cv_baseline_esm2` | `runs/2026_baseline_esm2/config.json` | **True** | `{}` |
+| `5cv_esmc6b_plain` | `runs/2026_esmc_6b/config.json` | False | `{}` |
+
+The three ESM-2 variants were launched through `run_cv_queue.sh` with `MODELS=...`, cloning
+`runs/2026_esm2_{boundary,adapter_only,full}/config.json`, all `amp: false`.
+
+`run_cv_queue.sh` already has the hook — `EXTRA_SET`, whose documented example is literally
+`EXTRA_SET="amp=false"` for GPUs without bf16 — and it defaults to empty. Nobody passed it, so
+precision was never pinned; it just tracked whichever single-split run each model happened to
+be seeded from, and the ESM-2 baseline was the one seeded from an older bf16 run.
+
+**Consequence for branch B.** The three pending ESM-C 6B cells
+(`5cv_esmc6b_{boundary,adapter_only,full}`) will clone `runs/2026_esmc6b_*`, all `amp: false`,
+so they land as fp32: consistent with the rest of the grid, still against a bf16 baseline.
+Pin it explicitly rather than relying on the base — `EXTRA_SET="amp=false"`, or
+`"set": {"amp": false}` in the queue entry — so the config records an intent instead of an
+inheritance.
+
+**Cost of the clean fix.** Only `5cv_baseline_esm2` needs re-running, 20 cells, not the grid.
+Its 20 cells originally spanned 218 h wall (2026-07-11 to 2026-07-20), about 10.9 h per cell
+run serially. That is not available before the deadline; disclosure is.
+
+**Unrelated, noticed while reading the queue:** `5cv_esmc6b_plain` reads embeddings from
+`data/uniprot_2022/embeddings/embeddings_esmc6b` while using the 2026 split and 2026
+`labeled_sequences.csv`. That is harmless if the embedding files are content-addressed by
+`md5(sequence)`, which `run_cv_queue.sh` documents them to be, but the path pairs a 2022
+directory with a 2026 release and is worth one confirming look.
