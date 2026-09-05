@@ -19,6 +19,13 @@ RELEASES = {
         prefix="emb_part",
         count="analysis/experiments/datasphere/emb_count.txt",
     ),
+    "esmc6b": dict(
+        src="data/uniprot_2022/embeddings/embeddings_esmc6b",
+        data="data/uniprot_2026/labeled_sequences.csv",
+        split="data/uniprot_2026/graphpart_assignments_5motif.esmc6bcovered.csv",
+        prefix="embc_part",
+        count="analysis/experiments/datasphere/emb_count_esmc6b.txt",
+    ),
     "2022": dict(
         src="data/uniprot_2022/embeddings/embeddings_esm2",
         data="data/uniprot_2022/labeled_sequences.csv",

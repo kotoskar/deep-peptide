@@ -32,6 +32,17 @@ SPLIT_FILE="${SPLIT_FILE:-data/uniprot_2026/graphpart_assignments_5motif.esm2cov
 DATA_FILE="${DATA_FILE:-data/uniprot_2026/labeled_sequences.csv}"
 
 echo "=== $(date -u +%FT%TZ) driver start: out=$OUT_NAME conc=$CONC gpus=$GPUS ==="
+# Two-stage upload: a job's inputs are capped at 10 GiB, but `job fork` reuses the
+# parent's uploaded files and only sends what changed. So the first job carries half
+# the embeddings and exits here, and the fork supplies the other half and trains.
+if [ "${STAGE_ONLY:-0}" = "1" ]; then
+  echo "STAGE_ONLY: inputs uploaded, exiting before the GPU check"
+  ls -la
+  mkdir -p logs && echo staged > logs/staged.txt
+  tar -cf results.tar logs
+  echo "=== $(date -u +%FT%TZ) staging done ==="
+  exit 0
+fi
 echo "base=$BASE_CFG emb=$EMB split=$SPLIT_FILE data=$DATA_FILE"
 nvidia-smi || { echo "no GPU visible -- stopping before spending anything"; exit 1; }
 python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())"
@@ -91,8 +102,9 @@ echo "disk before extract:"; df -h . | tail -1
 mkdir -p "$EMB"
 # Glob rather than a fixed list: a second release ships its own tars under its
 # own prefix, and how many parts it took is a property of that release's size.
-tars=(emb*part*.tar)
-[ -e "${tars[0]}" ] || { echo "no emb*part*.tar inputs found"; ls -la; exit 1; }
+mapfile -t tars < <(find . -name 'emb*part*.tar' | sort)
+[ "${#tars[@]}" -gt 0 ] || { echo "no emb*part*.tar inputs found"; ls -laR | head -50; exit 1; }
+echo "found ${#tars[@]} embedding tars: ${tars[*]}"
 for t in "${tars[@]}"; do
   echo "extracting $t ($(du -h "$t" | cut -f1))"
   tar -xf "$t" -C "$EMB"

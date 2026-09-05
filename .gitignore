@@ -84,3 +84,11 @@ texs/**/*.synctex.gz
 /code.tar
 # and what a job sends back
 /results.tar
+
+# training checkpoints: metrics, configs and span dumps are tracked, weights are not
+model.pt
+model_*.pth
+# result archives delivered from other machines (unpacked into runs/ instead)
+/*_results*.tar
+/*_results*.tar.gz
+/*handoff*.tar

@@ -1,0 +1,63 @@
+# The eleven ESM-C 6B adapter-only cells that are still missing, in two uploads.
+#
+# The whole ESM-C embedding set the split needs is 18.98 GiB and a job may not be
+# given more than 10 GiB of inputs. `job fork` reuses everything the parent job
+# already uploaded and sends only the paths that changed, so:
+#
+#   1. submit THIS config: parts 0-2 are real (9.46 GiB), parts 3-5 are empty
+#      placeholder tars, STAGE_ONLY=1, and the job exits on a cheap CPU instance
+#      as soon as its inputs are in place;
+#   2. fork it, replacing the three placeholder variables with the real tars
+#      (9.53 GiB) and switching STAGE_ONLY off and the instance to g2.1:
+#
+#      datasphere project job fork --id <staging job> --async \
+#        --var EMBC3=embc_part3.tar --var EMBC4=embc_part4.tar --var EMBC5=embc_part5.tar \
+#        --env-var STAGE_ONLY=0 --cloud-instance-type g2.1
+name: cv-esmc6b-adapter-rest-stage
+desc: staging upload for the 11 remaining ESM-C 6B adapter-only cells
+
+cmd: >
+  tar -xf code.tar &&
+  OUT_NAME=5cv_esmc6b_adapter_only MPS=1 THREADS=2 CONC=10 GPUS=0
+  EMB_DIR=data/uniprot_2022/embeddings/embeddings_esmc6b
+  BASE_CFG=runs/2026_esmc6b_adapter_only/config.json
+  SPLIT_FILE=data/uniprot_2026/graphpart_assignments_5motif.esmc6bcovered.csv
+  DATA_FILE=data/uniprot_2026/labeled_sequences.csv
+  EMB_COUNT=8538
+  PAIRS="1,4 2,0 2,1 2,3 2,4 3,0 3,1 3,2 4,1 4,2 4,3"
+  bash analysis/experiments/datasphere/run_job.sh
+
+env:
+  vars:
+    NO_AIM: "1"
+    PYTHONPATH: "."
+    STAGE_ONLY: "1"
+  python:
+    type: manual
+    version: "3.10"
+    requirements-file: requirements.txt
+    root-paths:
+      - analysis/experiments/train_nested_cell.py
+
+# The staging half needs no GPU and should not pay for one.
+cloud-instance-types:
+  - c1.4
+
+working-storage:
+  type: SSD
+  size: 150Gb
+
+inputs:
+  - embc_part0.tar: EMBC0
+  - embc_part1.tar: EMBC1
+  - embc_part2.tar: EMBC2
+  - analysis/experiments/datasphere/placeholders/embc_part3.tar: EMBC3
+  - analysis/experiments/datasphere/placeholders/embc_part4.tar: EMBC4
+  - analysis/experiments/datasphere/placeholders/embc_part5.tar: EMBC5
+  - code.tar
+  - data/uniprot_2026/labeled_sequences.csv
+  - data/uniprot_2026/graphpart_assignments_5motif.esmc6bcovered.csv
+  - runs/2026_esmc6b_adapter_only/config.json
+
+outputs:
+  - results.tar
