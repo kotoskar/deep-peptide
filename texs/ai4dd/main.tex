@@ -199,7 +199,7 @@ Our contributions are:
   \item A zero-initialized \textbf{boundary head} that supplies the CRF with the position-specific emissions its own state graph already distinguishes, at a cost of 4{,}678 parameters.
   \item A lightweight \textbf{input adapter} that re-projects frozen pLM embeddings before the encoder, evaluated alone and jointly with the head.
   \item Gains of $+0.021$, $+0.026$ and $+0.054$ F1 under nested cross-validation, decomposed into their parts: the head buys precision, the adapter buys recall, and both place segment boundaries more precisely, measured on the segments a variant and the base model both find.
-  \item A quantified account of \textbf{why this benchmark resists a cleaner protocol}: homology-aware folds are not exchangeable, their spread is as large as either addition measured on them, and averaging it away costs roughly 200 GPU-hours per configuration.
+  \item A quantified account of \textbf{why this benchmark resists a cleaner protocol}: homology-aware folds are not exchangeable, their spread exceeds every effect measured on them, and averaging it away costs roughly 200 GPU-hours per configuration.
 \end{itemize}
 
 
@@ -237,7 +237,7 @@ Peptides and propeptides are matched separately. A prediction is a true positive
 
 The reference implementation of this criterion carries an upstream variable-shadowing bug that marks the wrong true segment as matched; everything reported here is re-scored with a corrected matcher (\Cref{sec:eval-metric}).
 
-\paragraph{Agreement with the published baseline.} DeepPeptide reports precision 0.68 and recall 0.49 at $\pm3$ under nested cross-validation on the 2022 data, an implied F1 of 0.570. We ran the base architecture on that same 2022 release under the same $5\times4$ protocol, which isolates the release from every other difference: it scores $0.574\pm0.069$ with the original matcher, directly comparable to the published figure, and $0.590\pm0.064$ with the corrected matcher of \Cref{sec:eval-metric}, which is the number comparable to our tables and is higher for the reason given there. On the 2026 rebuild the same architecture reaches $0.573\pm0.025$ (\Cref{tab:main-results}), so neither the rebuild nor our reimplementation moved the baseline.
+\paragraph{Agreement with the published baseline.} DeepPeptide reports precision 0.68 and recall 0.49 at $\pm3$ under nested cross-validation on the 2022 data, an implied F1 of 0.570. We ran the base architecture on that same 2022 release under the same $5\times4$ protocol, which isolates the release from every other difference: it scores $0.574\pm0.069$ with the original matcher, directly comparable to the published figure, and $0.590\pm0.064$ with the corrected matcher of \Cref{sec:eval-metric}, which is the number comparable to our tables and is higher for the reason given there. On the 2026 rebuild the same architecture reaches $0.576\pm0.029$ (\Cref{tab:main-results}), so neither the rebuild nor our reimplementation moved the baseline.
 
 \subsection{Nested cross-validation and its cost}
 \label{sec:eval-protocol}
@@ -301,7 +301,7 @@ A widening gap is still not proof of better localization, since a model that fin
 
 Two small additions to the DeepPeptide recipe, a zero-initialized boundary head at the decoder and a lightweight adapter at the input, improve segment F1 by $+0.054$ together and by $+0.021$ and $+0.026$ on their own. They combine because they act on different errors, the head suppressing spurious segments and the adapter finding more real ones, and both place segment boundaries more precisely, so their advantage widens as the match tolerance tightens.
 
-The evaluation carries a second message: homology-aware partitioning leaves the folds taxonomically non-exchangeable, their spread is as large as either addition measured on them, and averaging it away, at about 200 GPU-hours per configuration, is what makes those effects visible at all.
+The evaluation carries a second message: homology-aware partitioning leaves the folds taxonomically non-exchangeable, their spread exceeds every effect measured on them, and averaging it away, at about 200 GPU-hours per configuration, is what makes those effects visible at all.
 
 \paragraph{Limitations.} The reported spread covers fold composition only, not seed variation, so the true uncertainty is wider. The adapter alone was not run under nested cross-validation on ESM-C 6B, so the factorial is complete on ESM-2 only. The protocol still selects architectures using outer-fold scores rather than a sealed third level, for the reasons given in \Cref{sec:eval-protocol}. A larger set of ideas from earlier development, including a structural channel, an auxiliary bond loss, a telescopic segment CRF and LoRA fine-tuning, was only ever tested under the weaker protocol and is reported in \Cref{sec:app-old-protocol} as unconfirmed.
 
@@ -454,7 +454,7 @@ Data was split into seven GraphPart folds (30\% identity threshold, motif-balanc
 
 \subsection{Summary of tested modifications}
 
-\Cref{tab:verdict} summarizes the modifications tested under this protocol, with the corrected matcher (\Cref{sec:eval-metric}) applied throughout. Three of these rows were later re-tested under nested cross-validation: the boundary head, the adapter (\Cref{sec:method}), and the ESM-C 6B embedding swap. Two survived. The embedding swap did not: nested cross-validation puts ESM-C 6B at $0.588\pm0.016$ against ESM-2's $0.573\pm0.025$ (\Cref{tab:main-results}), overlapping intervals, where this table records a confident $+0.03$. Everything else below remains at the confidence of a single pooled split.
+\Cref{tab:verdict} summarizes the modifications tested under this protocol, with the corrected matcher (\Cref{sec:eval-metric}) applied throughout. Three of these rows were later re-tested under nested cross-validation: the boundary head, the adapter (\Cref{sec:method}), and the ESM-C 6B embedding swap. Two survived. The embedding swap did not: nested cross-validation puts ESM-C 6B at $0.588\pm0.016$ against ESM-2's $0.576\pm0.029$ (\Cref{tab:main-results}), overlapping intervals, where this table records a confident $+0.03$. Everything else below remains at the confidence of a single pooled split.
 
 \begin{table}[h]
 \centering
