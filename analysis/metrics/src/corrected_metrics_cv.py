@@ -37,7 +37,7 @@ from src.utils.manuscript_metrics import (
 from analysis.errors.src.error_analysis import match_protein
 
 N_FOLDS = 5
-DEFAULT_MODELS = ["5cv_baseline_esm2", "5cv_esm2_adapter_only", "5cv_esm2_boundary",
+DEFAULT_MODELS = ["5cv_baseline_esm2_fp32", "5cv_esm2_adapter_only", "5cv_esm2_boundary",
                   "5cv_esm2_full", "5cv_esmc6b_plain"]
 STATES = {"peptides": (PEPTIDE_START_STATE, PEPTIDE_END_STATE),
           "propeptides": (PROPEPTIDE_START_STATE, PROPEPTIDE_END_STATE)}

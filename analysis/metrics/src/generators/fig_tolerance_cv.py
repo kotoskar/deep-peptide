@@ -31,7 +31,7 @@ from paperstyle import apply, SERIES_STYLE, textwidth
 
 # run name -> (legend label, SERIES_STYLE key)
 MODELS = [
-    ("5cv_baseline_esm2",     "ESM-2, base",                   "base_esm2"),
+    ("5cv_baseline_esm2_fp32",     "ESM-2, base",                   "base_esm2"),
     ("5cv_esm2_boundary",     "ESM-2 + boundary head",         "boundary"),
     ("5cv_esm2_adapter_only", "ESM-2 + adapter",               "adapter"),
     ("5cv_esm2_full",         "ESM-2 + boundary head + adapter", "full"),
@@ -70,6 +70,9 @@ def main() -> int:
     ap.add_argument("--outdir", default="texs/ai4dd/figures")
     ap.add_argument("--tolerances", nargs="*", type=int, default=[3, 2, 1, 0])
     ap.add_argument("--task", default="all", choices=["all", "peptides", "propeptides"])
+    ap.add_argument("--allow-incomplete", action="store_true",
+                    help="also plot runs whose nested CV is not finished (off by default: a "
+                         "partial run has no protocol-valid mean)")
     ap.add_argument("--esm2-only", action="store_true",
                     help="drop the ESM-C series, to match a main text that parks them")
     args = ap.parse_args()
@@ -106,12 +109,12 @@ def main() -> int:
     # so it cannot separate finding more segments from placing them better; the
     # absolute gap can. A flat line is a parallel translation of the baseline,
     # a rising line is a boundary that is genuinely sharper.
-    ref = next((s for n, _, _, s in loaded if n == "5cv_baseline_esm2"), None)
+    ref = next((s for n, _, _, s in loaded if n == "5cv_baseline_esm2_fp32"), None)
     if ref is not None:
         rmean, _ = series(ref, tol, args.task)
         axes[1].axhline(0, color="#9AA5A6", linewidth=0.8, zorder=1)
         for name, label, key, s in loaded:
-            if name == "5cv_baseline_esm2":
+            if name == "5cv_baseline_esm2_fp32":
                 continue
             colour, marker, dash = SERIES_STYLE[key]
             mean, _ = series(s, tol, args.task)

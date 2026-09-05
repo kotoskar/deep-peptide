@@ -32,7 +32,7 @@ from paperstyle import apply, SERIES_STYLE, textwidth  # noqa: E402
 from airi_palette import AIRI, INK  # noqa: E402
 
 MODELS = [
-    ("5cv_baseline_esm2",     "ESM-2, base",                     "base_esm2"),
+    ("5cv_baseline_esm2_fp32",     "ESM-2, base",                     "base_esm2"),
     ("5cv_esm2_boundary",     "ESM-2 + boundary head",           "boundary"),
     ("5cv_esm2_adapter_only", "ESM-2 + adapter",                 "adapter"),
     ("5cv_esm2_full",         "ESM-2 + boundary head + adapter", "full"),
@@ -48,7 +48,7 @@ MODELS = [
 # sites rather than on the ends of the chain.
 EX_CELL = "outer1_inner0"
 EX_PROT = "G3ETQ3"
-EX_BASE = "5cv_baseline_esm2"
+EX_BASE = "5cv_baseline_esm2_fp32"
 EX_FULL = "5cv_esm2_full"
 
 TYPE_COLOR = {"peptides": AIRI["E1"], "propeptides": AIRI["B"]}
@@ -163,12 +163,12 @@ def draw_curves(ax_abs, ax_gap, loaded, tol, task):
         ax_abs.errorbar(x, mean, yerr=std, label=label, color=colour, marker=marker,
                         linestyle=dash, markersize=3.2, linewidth=1.3,
                         capsize=2, elinewidth=0.7)
-    ref = next((s for n, _, _, s in loaded if n == "5cv_baseline_esm2"), None)
+    ref = next((s for n, _, _, s in loaded if n == "5cv_baseline_esm2_fp32"), None)
     if ref is not None:
         rmean, _ = series(ref, tol, task)
         ax_gap.axhline(0, color="#9AA5A6", linewidth=0.8, zorder=1)
         for name, _, key, s in loaded:
-            if name == "5cv_baseline_esm2":
+            if name == "5cv_baseline_esm2_fp32":
                 continue
             colour, marker, dash = SERIES_STYLE[key]
             mean, _ = series(s, tol, task)
@@ -194,6 +194,9 @@ def main() -> int:
     ap.add_argument("--task", default="all", choices=["all", "peptides", "propeptides"])
     ap.add_argument("--no-example", action="store_true",
                     help="draw only the two curve panels (the previous figure)")
+    ap.add_argument("--allow-incomplete", action="store_true",
+                    help="also plot runs whose nested CV is not finished (off by default: a "
+                         "partial run has no protocol-valid mean)")
     ap.add_argument("--esm2-only", action="store_true",
                     help="drop the ESM-C series, to match a main text that parks them")
     args = ap.parse_args()
@@ -209,7 +212,13 @@ def main() -> int:
             print(f"[skip] {name}: no nested_cv_tolerance.json yet")
             continue
         if not s.get("complete", False):
-            print(f"[warn] {name}: INCOMPLETE ({s['n_cells']}/20 cells)")
+            # A partial run has no protocol-valid mean -- its outer folds carry
+            # different numbers of inner cells -- so it stays off the figure
+            # unless it is asked for explicitly.
+            if not args.allow_incomplete:
+                print(f"[skip] {name}: INCOMPLETE ({s['n_cells']}/20 cells)")
+                continue
+            print(f"[warn] {name}: INCOMPLETE ({s['n_cells']}/20 cells), plotted on request")
         loaded.append((name, label, key, s))
     if not loaded:
         print("nothing to plot")

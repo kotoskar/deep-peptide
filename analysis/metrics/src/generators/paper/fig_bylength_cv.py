@@ -29,7 +29,7 @@ SRC = pathlib.Path("analysis/metrics/bylength_cv.json")
 
 # run name -> (Figure-1 legend label, SERIES_STYLE key)
 MODELS = [
-    ("5cv_baseline_esm2",     "ESM-2, base",                     "base_esm2"),
+    ("5cv_baseline_esm2_fp32",     "ESM-2, base",                     "base_esm2"),
     ("5cv_esm2_boundary",     "ESM-2 + boundary head",           "boundary"),
     ("5cv_esm2_adapter_only", "ESM-2 + adapter",                 "adapter"),
     ("5cv_esm2_full",         "ESM-2 + boundary head + adapter", "full"),

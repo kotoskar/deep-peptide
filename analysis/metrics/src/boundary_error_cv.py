@@ -99,7 +99,7 @@ def f1_at(errs_true, n_pred, tol):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--baseline", default="5cv_baseline_esm2")
+    ap.add_argument("--baseline", default="5cv_baseline_esm2_fp32")
     ap.add_argument("--variants", nargs="*",
                     default=["5cv_esm2_boundary", "5cv_esm2_adapter_only", "5cv_esm2_full"])
     ap.add_argument("--tolerances", nargs="*", type=int, default=[3, 2, 1, 0])

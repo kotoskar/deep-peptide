@@ -60,9 +60,9 @@ REPO = next(p for p in Path(__file__).resolve().parents if (p / ".git").exists()
 sys.path.insert(0, str(REPO))
 
 TASKS = ("peptides", "propeptides")
-DEFAULT_MODELS = ["5cv_baseline_esm2", "5cv_esm2_boundary", "5cv_esm2_adapter_only",
+DEFAULT_MODELS = ["5cv_baseline_esm2_fp32", "5cv_esm2_boundary", "5cv_esm2_adapter_only",
                   "5cv_esm2_full", "5cv_esmc6b_plain"]
-IOU_THRESHOLDS = (0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 0.95)
+IOU_THRESHOLDS = (1e-9, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 0.95)
 SITE_TOLERANCES = (0, 1, 2, 3)
 LENGTH_BINS = [(5, 9), (10, 14), (15, 19), (20, 24), (25, 29),
                (30, 34), (35, 39), (40, 44), (45, 50)]
@@ -567,7 +567,7 @@ def paired_vs_baseline(base_seg, var_seg, gate=PRIMARY_GATE):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", nargs="*", default=DEFAULT_MODELS)
-    ap.add_argument("--baseline", default="5cv_baseline_esm2")
+    ap.add_argument("--baseline", default="5cv_baseline_esm2_fp32")
     ap.add_argument("--out", default="analysis/metrics/segment_quality_cv.json")
     ap.add_argument("--sequences", default="data/uniprot_2026/labeled_sequences.csv")
     args = ap.parse_args()

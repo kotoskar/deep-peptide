@@ -1,0 +1,63 @@
+=== nested_cv_tolerance.json (corrected matcher, protocol aggregation) ===
+run                            n  cmpl            F1@±3      ±2      ±1   exact   per-outer @±3
+5cv_baseline_esm2             20  True 0.5725+/-0.0253  0.5399  0.4607  0.3453   0:0.558 1:0.594 2:0.538 3:0.574 4:0.599
+5cv_baseline_esm2_fp32        20  True 0.5761+/-0.0294  0.5443  0.4667  0.3544   0:0.572 1:0.599 2:0.530 3:0.576 4:0.604
+5cv_esm2_boundary             20  True 0.5967+/-0.0261  0.5662  0.4876  0.3845   0:0.593 1:0.613 2:0.560 3:0.589 4:0.629
+5cv_esm2_adapter_only         20  True 0.6018+/-0.0262  0.5722  0.4911  0.3962   0:0.622 1:0.626 2:0.561 3:0.595 4:0.606
+5cv_esm2_full                 20  True 0.6302+/-0.0210  0.5989  0.5178  0.4316   0:0.639 1:0.650 2:0.603 3:0.613 4:0.646
+5cv_esmc6b_plain              20  True 0.5877+/-0.0157  0.5583  0.4835  0.3705   0:0.575 1:0.611 2:0.571 3:0.590 4:0.592
+5cv_esmc6b_boundary           20  True 0.6414+/-0.0222  0.6080  0.5316  0.4294   0:0.664 1:0.634 2:0.609 3:0.639 4:0.661
+5cv_esmc6b_adapter_only        9 False 0.6067+/-0.0200  0.5807  0.4991  0.4036   0:0.613 1:0.619 3:0.577 4:0.617
+5cv_esmc6b_full               20  True 0.6662+/-0.0179  0.6361  0.5542  0.4659   0:0.664 1:0.690 2:0.643 3:0.658 4:0.676
+5cv_baseline_esm2_2022        20  True 0.5898+/-0.0641  0.5511  0.4653  0.3464   0:0.538 1:0.550 2:0.580 3:0.699 4:0.582
+
+=== precision / recall at ±3, from cell_result_corrected.json ===
+5cv_baseline_esm2            no corrected cells
+5cv_baseline_esm2_fp32       cells=20 outers=5  precision=0.6210+/-0.0247 recall=0.5393+/-0.0454 f1=0.5761+/-0.0294
+5cv_esm2_boundary            no corrected cells
+5cv_esm2_adapter_only        no corrected cells
+5cv_esm2_full                no corrected cells
+5cv_esmc6b_plain             no corrected cells
+5cv_esmc6b_boundary          cells=20 outers=5  precision=0.7312+/-0.0104 recall=0.5723+/-0.0299 f1=0.6414+/-0.0222
+5cv_esmc6b_adapter_only      cells= 9 outers=4  precision=0.5836+/-0.0303 recall=0.6328+/-0.0230 f1=0.6066+/-0.0200
+5cv_esmc6b_full              cells=20 outers=5  precision=0.6899+/-0.0132 recall=0.6457+/-0.0334 f1=0.6662+/-0.0178
+5cv_baseline_esm2_2022       cells=20 outers=5  precision=0.6209+/-0.0589 recall=0.5637+/-0.0733 f1=0.5898+/-0.0641
+
+=== paired per-outer deltas at ±3 (corrected) ===
+head vs fp32 base              +0.0205 +/- 0.0073   positive 5/5
+adapter vs fp32 base           +0.0257 +/- 0.0175   positive 5/5
+both vs fp32 base              +0.0540 +/- 0.0156   positive 5/5
+head vs bf16 base              +0.0241 +/- 0.0078   positive 5/5
+adapter vs bf16 base           +0.0293 +/- 0.0211   positive 5/5
+both vs bf16 base              +0.0577 +/- 0.0160   positive 5/5
+fp32 vs bf16 base              +0.0036 +/- 0.0077   positive 4/5
+ESM-C head                     +0.0537 +/- 0.0257   positive 5/5
+ESM-C both                     +0.0785 +/- 0.0088   positive 5/5
+embedding, base vs base        +0.0116 +/- 0.0194   positive 4/5
+embedding, both vs both        +0.0361 +/- 0.0083   positive 5/5
+embedding, head vs head        +0.0448 +/- 0.0190   positive 5/5
+
+=== precision / recall at ±3 (corrected matcher, from nested_cv_tolerance.json) ===
+run                                         P                R
+5cv_baseline_esm2            0.6155+/-0.0196 0.5377+/-0.0434
+5cv_baseline_esm2_fp32       0.6210+/-0.0247 0.5393+/-0.0454
+5cv_esm2_boundary            0.6725+/-0.0288 0.5379+/-0.0362
+5cv_esm2_adapter_only        0.6281+/-0.0194 0.5792+/-0.0401
+5cv_esm2_full                0.6673+/-0.0320 0.5983+/-0.0258
+5cv_esmc6b_plain             0.6196+/-0.0171 0.5605+/-0.0274
+5cv_esmc6b_boundary          0.7312+/-0.0104 0.5723+/-0.0299
+5cv_esmc6b_adapter_only      0.5836+/-0.0304 0.6329+/-0.0229
+5cv_esmc6b_full              0.6899+/-0.0132 0.6457+/-0.0335
+5cv_baseline_esm2_2022       0.6209+/-0.0589 0.5637+/-0.0733
+
+=== per-task F1 at ±3 (peptides / propeptides) ===
+5cv_baseline_esm2            pep 0.5632+/-0.0708   propep 0.5741+/-0.0625
+5cv_baseline_esm2_fp32       pep 0.5611+/-0.0809   propep 0.5811+/-0.0730
+5cv_esm2_boundary            pep 0.5891+/-0.0728   propep 0.5954+/-0.0596
+5cv_esm2_adapter_only        pep 0.5804+/-0.0806   propep 0.6117+/-0.0426
+5cv_esm2_full                pep 0.6138+/-0.0706   propep 0.6375+/-0.0349
+5cv_esmc6b_plain             pep 0.5303+/-0.0574   propep 0.6225+/-0.0396
+5cv_esmc6b_boundary          pep 0.6129+/-0.0520   propep 0.6561+/-0.0433
+5cv_esmc6b_adapter_only      pep 0.5679+/-0.0872   propep 0.6302+/-0.0283
+5cv_esmc6b_full              pep 0.6210+/-0.0665   propep 0.6922+/-0.0306
+5cv_baseline_esm2_2022       pep 0.5902+/-0.0477   propep 0.5897+/-0.0778

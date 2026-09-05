@@ -51,7 +51,7 @@ sys.path.insert(0, str(REPO))
 from analysis.errors.src.error_analysis import match_protein  # noqa: E402
 
 TASKS = ("peptides", "propeptides")
-DEFAULT_MODELS = ["5cv_baseline_esm2", "5cv_esm2_boundary", "5cv_esm2_adapter_only",
+DEFAULT_MODELS = ["5cv_baseline_esm2_fp32", "5cv_esm2_boundary", "5cv_esm2_adapter_only",
                   "5cv_esm2_full", "5cv_esmc6b_plain"]
 EDGES = [5, 10, 15, 20, 25, 30, 35, 40, 45, 51]
 BINS = [f"{EDGES[i]}-{EDGES[i + 1] - 1}" for i in range(len(EDGES) - 1)]
