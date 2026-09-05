@@ -194,13 +194,16 @@ def main() -> int:
     ap.add_argument("--task", default="all", choices=["all", "peptides", "propeptides"])
     ap.add_argument("--no-example", action="store_true",
                     help="draw only the two curve panels (the previous figure)")
+    ap.add_argument("--esm2-only", action="store_true",
+                    help="drop the ESM-C series, to match a main text that parks them")
     args = ap.parse_args()
 
     outdir = pathlib.Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     loaded = []
-    for name, label, key in MODELS:
+    models = [m for m in MODELS if not (args.esm2_only and "esmc" in m[0])]
+    for name, label, key in models:
         s = load_summary(name)
         if s is None:
             print(f"[skip] {name}: no nested_cv_tolerance.json yet")

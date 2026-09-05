@@ -43,6 +43,15 @@ MODELS = [
 ]
 
 
+def select_models(esm2_only: bool):
+    # The main text parks the ESM-C material until the nested-CV grid for it
+    # lands; a curve on the figure with nothing about it in the text is worse
+    # than no curve, so the flag keeps the two in step.
+    if not esm2_only:
+        return MODELS
+    return [m for m in MODELS if "esmc" not in m[0]]
+
+
 def load(name: str):
     path = pathlib.Path("runs") / name / "nested_cv_tolerance.json"
     if not path.exists():
@@ -61,13 +70,15 @@ def main() -> int:
     ap.add_argument("--outdir", default="texs/ai4dd/figures")
     ap.add_argument("--tolerances", nargs="*", type=int, default=[3, 2, 1, 0])
     ap.add_argument("--task", default="all", choices=["all", "peptides", "propeptides"])
+    ap.add_argument("--esm2-only", action="store_true",
+                    help="drop the ESM-C series, to match a main text that parks them")
     args = ap.parse_args()
     tol = args.tolerances
     outdir = pathlib.Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     loaded = []
-    for name, label, style_key in MODELS:
+    for name, label, style_key in select_models(args.esm2_only):
         s = load(name)
         if s is None:
             print(f"[skip] {name}: no nested_cv_tolerance.json yet")
