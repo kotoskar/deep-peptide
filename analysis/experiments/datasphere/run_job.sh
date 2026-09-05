@@ -8,6 +8,16 @@
 #   GPUS       comma-separated GPU ids         default 0
 #   PAIRS      subset of "o,k" cells           default all 20
 #   EPOCHS     override epochs (smoke runs)    default unset -> the config's 100
+#   MPS        1 to start the MPS daemon       default 0 (see below: worth ~2x)
+#   THREADS    cap on per-process CPU threads  default unset (see below: worth ~1.7x)
+#
+# Which release to train on. The defaults are the 2026 ESM-2 split; the 2022
+# release is the same job with four paths and a count changed.
+#   EMB_DIR    where the embeddings unpack to  default data/uniprot_2026/embeddings/emb_esm2
+#   BASE_CFG   config to clone for every cell  default runs/2026_baseline_esm2/config.json
+#   SPLIT_FILE GraphPart assignments csv
+#   DATA_FILE  labeled_sequences csv
+#   EMB_COUNT  expected unique embedding files default: read from emb_count.txt
 set -euo pipefail
 # The job captures stdout but not stderr, so a failure in here was invisible:
 # the smoke run died silently right after the torch check. Fold stderr in.
@@ -16,9 +26,13 @@ exec 2>&1
 OUT_NAME="${OUT_NAME:-5cv_baseline_esm2_fp32}"
 CONC="${CONC:-8}"
 GPUS="${GPUS:-0}"
-EMB=data/uniprot_2026/embeddings/emb_esm2
+EMB="${EMB_DIR:-data/uniprot_2026/embeddings/emb_esm2}"
+BASE_CFG="${BASE_CFG:-runs/2026_baseline_esm2/config.json}"
+SPLIT_FILE="${SPLIT_FILE:-data/uniprot_2026/graphpart_assignments_5motif.esm2covered.csv}"
+DATA_FILE="${DATA_FILE:-data/uniprot_2026/labeled_sequences.csv}"
 
 echo "=== $(date -u +%FT%TZ) driver start: out=$OUT_NAME conc=$CONC gpus=$GPUS ==="
+echo "base=$BASE_CFG emb=$EMB split=$SPLIT_FILE data=$DATA_FILE"
 nvidia-smi || { echo "no GPU visible -- stopping before spending anything"; exit 1; }
 python3 -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())"
 
@@ -75,8 +89,11 @@ trap 'kill $SAMPLER_PID 2>/dev/null || true' EXIT
 # Shipped as three tars because a single job input file is capped at 5 GiB.
 echo "disk before extract:"; df -h . | tail -1
 mkdir -p "$EMB"
-for t in emb_part0.tar emb_part1.tar emb_part2.tar; do
-  [ -f "$t" ] || { echo "missing input $t"; ls -la; exit 1; }
+# Glob rather than a fixed list: a second release ships its own tars under its
+# own prefix, and how many parts it took is a property of that release's size.
+tars=(emb*part*.tar)
+[ -e "${tars[0]}" ] || { echo "no emb*part*.tar inputs found"; ls -la; exit 1; }
+for t in "${tars[@]}"; do
   echo "extracting $t ($(du -h "$t" | cut -f1))"
   tar -xf "$t" -C "$EMB"
   # Free each tar as soon as it is unpacked: keeping all three alongside their
@@ -85,7 +102,7 @@ for t in emb_part0.tar emb_part1.tar emb_part2.tar; do
   df -h . | tail -1
 done
 n=$(ls "$EMB" | wc -l)
-want=$(cat analysis/experiments/datasphere/emb_count.txt)
+want="${EMB_COUNT:-$(cat analysis/experiments/datasphere/emb_count.txt)}"
 echo "embeddings reassembled: $n files (expected $want)"
 # Not the protein count: 461 of the 8,897 proteins in this split share a sequence
 # with another, and embeddings are keyed by md5(sequence).
@@ -99,10 +116,10 @@ EXTRA="amp=false"
 [ -n "${EPOCHS:-}" ] && EXTRA="$EXTRA epochs=$EPOCHS"
 
 set +e
-MODELS="runs/2026_baseline_esm2/config.json:$OUT_NAME" \
+MODELS="$BASE_CFG:$OUT_NAME" \
 EMB="$EMB" \
-SPLIT=data/uniprot_2026/graphpart_assignments_5motif.esm2covered.csv \
-DATA=data/uniprot_2026/labeled_sequences.csv \
+SPLIT="$SPLIT_FILE" \
+DATA="$DATA_FILE" \
 EXTRA_SET="$EXTRA" \
 PAIRS="${PAIRS:-}" \
 bash analysis/experiments/run_cv_queue.sh "$CONC" "$GPUS"

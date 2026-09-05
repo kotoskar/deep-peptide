@@ -2,6 +2,8 @@
 
 ## Running now
 
+Two jobs, both on their own single A100.
+
 **Job `bt1j9t5c56k5edf1grcs`**, `config.yaml` unchanged from what is committed:
 20 cells of the 5×4 nested CV, ESM-2 base architecture, `amp=false`, one A100,
 `MPS=1 THREADS=2 CONC=10`, two waves of ten.
@@ -33,6 +35,20 @@ calibration showed); around 15 means MPS never started and the run is on the 55-
 around 67 means MPS started but the thread cap did not. VRAM sits near 55 GB either way and
 GPU utilisation reads ~100% in all three, so neither of those distinguishes anything.
 
+### Job `bt12l0qo04avm3k1qdil` — the 2022-release baseline, insurance
+
+Launched 09:02 MSK on 5 Sept from `config_2022.yaml`: the same 20 cells on the 2022 release,
+`amp=false`, `MPS=1 THREADS=2 CONC=10`. ~15 h and ~8.3k RUB, so it should land around
+midnight. It exists because the same run is being trained elsewhere and may not arrive; if
+both arrive, they cross-check each other -- but note the handoff's own
+`runs/baseline_esm2/config.json` carries `amp: true`, so the outside copy is bf16 unless it
+was run with `EXTRA_SET="amp=false"`, while this one is fp32 by construction.
+
+The driver is no longer tied to one release: `EMB_DIR`, `BASE_CFG`, `SPLIT_FILE`, `DATA_FILE`
+and `EMB_COUNT` select it, and the embedding tars are found by glob rather than by a fixed
+list of three. `pack_embeddings.py --release 2022` produced `emb22_part{0,1,2}.tar` (7167
+unique sequences, 7.5 GiB).
+
 ## When it lands
 
 The job was submitted with `--async`, so nothing arrives by itself; the archive has to be
@@ -40,8 +56,10 @@ pulled. `attach` replays the whole log and downloads the declared output into th
 
 ```bash
 set -a; . ./.env; set +a; export YC_TOKEN="$DS_TOKEN"
-datasphere project job attach --id bt1j9t5c56k5edf1grcs   # replays the log, downloads results.tar
+datasphere project job attach --id bt1j9t5c56k5edf1grcs   # 2026 fp32 baseline
 tar -xf results.tar                                       # into the repo root
+datasphere project job attach --id bt12l0qo04avm3k1qdil   # 2022 baseline; overwrites results.tar
+tar -xf results.tar
 bash analysis/experiments/datasphere/ingest_any.sh        # auto-detects the new run
 ```
 

@@ -1,0 +1,53 @@
+# The 2022-release ESM-2 baseline, 20 cells, as insurance: the same run is being
+# trained elsewhere, and if that delivery does not arrive this one stands in.
+#
+# It is deliberately NOT a copy of the handoff: runs/baseline_esm2/config.json
+# carries amp=true, and run_job.sh pins amp=false. Precision is the whole reason
+# the 2026 baseline is being re-run tonight, so the 2022 one is fp32 as well.
+#
+#   datasphere project job execute -p <PROJECT_ID> -c analysis/experiments/datasphere/config_2022.yaml
+name: cv-baseline-esm2-2022-fp32
+desc: 5x4 nested CV, ESM-2 base, 2022 release, fp32, 20 cells, MPS + thread cap
+
+cmd: >
+  tar -xf code.tar &&
+  OUT_NAME=5cv_baseline_esm2_2022 MPS=1 THREADS=2 CONC=10 GPUS=0
+  EMB_DIR=data/uniprot_2022/embeddings/embeddings_esm2
+  BASE_CFG=runs/baseline_esm2/config.json
+  SPLIT_FILE=data/uniprot_2022/graphpart_assignments.csv
+  DATA_FILE=data/uniprot_2022/labeled_sequences.csv
+  EMB_COUNT=7167
+  bash analysis/experiments/datasphere/run_job.sh
+
+env:
+  vars:
+    NO_AIM: "1"
+    PYTHONPATH: "."
+  python:
+    type: manual
+    version: "3.10"
+    requirements-file: requirements.txt
+    root-paths:
+      - analysis/experiments/train_nested_cell.py
+
+# Same single A100: g2.2 is refused to this community, so twenty cells cannot go
+# in one wave anyway -- ten of them already peak at 55 GB of the 80.
+cloud-instance-types:
+  - g2.1
+
+working-storage:
+  type: SSD
+  size: 150Gb
+
+inputs:
+  # 7.5 GiB in three parts; the per-file cap is 5 GiB and the per-job cap is 10.
+  - emb22_part0.tar
+  - emb22_part1.tar
+  - emb22_part2.tar
+  - code.tar
+  - data/uniprot_2022/labeled_sequences.csv
+  - data/uniprot_2022/graphpart_assignments.csv
+  - runs/baseline_esm2/config.json
+
+outputs:
+  - results.tar

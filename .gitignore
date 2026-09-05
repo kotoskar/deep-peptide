@@ -80,7 +80,7 @@ texs/**/*.fdb_latexmk
 texs/**/*.synctex.gz
 
 # staged DataSphere job inputs (rebuild with analysis/experiments/datasphere/pack_embeddings.py)
-/emb_part*.tar
+/emb*part*.tar
 /code.tar
 # and what a job sends back
 /results.tar
