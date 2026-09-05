@@ -221,6 +221,9 @@ def main() -> int:
                     help="score only the first N cells of each model (smoke test)")
     ap.add_argument("--rescore-only", action="store_true",
                     help="do not touch the GPU; rescore from dumped segments.json.gz")
+    ap.add_argument("--allow-unfinished", action="store_true",
+                    help="score a cell that has model.pt but no cell_result.json, i.e. one whose "
+                         "training was cut short after its best-validation checkpoint")
     ap.add_argument("--check", action="store_true",
                     help="verify tol=3 reproduces nested_cv_summary_corrected.json")
     args = ap.parse_args()
@@ -241,7 +244,19 @@ def main() -> int:
                 cell_dir = run_root / f"outer{o}_inner{k}"
                 cr = cell_dir / "cell_result.json"
                 if not cr.exists():
-                    print(f"[skip] {name} outer{o}_inner{k}: no cell_result.json")
+                    if not args.allow_unfinished or not (cell_dir / "model.pt").exists():
+                        print(f"[skip] {name} outer{o}_inner{k}: no cell_result.json")
+                        continue
+                    # A cell whose training was cut short still carries the
+                    # best-validation checkpoint it had reached. Scoring it is
+                    # only sound when the trajectory is already past its
+                    # optimum; the caller is asserting that.
+                    print(f"[unfinished] {name} outer{o}_inner{k}: scoring from model.pt")
+                    cells_meta.append((cell_dir, {
+                        "outer": o, "inner": k, "unfinished": True,
+                        "test_partitions": [o], "valid_partitions": [k],
+                        "train_partitions": [f for f in range(N_FOLDS) if f not in (o, k)],
+                    }))
                     continue
                 cells_meta.append((cell_dir, json.load(open(cr))))
         if args.limit_cells:
