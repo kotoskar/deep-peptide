@@ -504,12 +504,31 @@ single configuration fixed across all twenty cells at the implementation's defau
 $10^{-4}$, dropout and convolutional dropout $0.1$, kernel size 3, 32 filters, hidden size 64,
 batch size 48) and spend the inner loop on epoch selection alone.
 
+Our settings are the implementation's defaults and they sit outside the range the published
+search explored: a learning rate below all five of its ESM-2 winners, fewer convolutional filters
+than any of them, and a wider recurrent hidden state than any of them. The base row is therefore a
+different model from the published one, not a worse-tuned copy of it, which is what the
+precision-recall difference reflects.
+
 That choice is deliberate. A factorial is only interpretable if its cells differ in the factor
 under study and in nothing else, and per-fold tuning would confound each addition with whatever
-the search happened to find for it. The cost is that our base row is an untuned instance of the
-architecture rather than the tuned system, so the gains in \Cref{tab:main-results} are gains over
-that instance. They should not be read as gains a per-fold hyperparameter search would leave on
-the table, and every configuration in the grid carries the same handicap.
+the search happened to find for it. Two consequences follow, and they are not symmetric between
+the two blocks.
+
+The boundary head is protected by its initialization. Its final linear layer starts at zero, so at
+the first step the model with the head \emph{is} the base model, and the head's 4{,}678 parameters
+can only add corrections that lower the loss from there. Whatever setting suits the base is by
+construction a legitimate setting for the head, which cannot be handicapped relative to the base it
+is added to. The adapter has no such protection. It changes the input width from 1280 to 256 and
+adds $232{,}704$ parameters, roughly doubling the trainable stack, and a model of that shape may
+well want a different learning rate and dropout from the one we hold fixed. Its measured effect,
+$+0.026$ on ESM-2 and $+0.014$ on ESM-C 6B, should therefore be read as a lower bound.
+
+The direction of this bias is the useful part: holding hyperparameters fixed can hide an effect but
+cannot manufacture one, so every gain in \Cref{tab:main-results} is conservative. What it does not
+license is the reading that an untuned base makes the additions look better than they are. On the
+2022 release our untuned base reaches an F1 of $0.574$ against the tuned published model's implied
+$0.570$ (\Cref{sec:matching}), so the base we improve on is not a weak one.
 
 Two further notes on the reference implementation. Its recall guard tests the wrong denominator,
 returning zero when no segment is predicted but dividing by the true-segment count that the guard
