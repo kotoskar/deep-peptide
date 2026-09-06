@@ -118,7 +118,7 @@ Nothing was selected on outer-fold scores inside confirmation, since every cell 
 
 #### Limitations.
 
-The spread covers fold composition, not seed variation, so the true uncertainty is wider. Five of the twenty ESM-C 6B adapter cells were scored from a checkpoint reached before training was cut short, though no completed cell of that configuration ever selected one later than epoch 58.
+The spread covers fold composition, not seed variation, so the true uncertainty is wider. The ideas that were only ever screened, among them a structural channel, an auxiliary bond loss and LoRA fine-tuning, remain unconfirmed (Appendix&nbsp;D).
 
 # Impact Statement
 
