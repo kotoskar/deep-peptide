@@ -134,11 +134,11 @@ Section&nbsp;5 makes two claims that no single tolerance can settle: that the ad
 
 #### Holding detection fixed.
 
-The comparison in Section&nbsp;5 is paired. For each cell we take the true segments that the variant and the base both localize within ±3, so both models have found the segment and only its placement is at stake, and ask how often each puts a boundary on the annotated residue. Pooled over the twenty cells of a configuration this leaves 27,013 segments for the boundary head, 29,277 for the adapter and 29,394 for the two together.
+The comparison in Section&nbsp;5 is paired. For each cell we take the true segments that the variant and the base both localize within ±3, so both models have found the segment and only its placement is at stake, and ask how often each puts a boundary on the annotated residue. A configuration is twenty cells, five outer folds by four inner ones, and the four cells sharing an outer fold are all tested on it, so each of the 15,348 true segments in the split is scored four times: 61,392 segment-instances in all, of which the base localizes 32,326. Pooled over the twenty cells the paired set holds 27,013 instances for the boundary head, 29,277 for the adapter and 29,394 for the two together. These are instances rather than distinct segments, so the paired comparison rests on about a quarter as many independent segments as the counts suggest.
 
 #### What each block does to the count.
 
-Those denominators are themselves the result. Of the true segments the base localizes within ±3 across the twenty cells, the boundary head localizes 320 fewer and the adapter 2,236 more, with both together 3,289 more. The head therefore improves placement while covering marginally less, which is the precision effect of Table&nbsp;1 seen segment by segment, and the adapter does the opposite. On the paired set the head moves 13.2% of boundaries closer to the annotated residue and 11.4% further away, a near-even trade that nets out positive, while the two together move 15.0% closer against 7.5% further.
+Those denominators are themselves the result. Of the 32,326 instances the base localizes, the boundary head localizes 320 fewer and the adapter 2,236 more, with both together 3,289 more. The head therefore improves placement while covering marginally less, which is the precision effect of Table&nbsp;1 seen segment by segment, and the adapter does the opposite. On the paired set the head moves 13.2% of boundaries closer to the annotated residue and 11.4% further away, a near-even trade that nets out positive, while the two together move 15.0% closer against 7.5% further.
 
 #### Dropping the window.
 
