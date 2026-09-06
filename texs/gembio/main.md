@@ -116,10 +116,6 @@ Averaging over folds does not make them comparable, it only stops one of them de
 
 Nothing was selected on outer-fold scores inside confirmation, since every cell of the 2×2 is reported, but the screening that chose the candidates ran on the same proteins, and sealing that would take a third held-out level at roughly 1,600 GPU-hours for the grid, on 2/5 of the data. The spread covers fold composition, not seed variation, and the base row is untuned rather than the published system (Appendix&nbsp;E).
 
-# Impact Statement
-
-This paper improves a computational tool for predicting proteolytic cleavage products from protein sequence. Potential applications include interpreting proteomics data, informing vaccine and peptide-drug design, and studying disease-associated proteolysis. We are not aware of societal risks specific to this work beyond those generally associated with more accurate protein sequence analysis tools.
-
 # Appendix
 
 # A Extended review of prior work
@@ -358,6 +354,10 @@ The mean IoU taken over *all* true segments moves the other way for the head, 0.
 #### Which end moves.
 
 Scoring cleavage sites rather than segments, at exact placement and against all annotated sites, separates the two additions again. The boundary head improves the C-side of a segment, +0.028±0.006 on five folds of five, and leaves the N-side alone, -0.007±0.020 and positive on only two of five. The adapter improves both, the N-side by +0.022±0.006 and the C-side by +0.028±0.009, and the two together by +0.042±0.010 and +0.060±0.006 respectively. Split by segment type, the head’s C-side gain is largest on propeptides (+0.037±0.021, five of five), whose C-terminal cut is where the mature peptide begins and is the weaker of the two C-sides: the base model scores 0.476 there against 0.525 on peptide C-sides.
+
+# Impact Statement
+
+This paper improves a computational tool for predicting proteolytic cleavage products from protein sequence. Potential applications include interpreting proteomics data, informing vaccine and peptide-drug design, and studying disease-associated proteolysis. We are not aware of societal risks specific to this work beyond those generally associated with more accurate protein sequence analysis tools.
 
 <div id="refs" class="references csl-bib-body hanging-indent">
 
