@@ -23,13 +23,13 @@ Our contributions are the two blocks, the decomposition of what each buys under 
 
 # 2 Related work
 
-Most predictors of proteolytic cleavage are specific by construction: one line covers a fixed set of proteases with known recognition motifs, one enzyme or family at a time (Duckert et al. 2004; Song et al. 2012; Li et al. 2023; Li, Chen, et al. 2020; Li, Leier, et al. 2020), a second targets one product class in one kind of organism, most often neuropeptides, and scores cleavage only near basic residues (Southey et al. 2006; Wang et al. 2024). Neither answers what an organism’s full complement of proteases does to a given precursor. General-purpose models train a compact head on frozen protein-language-model embeddings (Lin et al. 2023; ESM Team 2024), but mostly score peptides that have already been excised (Du et al. 2024; Zhu et al. 2025) rather than locating them, and the pre-pLM PeptideLocator (Mooney et al. 2013) returns a per-residue heatmap rather than a segmentation. DeepPeptide (Teufel, Refsgaard, et al. 2023) is, to our knowledge, the only model that segments a precursor into typed peptide and propeptide spans, and it established the homology-partitioned benchmark used here (Teufel, Gíslason, et al. 2023), so we take both its architecture and its data pipeline as our starting point (Appendix&nbsp;A).
+Most predictors of proteolytic cleavage are specific by construction: one line covers a fixed set of proteases with known recognition motifs, one enzyme or family at a time (Duckert et al. 2004; Song et al. 2012; Li et al. 2023; Li, Chen, et al. 2020; Li, Leier, et al. 2020), a second targets one product class in one kind of organism, most often neuropeptides, and scores cleavage only near basic residues (Southey et al. 2006; Wang et al. 2024). Neither answers what an organism’s full complement of proteases does to a given precursor. General-purpose models train a compact head on frozen protein-language-model embeddings (Lin et al. 2023; ESM Team 2024), but mostly score peptides that have already been excised (Du et al. 2024; Zhu et al. 2025) rather than locating them, and the pre-pLM PeptideLocator (Mooney et al. 2013) returns a per-residue heatmap rather than a segmentation. DeepPeptide (Teufel, Refsgaard, et al. 2023) is, to our knowledge, the only model that segments a precursor into typed peptide and propeptide spans, and it established the homology-partitioned benchmark used here (Teufel, Gíslason, et al. 2023), so we take both its architecture and its data pipeline as our starting point (Appendix&nbsp;F).
 
 # 3 Method
 
 #### The base architecture.
 
-DeepPeptide passes a frozen ESM-2 embedding through a CNN–BiLSTM stack and decodes it with a linear-chain CRF that expands each of {Peptide, Propeptide} into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (Figure&nbsp;1b, drawn at reading size in Figure&nbsp;2). Other embedding sources and architectural modifications were screened as well, with verdicts in Appendix&nbsp;D.
+DeepPeptide passes a frozen ESM-2 embedding through a CNN–BiLSTM stack and decodes it with a linear-chain CRF that expands each of {Peptide, Propeptide} into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (Figure&nbsp;1b, drawn at reading size in Figure&nbsp;2). Other embedding sources and architectural modifications were screened as well, with verdicts in Appendix&nbsp;E.
 
 #### Boundary head.
 
@@ -43,7 +43,7 @@ The second addition leaves the decoder alone and acts on the input. Before the p
 
 ## 4.1 Dataset
 
-A precursor x=(a_1,…,a_L) is labelled per residue with y_t ∈ {None,Peptide,Propeptide} and contiguous runs of a label form typed segments, so the task is to recover which stretches of a precursor become mature peptides and which become propeptides that are excised and discarded. DeepPeptide built its dataset from `PEPTIDE` and `PROPEP` annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release (UniProt Consortium 2025). The collection grows from 8,449 proteins to 9,619, of which 8,897 both carry ESM-2 embeddings and enter the five folds used here. Folds come from GraphPart (Teufel, Gíslason, et al. 2023) at a 30% pairwise-identity ceiling, balanced by cleavage-motif class. Segment-length filtering, motif balancing and the full composition of the rebuild are given in Appendix&nbsp;B.
+A precursor x=(a_1,…,a_L) is labelled per residue with y_t ∈ {None,Peptide,Propeptide} and contiguous runs of a label form typed segments, so the task is to recover which stretches of a precursor become mature peptides and which become propeptides that are excised and discarded. DeepPeptide built its dataset from `PEPTIDE` and `PROPEP` annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release (UniProt Consortium 2025). The collection grows from 8,449 proteins to 9,619, of which 8,897 both carry ESM-2 embeddings and enter the five folds used here. Folds come from GraphPart (Teufel, Gíslason, et al. 2023) at a 30% pairwise-identity ceiling, balanced by cleavage-motif class. Segment-length filtering, motif balancing and the full composition of the rebuild are given in Appendix&nbsp;D.
 
 ## 4.2 Evaluation criterion
 
@@ -59,9 +59,9 @@ Development ran in two stages: screening and confirmation.
 
 #### Screening.
 
-An earlier split divided the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, one for comparing architectures and one held back. Roughly a dozen modifications were screened against it. Appendix&nbsp;D gives the protocol, the full verdict table and the per-candidate figures.
+An earlier split divided the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, one for comparing architectures and one held back. Roughly a dozen modifications were screened against it. Appendix&nbsp;E gives the protocol, the full verdict table and the per-candidate figures.
 
-The folds of that split are not interchangeable (Figure&nbsp;4), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so we report none of these numbers as findings. What it can do is separate candidates that are consistently unhelpful from candidates worth paying for, and two, the boundary head and the adapter, sat at or above the base throughout.
+The folds of that split are not interchangeable (Figure&nbsp;4), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. What it can do is separate the consistently unhelpful from the worth paying for, and two candidates, the boundary head and the adapter, sat at or above the base throughout.
 
 #### Confirmation.
 
@@ -84,7 +84,7 @@ Table&nbsp;1 reports the same 2×2 factorial on both embeddings under that proto
 | — | ✓ | 0.598 ± 0.012 | 0.607 ± 0.031 | 0.602 ± 0.017 | 0.573 | 0.497 | 0.394 | +0.014 |
 | ✓ | ✓ | 0.690 ± 0.013 | 0.646 ± 0.033 | **0.666 ± 0.018** | 0.636 | 0.554 | 0.466 | +0.021 |
 
-***Table&nbsp;1.*** 5 × 4 nested cross-validation with the corrected matcher, mean ± std. over the five outer folds. Precision and recall are at the headline ±3 tolerance, and the four F1 columns tighten the boundary-match tolerance to an exact residue. Growth is how much a row’s F1 advantage over the ESM-2 base widens between ±3 and an exact match, so a value near zero would mean its tolerance curve is a parallel translation of the baseline.
+***Table&nbsp;1.*** 5 × 4 nested cross-validation with the corrected matcher. Each cell is the mean over the five outer folds, with the standard deviation across them as a subscript. Precision and recall are at the headline ±3 tolerance, and the four F1 columns tighten it to an exact residue. Growth is how much a row’s F1 advantage over the ESM-2 base widens between ±3 and an exact match.
 
 </div>
 
@@ -94,15 +94,15 @@ Each improves F1 by a similar amount on its own, and together they give 0.054 fo
 
 #### Tightening the tolerance.
 
-Figure&nbsp;1 and the F1 columns of Table&nbsp;1 sweep τ from ±3 to an exact match. Absolute F1 falls steeply for every model: the strongest configuration goes from 0.666 at ±3 to 0.466 at the exact residue. Placing a cleavage site exactly is still an open problem.
+The F1 columns of Table&nbsp;1 sweep τ from ±3 to an exact match, and absolute F1 falls steeply for every model: the strongest configuration goes from 0.666 to 0.466. Placing a cleavage site exactly is still an open problem.
 
 A model that is better overall retains a different fraction of its ±3 score even when no boundary is placed better, so we compare absolute gaps rather than ratios. Every gap widens as the tolerance tightens (the *growth* column of Table&nbsp;1), and each stays nearly flat from ±3 to ±1 before opening up at the last step, so what separates these models is specifically whether they hit the exact residue.
 
-A widening gap is still not proof of better localization, since a model that finds more segments also gains ground at every tolerance. To hold detection fixed we compared each variant against the base on the true segments that *both* localize within ±3, matched cell by cell and segment by segment. On that set the share of boundaries placed on the exact residue rises from 0.630 to 0.652 for the boundary head, from 0.619 to 0.668 for the adapter and from 0.621 to 0.698 for the two together, each positive on all five outer folds, on the segment counts given in Appendix&nbsp;E. A gate is itself a choice, so Appendix&nbsp;F asks the same question without one, under an overlap criterion rather than a tolerance. It answers what the tolerance cannot: when a hit needs only a single residue of overlap, neither addition gains anything measurable (-0.013 for the head, +0.006 for the adapter), and both gain steadily as the overlap requirement tightens. What they buy is placement rather than coverage, which is why a criterion with a ±3 window records part of it as recall.
+A widening gap is still not proof of better localization, since a model that finds more segments also gains ground at every tolerance. To hold detection fixed we compared each variant against the base on the true segments that *both* localize within ±3, matched cell by cell and segment by segment. On that set the share of boundaries placed on the exact residue rises from 0.630 to 0.652 for the boundary head, from 0.619 to 0.668 for the adapter and from 0.621 to 0.698 for the two together, each positive on all five outer folds, on the segment counts given in Appendix&nbsp;B. A gate is itself a choice, so Appendix&nbsp;B asks the same question without one, under an overlap criterion rather than a tolerance. It answers what the tolerance cannot: when a hit needs only a single residue of overlap, neither addition gains anything measurable (-0.013 for the head, +0.006 for the adapter), and both gain steadily as the overlap requirement tightens. What they buy is placement rather than coverage, which is why a ±3 window records part of it as recall. Scored at individual cleavage sites rather than whole segments, the head’s gain turns out to be entirely on the C-terminal side of a segment (Appendix&nbsp;B).
 
 #### Capacity the base decoder cannot use.
 
-The base architecture on ESM-C 6B reaches 0.588±0.016 against 0.576±0.029 on ESM-2. The intervals overlap, so an embedding twice as wide buys no confirmed improvement on its own, while either architectural addition on the narrower one does. What the additions are worth on it, though, depends on which addition. Measured against its own base and paired by outer fold, the boundary head gains +0.054±0.026 on ESM-C 6B against +0.021±0.007 on ESM-2, the adapter +0.014±0.014 against +0.026±0.018, and the two together +0.079±0.009 against +0.054±0.016, all six positive on five folds of five. The split follows what each block does. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched that embedding, the less there is to re-project, whereas the head supplies position-specific evidence, and a richer embedding carries more of it. Read the other way, the same embedding swap is worth +0.012 F1 under the base architecture and +0.036 under both additions. The two embeddings cover slightly different protein sets, 8,897 against 8,999, and Appendix&nbsp;F reproduces the same split on the protein-cells common to all runs. The capacity is in the wider embedding either way. What changes is whether the decoder can reach it.
+The base architecture on ESM-C 6B reaches 0.588±0.016 against 0.576±0.029 on ESM-2. The intervals overlap, so an embedding twice as wide buys no confirmed improvement on its own, while either architectural addition on the narrower one does. What the additions are worth on it, though, depends on which addition. Measured against its own base and paired by outer fold, the boundary head gains +0.054±0.026 on ESM-C 6B against +0.021±0.007 on ESM-2, the adapter +0.014±0.014 against +0.026±0.018, and the two together +0.079±0.009 against +0.054±0.016, all six positive on five folds of five. The split follows what each block does. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched that embedding, the less there is to re-project, whereas the head supplies position-specific evidence, and a richer embedding carries more of it. Read the other way, the same embedding swap is worth +0.012 F1 under the base architecture and +0.036 under both additions. The two embeddings cover slightly different protein sets, 8,897 against 8,999, and Appendix&nbsp;B reproduces the same split on the protein-cells common to all runs. The capacity is in the wider embedding either way. What changes is whether the decoder can reach it.
 
 # 6 Conclusion
 
@@ -110,7 +110,7 @@ A zero-initialized boundary head at the decoder and a lightweight adapter at the
 
 #### The folds stay unequal.
 
-Averaging over folds does not make them comparable, it only stops one of them deciding the result. GraphPart keeps homologs together, and taxa *are* homology clusters: the five outer folds differ in size by a factor of two (1,263 to 2,572 proteins), 313 of 714 *Conus* sequences fall in fold 1 against 16 in fold 2, and all 293 *Cyriopagopus* avoid fold 0 entirely (Table&nbsp;3). The base architecture accordingly scores 0.530, 0.572, 0.576, 0.599 and 0.604 on the five outer folds, a range of 0.074, three and a half times the +0.021 effect the same experiment resolves once averaged over them.
+Averaging over folds does not make them comparable, it only stops one of them deciding the result. GraphPart keeps homologs together, and taxa *are* homology clusters: the five outer folds differ in size by a factor of two (1,263 to 2,572 proteins), 313 of 714 *Conus* sequences fall in fold 1 against 16 in fold 2, and all 293 *Cyriopagopus* avoid fold 0 entirely (Table&nbsp;4). The base architecture accordingly scores 0.530, 0.572, 0.576, 0.599 and 0.604 on the five outer folds, a range of 0.074, three and a half times the +0.021 effect the same experiment resolves once averaged over them.
 
 #### Cost.
 
@@ -118,7 +118,7 @@ Nothing was selected on outer-fold scores inside confirmation, since every cell 
 
 #### Limitations.
 
-The spread covers fold composition, not seed variation, so the true uncertainty is wider. The ideas that were only ever screened, among them a structural channel, an auxiliary bond loss and LoRA fine-tuning, remain unconfirmed (Appendix&nbsp;D).
+The spread covers fold composition and not seed variation, so the true uncertainty is wider, and the ideas that were only ever screened remain unconfirmed (Appendix&nbsp;E).
 
 # Impact Statement
 
@@ -126,163 +126,27 @@ This paper improves a computational tool for predicting proteolytic cleavage pro
 
 # Appendix
 
-# A Extended review of prior work
-
-Methods for predicting proteolytic peptides fall into three broad classes.
-
-**Protease-specific models.** These predict cleavage only for a limited set of enzymes, most of which have a known recognition motif. ProP (Duckert et al. 2004) targets cleavage by the PACE/PC family in animals and plants. PROSPER (Song et al. 2012) and its successor PROSPERous (Song et al. 2018) predict cleavage for one chosen enzyme at a time, as does the later ProsperousPlus (Li et al. 2023). DeepCleave (Li, Chen, et al. 2020) is restricted to caspases and matrix metalloproteinases, and Procleave (Li, Leier, et al. 2020) likewise handles one enzyme at a time and additionally requires 3D structural input. The shared limitation of this class is scope: in practice, one is usually interested in the combined effect of all proteases active in an organism, not any single enzyme.
-
-**Organism- or peptide-type-specific models.** A separate class targets neuropeptides or other bioactive fragments specific to a given organism. NeuroPred (Southey et al. 2006) and the species-agnostic DeepNeuropePred (Wang et al. 2024) only detect cleavage near a handful of basic residues, while NeuroPred-PLM (Wang et al. 2023) does not localize cleavage sites at all but classifies an already-excised sequence. A related group of models finds signal subsequences rather than any bioactive peptide: SignalP (Teufel et al. 2022) and TargetP (Almagro Armenteros et al. 2019) identify the type of signal peptide, which indicates where a protein is trafficked.
-
-**General-purpose models on pLM embeddings.** **Protein language models** (pLMs) are transformers trained without supervision on large sequence corpora, typically by masked-residue recovery, and they produce transferable per-residue embeddings: ESM-2 (Lin et al. 2023), the earlier ESM line (Rives et al. 2021), ESM Cambrian (ESM Team 2024; Hayes et al. 2025), and Ankh (Elnaggar et al. 2023). Compact task-specific heads are then trained on top of these frozen embeddings. Besides **DeepPeptide** (Teufel, Refsgaard, et al. 2023) itself, this recipe underlies DeepNeuropePred, NeuroPred-PLM, and SignalP 6, as well as models that score already-excised peptides rather than finding them: pLM4ACE (Du et al. 2024) predicts ACE-inhibitory activity, and BPFun (Zhu et al. 2025) and DeepBP (Zhang et al. 2024) predict broader bioactivity, building on earlier pre-pLM work such as PeptideRanker (Mooney et al. 2012). Before pLMs, PeptideLocator (Mooney et al. 2013) addressed a problem close to ours, but its output is a per-residue heatmap of similarity to known bioactive peptides rather than an explicit segmentation, and it was the main point of comparison in the original DeepPeptide paper.
-
-**Baseline architecture: DeepPeptide.** Since we build directly on it throughout this paper (Section&nbsp;3), DeepPeptide’s architecture is worth describing in detail rather than treating as a black box. It first encodes a precursor sequence with a frozen pLM (ESM-2), producing a per-residue embedding that is not fine-tuned during training. This embedding is refined by a convolution, a single-layer bidirectional LSTM and a second convolution. The published description does not fix the widths: they are searched with Optuna inside the inner cross-validation loop. The configuration we train throughout uses 32 convolutional filters of width 3 and an LSTM hidden size of 64 per direction, giving 224,710 trainable parameters for the base model. These features are consumed by a linear-chain CRF decoder whose state set is extended well beyond the three raw labels {None, Peptide, Propeptide}: each of the two positive labels is expanded into a chain of states long enough to represent segments up to a fixed maximum length (101 states in total for the 50-residue cap used here, Section&nbsp;4.1), so that a legal path through the CRF can only realize a contiguous segment of valid length, with dedicated states marking its first and last positions. This makes segmentation, rather than independent per-residue classification, the object the model is directly optimized for – and it is also where the gap described in Section&nbsp;1 lives: every state in this extended set that shares a type receives the same emission from the encoder, regardless of whether it marks the start, interior, or end of a segment.
-
-**Baseline dataset for this task.** Beyond its architecture, DeepPeptide also established the data resource this line of work relies on: precursor sequences from UniProtKB/Swiss-Prot annotated with `PEPTIDE` and `PROPEP` feature types, partitioned into homology-aware folds with GraphPart (Teufel, Gíslason, et al. 2023) at a 30% pairwise-identity threshold and additionally balanced by cleavage-flanking motif, then evaluated with the same family of nested cross-validation we adopt (Section&nbsp;5). This gave the field a standardized, already homology-controlled benchmark rather than an ad hoc collection of previously published peptide lists, and both the curated data and the construction pipeline that produced it are public. Section&nbsp;4.1 describes what we do with that resource: rebuilding it on a current UniProtKB/Swiss-Prot release, which adds 1,170 proteins net and refreshes the annotations behind every segment.
-
-Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (Section&nbsp;3), evaluated under the same 5×4 nested cross-validation it uses (Section&nbsp;4) on data rebuilt from a current release (Section&nbsp;4.1).
-
-# B Dataset details
-
-<div id="tab:dataset">
-
-|                                  | **2022** | **2026** |
-|:---------------------------------|---------:|---------:|
-| Proteins                         |     8449 |     9619 |
-| Peptide segments                 |     6372 |     7431 |
-| Propeptide segments              |     8211 |     9140 |
-| Median peptide length (residues) |       21 |       20 |
-
-Dataset composition: the 2022 release used by the original DeepPeptide against the 2026 release rebuilt here. Counts are before homology partitioning.
-
-</div>
+# A The architecture at reading size
 
 ![Figure 2](figures/architecture_scheme.jpg)
 
 ***Figure&nbsp;2.*** The base architecture and the two additions, at reading size. Figure&nbsp;1b shows the same diagram at the scale of a single panel, where it locates the two blocks rather than documenting them. Top: the pipeline, with the adapter between the frozen pLM and the CNN–BiLSTM encoder and the boundary head reading the encoder’s output. Bottom: what the head adds. The base model computes one emission per label and shares it across all 50 position states of that label, so the CRF’s start, interior and end states are fed identical evidence. The head emits three numbers per position and per segment type and adds them to the states they describe.
 
-![Figure 3](figures/data_distributions.png)
+# Boundary placement beyond the ±3 window
 
-***Figure&nbsp;3.*** Composition of the rebuilt 2026 dataset: segment length, type, and genus distributions.
+Section&nbsp;5 makes two claims that no single tolerance can settle: that the additions place boundaries better rather than merely finding more segments, and that what they buy survives a criterion with no acceptance window at all. This appendix reports the evidence for both.
 
-Two filters from the original pipeline are kept unchanged. Segments shorter than 5 or longer than 50 residues are dropped: the CRF’s state count fixes the upper bound, and a segment shorter than five residues is barely scoreable at a ±3 tolerance. Folds are then balanced by cleavage-motif class, obtained by k-means (k=50) on ESM-2 embeddings of the four residues flanking each annotated boundary, on top of the 30% pairwise-identity ceiling GraphPart enforces between folds.
+#### Holding detection fixed.
 
-<div id="tab:genus">
+The comparison in Section&nbsp;5 is paired. For each cell we take the true segments that the variant and the base both localize within ±3, so both models have found the segment and only its placement is at stake, and ask how often each puts a boundary on the annotated residue. Pooled over the twenty cells of a configuration this leaves 27,013 segments for the boundary head, 29,277 for the adapter and 29,394 for the two together.
 
-|                | **total** | **f0** | **f1** | **f2** | **f3** | **f4** |
-|:---------------|----------:|-------:|-------:|-------:|-------:|-------:|
-| All proteins   |      8897 |   1558 |   2572 |   1263 |   2025 |   1479 |
-| *Conus*        |       714 |    160 |    313 |     16 |    149 |     76 |
-| *Cyriopagopus* |       293 |      0 |     62 |     45 |      9 |    177 |
-| *Lycosa*       |       163 |      5 |     42 |     10 |    106 |      0 |
+#### What each block does to the count.
 
-Proteins per outer fold, and how three frequent genera distribute across them. *Cyriopagopus* and *Lycosa* are spider venoms, *Conus* a cone snail, and each is a homology cluster that GraphPart is obliged to keep intact. *Homo*, by contrast, is spread evenly (71/81/66/130/84).
+Those denominators are themselves the result. Of the true segments the base localizes within ±3 across the twenty cells, the boundary head localizes 320 fewer and the adapter 2,236 more, with both together 3,289 more. The head therefore improves placement while covering marginally less, which is the precision effect of Table&nbsp;1 seen segment by segment, and the adapter does the opposite. On the paired set the head moves 13.2% of boundaries closer to the annotated residue and 11.4% further away, a near-even trade that nets out positive, while the two together move 15.0% closer against 7.5% further.
 
-</div>
+#### Dropping the window.
 
-# C Metric implementation bug
-
-While auditing the DeepPeptide implementation of the matching criterion (Section&nbsp;4.2), we found a bug in the function that implements it (`get_counts_for_protein`), reproduced below in simplified form:
-
-    for idx, row in true_df.iterrows():      # idx: true-segment index
-        true_start, true_stop = row['start'], row['stop']
-        for idx, row in pred_df.iterrows():  # idx overwritten with pred index
-            pred_start, pred_stop = row['start'], row['stop']
-            ...
-            if start_match and stop_match:
-                true_df.loc[idx, 'matched'] = True  # BUG: idx is now the
-                pred_df.loc[idx, 'matched'] = True   # predicted index, not the true one
-                break
-
-The outer loop iterates over true segments and the inner loop over predicted segments, but both reuse the loop variable `idx`. By the time a match is found, `idx` refers to the predicted segment, so `true_df.loc[idx, ’matched’]` marks the wrong true segment. The effect is not large on average (it is partly self-correcting), but it costs a true positive whenever it fires, so both recall and precision come out low, and F1 with them. Across the nested-CV grid the correction raises recall by 0.021 to 0.032 and precision by 0.005 to 0.010. The loss concentrates in proteins where the model predicts more segments than the protein actually has. This bug is present in the upstream DeepPeptide code, not something we introduced.
-
-We did not silently patch this function in place, since that would shift absolute numbers without documenting it. Instead we implemented a separate, corrected matcher and used it to re-score the results in this paper: the earlier single-split runs reported in Appendix&nbsp;D, except two whose model classes no longer exist in the code and whose checkpoints cannot be rebuilt, and the full 5×4 nested-cross-validation grid in Table&nbsp;1 (all 160 cells of the eight configurations, and the 20 further cells of the 2022-release reproduction), by re-running test-partition inference from each cell’s saved checkpoint on the machine that held them. Every table in the main text uses the corrected matcher, and the original numbers are kept alongside in the released run artifacts.
-
-Re-scoring the grid also recomputed the original matcher on the same decoded segments, so each cell could be checked against the number already recorded for it. Over the 80 cells for which that check could be run, the two agree to 1.2×10^-3 F1 at worst and to 3×10^-7 at the median, so what remains is inference nondeterminism rather than disagreement between two deterministic functions of the same segments.
-
-Across the seven runs whose every cell carries both matchers the correction shifts mean F1 by +0.015 to +0.022, always upward, since the bug was discarding true positives. On ESM-2 it leaves the ordering of the four configurations intact, base < boundary head < adapter < combined, before and after correction. That ordering is not robust and we build no argument on it: the boundary-head/adapter gap is 0.005 against a fold-level standard deviation of 0.026, and per outer fold the full ordering holds in four folds of five after correction and three of five before it. On ESM-C 6B the ordering differs, base < adapter < boundary head < combined, the two middle configurations swapping places.
-
-# D Screening results details
-
-## Protocol
-
-Data was split into seven GraphPart folds (30% identity threshold, motif-balanced as in Section&nbsp;4.1), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured +0.074 on one and -0.011 on the other, ESM-C 6B against ESM-C 600M gave +0.028 and -0.021, and the net effect of the 3Di channel gave +0.015 and -0.018. Effects that kept their sign still moved by a lot: the isolated gated adapter measured -0.001 on one fold and +0.045 on the other. Figure&nbsp;4 shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10–24 residues and fold 5 bimodal, so results below pool them (model-select ∪ sealed, ≈2,300 proteins) to reduce (but not eliminate) this instability. This pooling is why the “sealed” fold is not, in practice, a held-out test set independent of model selection.
-
-![Figure 4](figures/fold_divergence.png)
-
-***Figure&nbsp;4.*** Why the folds of the earlier seven-fold split are not interchangeable: (a) the segment-length profile of each fold against the profile of the whole dataset, (b) the <em>L</em><sub>1</sub> distance between the two. Fold 4 tracks the overall distribution closely (0.07) while five of the seven folds sit above 0.23. Balancing was done on cleavage motif and homology, not on segment length, so this axis was left free. The same holds for the five-fold split used in the main text, where the imbalance is taxonomic (Table&nbsp;3).
-
-![Figure 5](figures/trades.png)
-
-***Figure&nbsp;5.*** Precision/recall trade-offs by segment type when adding the 3Di channel or the bond-prediction loss, single-split protocol, pooled held-out folds.
-
-## Summary of tested modifications
-
-Table&nbsp;4 summarizes the modifications tested under screening protocol, with the corrected matcher (Appendix&nbsp;C) applied throughout. Two of these rows were carried forward as candidates, the boundary head and the adapter (Section&nbsp;3), and both were confirmed. The embedding swap was not a candidate but became a factor of the confirmation design, and it is the row this table reads least well: nested cross-validation puts ESM-C 6B at 0.588±0.016 against ESM-2’s 0.576±0.029 (Table&nbsp;1), overlapping intervals, where this table records a confident +0.03. Everything else below remains at the confidence of a single pooled split.
-
-<div id="tab:verdict">
-
-| **Modification** | **Type** | **Measured effect on F1** | **Verdict** |
-|:---|:---|:---|:---|
-| ESM-C 6B instead of ESM-2 | embedding swap | +0.03, unstable across folds | helps |
-| Boundary head on ESM-C 6B | decoder addition | +0.05, +0.07, consistent | helps |
-| Boundary head on ESM-2 | decoder addition | ≈ 0 (CI includes zero) | no effect |
-| Structural channel (3Di) | extra input | propep. +0.02 / pep. -0.03, net trade-off | no effect |
-| ESM-C 6B compression 2560→256 | optimization | ≈ 0, 10× narrower input and 16× fewer trainable parameters | no effect |
-| Gated adapter on ESM-C 6B (pLM re-projection) | input adapter | +0.022, CI [+0.008, +0.038] | helps |
-| Bond-prediction auxiliary loss (on ESM-C 6B) | extra loss | pep. -0.05, net -0.015, neutral on ESM-2 | harmful |
-| Telescopic segment CRF | decoder addition | ≈ 0 on ESM-2, +0.022 on ESM-C 6B, no CI available | unresolved |
-
-Modifications tested under the screening single-split protocol, with their measured effect on F1 (pooled held-out folds) and an informal verdict. None of these effect sizes should be compared directly to the nested-CV numbers in Table&nbsp;1.
-
-</div>
-
-Note the apparent tension with Table&nbsp;1: under this earlier protocol, the boundary head on ESM-2 looked like it had no effect, while nested cross-validation resolved a confirmed +0.021 F1 gain for the same modification on the same embedding. We read this as evidence that the single-split protocol lacked the statistical power to resolve an effect of this size, not as a contradiction – and as the clearest illustration of why we do not treat single-split numbers as findings in this paper. Whether the boundary head’s effect is specifically larger on richer embeddings (as the ESM-C 6B rows above suggest) is accordingly left as an open question, not stated as a conclusion here.
-
-## Additional exploratory modifications
-
-A larger set of ideas was tried under the same single-split protocol and did not show a clear, consistent benefit. We list them for completeness and as candidates for future re-testing, without effect-size claims:
-
-- **Known-peptide dictionary.** An Aho–Corasick index of peptides from the training data was used to flag substring matches in a query sequence, injected as a bonus on the CRF state emissions, as a bias on the start, inside and end emissions specifically, fused into the encoder hidden state, and concatenated with the embedding before the encoder. No consistent benefit was observed, and the checkpoint for one of the variants can no longer be loaded.
-
-- **Structural features.** Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5 (Heinzinger et al. 2024) structural alphabet (3Di, as used in Foldseek (Kempen et al. 2024)) were tested as additional input channels, and results were mixed (Table&nbsp;4).
-
-- **LoRA fine-tuning.** Low-rank adaptation of the last few pLM layers, instead of fully frozen embeddings, scored 0.558 and 0.567 against 0.621 for the frozen baseline, all three on the 2022 release under its own five-fold split rather than the protocol of Appendix&nbsp;D. It also ran for fewer epochs in the same time budget, though we did not measure the cost directly.
-
-- **Projector variants.** Multi-scale and multi-branch projectors between the embedding and the CNN–BiLSTM were tried as alternative re-projection schemes to the adapter of Section&nbsp;3.
-
-- **Structural-projection width and telescopic CRF.** The width of the structural-feature projection (16/32/48 units) left pooled F1 flat at 0.691, 0.697 and 0.693, the telescopic segment CRF, an alternative decoder formulation that scores whole segments through a relative-position head, came out level with the base decoder on ESM-2 and +0.022 ahead on ESM-C 6B. Per-protein outputs were not retained for either run, so neither number carries a confidence interval and we treat the modification as untested rather than as having no effect.
-
-None of these modifications showed a consistent gain large enough, under the single-split protocol, to justify testing under nested cross-validation ahead of the two reported in the main text. The complete experiment log (including runs not summarized above) is maintained in the project repository rather than reproduced here, since it was collected under a protocol we no longer treat as sufficient evidence on its own.
-
-![Figure 6](figures/datascale_curve.png)
-
-***Figure&nbsp;6.*** F1 (±3) against the number of training proteins, single-split protocol. ESM-2 rises from 0.498 at 40% of the training folds to 0.583 at 85%, then falls back to 0.572 at 100%, so it is still gaining over most of the range but not at the last point. The ESM-C 6B curves are flat from the smallest size tested, with movement smaller than the bootstrap interval, so nothing is observed saturating: they simply never climb.
-
-# E Complete tolerance sweep
-
-Table&nbsp;5 repeats the tolerance sweep of Table&nbsp;1 with the fold-level standard deviation on every cell, which the main table carries only on the headline ±3 column for want of width. The paired localization comparison of Section&nbsp;5 runs on the true segments that a variant and the base both place within ±3: 27,013 segments for the boundary head, 29,277 for the adapter and 29,394 for the two together, pooled over the twenty cells of each configuration.
-
-<div id="tab:tolerance">
-
-| **Configuration** | ±3 | ±2 | ±1 | exact | **gap growth** |
-|:---|:--:|:--:|:--:|:--:|:--:|
-| ESM-2, base | 0.576 ±0.029 | 0.544 ±0.027 | 0.467 ±0.020 | 0.354 ±0.010 | +0.000 |
-| ESM-2 + boundary head | 0.597 ±0.026 | 0.566 ±0.024 | 0.488 ±0.015 | 0.384 ±0.015 | +0.010 |
-| ESM-2 + adapter | 0.602 ±0.026 | 0.572 ±0.024 | 0.491 ±0.011 | 0.396 ±0.020 | +0.016 |
-| ESM-2 + boundary head + adapter | 0.630 ±0.021 | 0.599 ±0.023 | 0.518 ±0.016 | 0.432 ±0.013 | +0.023 |
-| ESM-C 6B, base | 0.588 ±0.016 | 0.558 ±0.013 | 0.483 ±0.007 | 0.371 ±0.013 | +0.005 |
-| ESM-C 6B + boundary head | 0.641 ±0.022 | 0.608 ±0.026 | 0.532 ±0.035 | 0.429 ±0.030 | +0.010 |
-| ESM-C 6B + adapter | 0.602 ±0.017 | 0.573 ±0.019 | 0.497 ±0.016 | 0.394 ±0.031 | +0.014 |
-| ESM-C 6B + boundary head + adapter | 0.666 ±0.018 | 0.636 ±0.015 | 0.554 ±0.016 | 0.466 ±0.021 | +0.021 |
-
-Segment F1 by boundary-match tolerance, 5×4 nested cross-validation, corrected matcher, mean ± std. over the five outer folds.
-
-</div>
-
-# F Segment quality without a tolerance
-
-The ±3 criterion of Section&nbsp;4.2 is the benchmark’s, and Section&nbsp;1 says why it cannot see the improvement this paper is about. This appendix scores the same predictions without it. Predicted and true segments of the same type are matched greedily one to one by intersection over union, and a match counts as a hit when the overlap clears a threshold τ. Precision and recall use all predicted and all true segments as their denominators, so nothing is conditioned on what either model happened to find. Every configuration is scored on the 35,504 protein-cells common to all runs, which takes the coverage difference between the two embeddings (8,897 against 8,999) out of the comparison. On that common set the ESM-2 to ESM-C 6B swap is worth +0.005 F1 at IoU≥0.5 under the base architecture, on two outer folds of five, and +0.024 under both additions, on five of five, reproducing the split that Section&nbsp;5 measures at ±3.
+A gate is itself a choice, so we also score the same predictions with no tolerance. Predicted and true segments of the same type are matched greedily one to one by intersection over union, and a match counts as a hit when the overlap clears a threshold τ. Precision and recall use all predicted and all true segments as their denominators, so nothing is conditioned on what either model happened to find. Every configuration is scored on the 35,504 protein-cells common to all runs, which takes the coverage difference between the two embeddings (8,897 against 8,999 proteins) out of the comparison. On that common set the ESM-2 to ESM-C 6B swap is worth +0.005 F1 at IoU≥0.5 under the base architecture, on two outer folds of five, and +0.024 under both additions, on five of five, reproducing the split that Section&nbsp;5 measures at ±3.
 
 <div id="tab:iou">
 
@@ -313,9 +177,122 @@ The mean IoU taken over *all* true segments moves the other way for the head, 0.
 
 Scoring cleavage sites rather than segments, at exact placement and against all annotated sites, separates the two additions again. The boundary head improves the C-side of a segment, +0.028±0.006 on five folds of five, and leaves the N-side alone, -0.007±0.020 on two of five. The adapter improves both, +0.022±0.006 and +0.028±0.009, and the two together improve both further, +0.042±0.010 and +0.060±0.006. Split by segment type, the head’s C-side gain is largest on propeptides (+0.037±0.021, five of five), whose C-terminal cut is where the mature peptide begins and is the weaker of the two C-sides: the base model scores 0.476 there against 0.525 on peptide C-sides.
 
+# C Metric implementation bug
+
+While auditing the DeepPeptide implementation of the matching criterion (Section&nbsp;4.2), we found a bug in the function that implements it (`get_counts_for_protein`), reproduced below in simplified form:
+
+    for idx, row in true_df.iterrows():      # idx: true-segment index
+        true_start, true_stop = row['start'], row['stop']
+        for idx, row in pred_df.iterrows():  # idx overwritten with pred index
+            pred_start, pred_stop = row['start'], row['stop']
+            ...
+            if start_match and stop_match:
+                true_df.loc[idx, 'matched'] = True  # BUG: idx is now the
+                pred_df.loc[idx, 'matched'] = True   # predicted index, not the true one
+                break
+
+The outer loop iterates over true segments and the inner loop over predicted segments, but both reuse the loop variable `idx`. By the time a match is found, `idx` refers to the predicted segment, so `true_df.loc[idx, ’matched’]` marks the wrong true segment. The effect is not large on average (it is partly self-correcting), but it costs a true positive whenever it fires, so both recall and precision come out low, and F1 with them. Across the nested-CV grid the correction raises recall by 0.021 to 0.032 and precision by 0.005 to 0.010. The loss concentrates in proteins where the model predicts more segments than the protein actually has. This bug is present in the upstream DeepPeptide code, not something we introduced.
+
+We did not silently patch this function in place, since that would shift absolute numbers without documenting it. Instead we implemented a separate, corrected matcher and used it to re-score the results in this paper: the earlier single-split runs reported in Appendix&nbsp;E, except two whose model classes no longer exist in the code and whose checkpoints cannot be rebuilt, and the full 5×4 nested-cross-validation grid in Table&nbsp;1 (all 160 cells of the eight configurations, and the 20 further cells of the 2022-release reproduction), by re-running test-partition inference from each cell’s saved checkpoint on the machine that held them. Every table in the main text uses the corrected matcher, and the original numbers are kept alongside in the released run artifacts.
+
+Re-scoring the grid also recomputed the original matcher on the same decoded segments, so each cell could be checked against the number already recorded for it. Over the 80 cells for which that check could be run, the two agree to 1.2×10^-3 F1 at worst and to 3×10^-7 at the median, so what remains is inference nondeterminism rather than disagreement between two deterministic functions of the same segments.
+
+Across the seven runs whose every cell carries both matchers the correction shifts mean F1 by +0.015 to +0.022, always upward, since the bug was discarding true positives. On ESM-2 it leaves the ordering of the four configurations intact, base < boundary head < adapter < combined, before and after correction. That ordering is not robust and we build no argument on it: the boundary-head/adapter gap is 0.005 against a fold-level standard deviation of 0.026, and per outer fold the full ordering holds in four folds of five after correction and three of five before it. On ESM-C 6B the ordering differs, base < adapter < boundary head < combined, the two middle configurations swapping places.
+
+# D Dataset details
+
+<div id="tab:dataset">
+
+|                                  | **2022** | **2026** |
+|:---------------------------------|---------:|---------:|
+| Proteins                         |     8449 |     9619 |
+| Peptide segments                 |     6372 |     7431 |
+| Propeptide segments              |     8211 |     9140 |
+| Median peptide length (residues) |       21 |       20 |
+
+Dataset composition: the 2022 release used by the original DeepPeptide against the 2026 release rebuilt here. Counts are before homology partitioning.
+
+</div>
+
+![Figure 3](figures/data_distributions.png)
+
+***Figure&nbsp;3.*** Composition of the rebuilt 2026 dataset: segment length, type, and genus distributions.
+
+Two filters from the original pipeline are kept unchanged. Segments shorter than 5 or longer than 50 residues are dropped: the CRF’s state count fixes the upper bound, and a segment shorter than five residues is barely scoreable at a ±3 tolerance. Folds are then balanced by cleavage-motif class, obtained by k-means (k=50) on ESM-2 embeddings of the four residues flanking each annotated boundary, on top of the 30% pairwise-identity ceiling GraphPart enforces between folds.
+
+<div id="tab:genus">
+
+|                | **total** | **f0** | **f1** | **f2** | **f3** | **f4** |
+|:---------------|----------:|-------:|-------:|-------:|-------:|-------:|
+| All proteins   |      8897 |   1558 |   2572 |   1263 |   2025 |   1479 |
+| *Conus*        |       714 |    160 |    313 |     16 |    149 |     76 |
+| *Cyriopagopus* |       293 |      0 |     62 |     45 |      9 |    177 |
+| *Lycosa*       |       163 |      5 |     42 |     10 |    106 |      0 |
+
+Proteins per outer fold, and how three frequent genera distribute across them. *Cyriopagopus* and *Lycosa* are spider venoms, *Conus* a cone snail, and each is a homology cluster that GraphPart is obliged to keep intact. *Homo*, by contrast, is spread evenly (71/81/66/130/84).
+
+</div>
+
+# E Screening protocol and verdicts
+
+## Protocol
+
+Data was split into seven GraphPart folds (30% identity threshold, motif-balanced as in Section&nbsp;4.1), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured +0.074 on one and -0.011 on the other, ESM-C 6B against ESM-C 600M gave +0.028 and -0.021, and the net effect of the 3Di channel gave +0.015 and -0.018. Effects that kept their sign still moved by a lot: the isolated gated adapter measured -0.001 on one fold and +0.045 on the other. Figure&nbsp;4 shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10–24 residues and fold 5 bimodal, so results below pool them (model-select ∪ sealed, ≈2,300 proteins) to reduce (but not eliminate) this instability. This pooling is why the “sealed” fold is not, in practice, a held-out test set independent of model selection.
+
+![Figure 4](figures/fold_divergence.png)
+
+***Figure&nbsp;4.*** Why the folds of the earlier seven-fold split are not interchangeable: (a) the segment-length profile of each fold against the profile of the whole dataset, (b) the <em>L</em><sub>1</sub> distance between the two. Fold 4 tracks the overall distribution closely (0.07) while five of the seven folds sit above 0.23. Balancing was done on cleavage motif and homology, not on segment length, so this axis was left free. The same holds for the five-fold split used in the main text, where the imbalance is taxonomic (Table&nbsp;4).
+
+![Figure 5](figures/trades.png)
+
+***Figure&nbsp;5.*** Precision/recall trade-offs by segment type when adding the 3Di channel or the bond-prediction loss, single-split protocol, pooled held-out folds.
+
+## Summary of tested modifications
+
+Table&nbsp;5 summarizes the modifications tested under screening protocol, with the corrected matcher (Appendix&nbsp;C) applied throughout. Two of these rows were carried forward as candidates, the boundary head and the adapter (Section&nbsp;3), and both were confirmed. The embedding swap was not a candidate but became a factor of the confirmation design, and it is the row this table reads least well: nested cross-validation puts ESM-C 6B at 0.588±0.016 against ESM-2’s 0.576±0.029 (Table&nbsp;1), overlapping intervals, where this table records a confident +0.03. Everything else below remains at the confidence of a single pooled split.
+
+<div id="tab:verdict">
+
+| **Modification** | **Type** | **Measured effect on F1** | **Verdict** |
+|:---|:---|:---|:---|
+| ESM-C 6B instead of ESM-2 | embedding swap | +0.03, unstable across folds | helps |
+| Boundary head on ESM-C 6B | decoder addition | +0.05, +0.07, consistent | helps |
+| Boundary head on ESM-2 | decoder addition | ≈ 0 (CI includes zero) | no effect |
+| Structural channel (3Di) | extra input | propep. +0.02 / pep. -0.03, net trade-off | no effect |
+| ESM-C 6B compression 2560→256 | optimization | ≈ 0, 10× narrower input and 16× fewer trainable parameters | no effect |
+| Gated adapter on ESM-C 6B (pLM re-projection) | input adapter | +0.022, CI [+0.008, +0.038] | helps |
+| Bond-prediction auxiliary loss (on ESM-C 6B) | extra loss | pep. -0.05, net -0.015, neutral on ESM-2 | harmful |
+| Telescopic segment CRF | decoder addition | ≈ 0 on ESM-2, +0.022 on ESM-C 6B, no CI available | unresolved |
+
+Modifications tested under the screening single-split protocol, with their measured effect on F1 (pooled held-out folds) and an informal verdict. None of these effect sizes should be compared directly to the nested-CV numbers in Table&nbsp;1.
+
+</div>
+
+Note the apparent tension with Table&nbsp;1: under this earlier protocol, the boundary head on ESM-2 looked like it had no effect, while nested cross-validation resolved a confirmed +0.021 F1 gain for the same modification on the same embedding. We read this as evidence that the single-split protocol lacked the statistical power to resolve an effect of this size, not as a contradiction – and as the clearest illustration of why we do not treat single-split numbers as findings in this paper. Whether the boundary head’s effect is specifically larger on richer embeddings (as the ESM-C 6B rows above suggest) is accordingly left as an open question, not stated as a conclusion here.
+
+## Additional exploratory modifications
+
+A larger set of ideas was tried under the same single-split protocol and did not show a clear, consistent benefit. We list them for completeness and as candidates for future re-testing, without effect-size claims:
+
+- **Known-peptide dictionary.** An Aho–Corasick index of peptides from the training data was used to flag substring matches in a query sequence, injected as a bonus on the CRF state emissions, as a bias on the start, inside and end emissions specifically, fused into the encoder hidden state, and concatenated with the embedding before the encoder. No consistent benefit was observed, and the checkpoint for one of the variants can no longer be loaded.
+
+- **Structural features.** Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5 (Heinzinger et al. 2024) structural alphabet (3Di, as used in Foldseek (Kempen et al. 2024)) were tested as additional input channels, and results were mixed (Table&nbsp;5).
+
+- **LoRA fine-tuning.** Low-rank adaptation of the last few pLM layers, instead of fully frozen embeddings, scored 0.558 and 0.567 against 0.621 for the frozen baseline, all three on the 2022 release under its own five-fold split rather than the protocol of Appendix&nbsp;E. It also ran for fewer epochs in the same time budget, though we did not measure the cost directly.
+
+- **Projector variants.** Multi-scale and multi-branch projectors between the embedding and the CNN–BiLSTM were tried as alternative re-projection schemes to the adapter of Section&nbsp;3.
+
+- **Structural-projection width and telescopic CRF.** The width of the structural-feature projection (16/32/48 units) left pooled F1 flat at 0.691, 0.697 and 0.693, the telescopic segment CRF, an alternative decoder formulation that scores whole segments through a relative-position head, came out level with the base decoder on ESM-2 and +0.022 ahead on ESM-C 6B. Per-protein outputs were not retained for either run, so neither number carries a confidence interval and we treat the modification as untested rather than as having no effect.
+
+None of these modifications showed a consistent gain large enough, under the single-split protocol, to justify testing under nested cross-validation ahead of the two reported in the main text. The complete experiment log (including runs not summarized above) is maintained in the project repository rather than reproduced here, since it was collected under a protocol we no longer treat as sufficient evidence on its own.
+
+![Figure 6](figures/datascale_curve.png)
+
+***Figure&nbsp;6.*** F1 (±3) against the number of training proteins, single-split protocol. ESM-2 rises from 0.498 at 40% of the training folds to 0.583 at 85%, then falls back to 0.572 at 100%, so it is still gaining over most of the range but not at the last point. The ESM-C 6B curves are flat from the smallest size tested, with movement smaller than the bootstrap interval, so nothing is observed saturating: they simply never climb.
+
 ## Supplementary figures
 
-The figures below are from the same screening stage as Table&nbsp;4 and none of them should be read as confirmed evidence in the sense of Section&nbsp;5.
+The figures below are from the same screening stage as Table&nbsp;5 and none of them should be read as confirmed evidence in the sense of Section&nbsp;5.
 
 ![Figure 7](figures/scoreboard.png)
 
@@ -328,6 +305,22 @@ The figures below are from the same screening stage as Table&nbsp;4 and none of 
 ![Figure 9](figures/similarity.png)
 
 ***Figure&nbsp;9.*** Recall on held-out peptides as a function of (a) how well-represented the protein’s genus is in training and (b) maximum sequence identity to a training segment, screening protocol. For the two ESM-C models recall tracks maximum identity to a training segment far more than genus abundance, while for the ESM-2 baseline the two axes are closer to comparable. The <em>x</em> axis in (a) counts training <em>segments</em> in the genus, not proteins.
+
+# F Extended review of prior work
+
+Methods for predicting proteolytic peptides fall into three broad classes.
+
+**Protease-specific models.** These predict cleavage only for a limited set of enzymes, most of which have a known recognition motif. ProP (Duckert et al. 2004) targets cleavage by the PACE/PC family in animals and plants. PROSPER (Song et al. 2012) and its successor PROSPERous (Song et al. 2018) predict cleavage for one chosen enzyme at a time, as does the later ProsperousPlus (Li et al. 2023). DeepCleave (Li, Chen, et al. 2020) is restricted to caspases and matrix metalloproteinases, and Procleave (Li, Leier, et al. 2020) likewise handles one enzyme at a time and additionally requires 3D structural input. The shared limitation of this class is scope: in practice, one is usually interested in the combined effect of all proteases active in an organism, not any single enzyme.
+
+**Organism- or peptide-type-specific models.** A separate class targets neuropeptides or other bioactive fragments specific to a given organism. NeuroPred (Southey et al. 2006) and the species-agnostic DeepNeuropePred (Wang et al. 2024) only detect cleavage near a handful of basic residues, while NeuroPred-PLM (Wang et al. 2023) does not localize cleavage sites at all but classifies an already-excised sequence. A related group of models finds signal subsequences rather than any bioactive peptide: SignalP (Teufel et al. 2022) and TargetP (Almagro Armenteros et al. 2019) identify the type of signal peptide, which indicates where a protein is trafficked.
+
+**General-purpose models on pLM embeddings.** **Protein language models** (pLMs) are transformers trained without supervision on large sequence corpora, typically by masked-residue recovery, and they produce transferable per-residue embeddings: ESM-2 (Lin et al. 2023), the earlier ESM line (Rives et al. 2021), ESM Cambrian (ESM Team 2024; Hayes et al. 2025), and Ankh (Elnaggar et al. 2023). Compact task-specific heads are then trained on top of these frozen embeddings. Besides **DeepPeptide** (Teufel, Refsgaard, et al. 2023) itself, this recipe underlies DeepNeuropePred, NeuroPred-PLM, and SignalP 6, as well as models that score already-excised peptides rather than finding them: pLM4ACE (Du et al. 2024) predicts ACE-inhibitory activity, and BPFun (Zhu et al. 2025) and DeepBP (Zhang et al. 2024) predict broader bioactivity, building on earlier pre-pLM work such as PeptideRanker (Mooney et al. 2012). Before pLMs, PeptideLocator (Mooney et al. 2013) addressed a problem close to ours, but its output is a per-residue heatmap of similarity to known bioactive peptides rather than an explicit segmentation, and it was the main point of comparison in the original DeepPeptide paper.
+
+**Baseline architecture: DeepPeptide.** Since we build directly on it throughout this paper (Section&nbsp;3), DeepPeptide’s architecture is worth describing in detail rather than treating as a black box. It first encodes a precursor sequence with a frozen pLM (ESM-2), producing a per-residue embedding that is not fine-tuned during training. This embedding is refined by a convolution, a single-layer bidirectional LSTM and a second convolution. The published description does not fix the widths: they are searched with Optuna inside the inner cross-validation loop. The configuration we train throughout uses 32 convolutional filters of width 3 and an LSTM hidden size of 64 per direction, giving 224,710 trainable parameters for the base model. These features are consumed by a linear-chain CRF decoder whose state set is extended well beyond the three raw labels {None, Peptide, Propeptide}: each of the two positive labels is expanded into a chain of states long enough to represent segments up to a fixed maximum length (101 states in total for the 50-residue cap used here, Section&nbsp;4.1), so that a legal path through the CRF can only realize a contiguous segment of valid length, with dedicated states marking its first and last positions. This makes segmentation, rather than independent per-residue classification, the object the model is directly optimized for – and it is also where the gap described in Section&nbsp;1 lives: every state in this extended set that shares a type receives the same emission from the encoder, regardless of whether it marks the start, interior, or end of a segment.
+
+**Baseline dataset for this task.** Beyond its architecture, DeepPeptide also established the data resource this line of work relies on: precursor sequences from UniProtKB/Swiss-Prot annotated with `PEPTIDE` and `PROPEP` feature types, partitioned into homology-aware folds with GraphPart (Teufel, Gíslason, et al. 2023) at a 30% pairwise-identity threshold and additionally balanced by cleavage-flanking motif, then evaluated with the same family of nested cross-validation we adopt (Section&nbsp;5). This gave the field a standardized, already homology-controlled benchmark rather than an ad hoc collection of previously published peptide lists, and both the curated data and the construction pipeline that produced it are public. Section&nbsp;4.1 describes what we do with that resource: rebuilding it on a current UniProtKB/Swiss-Prot release, which adds 1,170 proteins net and refreshes the annotations behind every segment.
+
+Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (Section&nbsp;3), evaluated under the same 5×4 nested cross-validation it uses (Section&nbsp;4) on data rebuilt from a current release (Section&nbsp;4.1).
 
 <div id="refs" class="references csl-bib-body hanging-indent">
 
