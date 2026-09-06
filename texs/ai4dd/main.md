@@ -11,7 +11,7 @@ Proteolysis cuts precursor proteins into mature peptides and propeptides, and pr
 
 ![Figure 1](figures/fig_tolerance.png)
 
-***Figure&nbsp;1.*** The problem, the two blocks and what they buy. (a) One held-out precursor, with the ±3 acceptance window shaded around each annotated cleavage site. Both of the baseline’s cuts fall inside the window, so they count as found at the headline tolerance and not at an exact match, while ours, carrying both additions, lands on the annotated residue. (b) Where the boundary head and the adapter attach to the base pipeline. (c) The F1 gap to the ESM-2 base at each tolerance, the base itself drawn flat at zero as the reference every other line is measured against. A curve is flat only if it is a parallel translation of the baseline, and none of the six carrying an addition is. Corrected matcher throughout, means over the five outer folds.
+***Figure&nbsp;1.*** The problem, the two additions and what they buy. (a) One held-out precursor, with the ±3 acceptance window shaded around each annotated cleavage site. (b) The architecture, with the two additions marked on it. (c) The F1 gap to the ESM-2 base at each tolerance, the base itself drawn flat at zero as the reference every other line is measured against. A curve is flat only if it is a parallel translation of the baseline, and none of the six carrying an addition is. Corrected matcher throughout, means over the five outer folds.
 
 Proteomic databases record intact sequences, not what proteases leave behind, so the products of cleavage have to be predicted. A multi-epitope vaccine construct can then be checked at the design stage for the fragments it will yield in vivo, and since proteolysis is itself disrupted in neurodegenerative, oncological and endocrine disease, expected and observed cleavage patterns can be compared between healthy and diseased tissue.
 
@@ -59,9 +59,9 @@ We ran the experiments in two stages.
 
 #### Screening.
 
-We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, and two held out, one for comparing architectures and one intended as a sealed test, which the screening numbers pool. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;F, among them the segment-type trade-offs and data-scaling curves of Figure&nbsp;5 and Figure&nbsp;6.
+We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, and two held out, one for comparing architectures and one intended as a sealed test, which the screening numbers pool. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;F, among them the segment-type trade-offs and data-scaling curves of Figure&nbsp;6 and Figure&nbsp;7.
 
-The folds of that split are not interchangeable (Figure&nbsp;4 in that appendix), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the worth paying for, and two cleared that bar: the boundary head and the adapter sat at or above the base throughout.
+The folds of that split are not interchangeable (Figure&nbsp;5 in that appendix), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the worth paying for, and two cleared that bar: the boundary head and the adapter sat at or above the base throughout.
 
 #### Confirmation.
 
@@ -178,6 +178,27 @@ Proteins per outer fold, and how three frequent genera distribute across them. *
 
 </div>
 
+![Figure 4](figures/fig_perfold.png)
+
+***Figure&nbsp;4.*** Segment F1 at ±3 on each outer fold, every configuration on one axis, with the band between the best and worst configuration shaded. The lines move together: fold 2 is the hardest for all eight and folds 1 and 4 the easiest, so most of the vertical movement within a line is the fold rather than the architecture. Within one configuration the score spans 0.040 to 0.074 across the folds, more than either addition is worth on its own, which is what makes a single split unable to resolve them and pairing by fold necessary. The ordering of configurations is largely preserved from fold to fold, which is why the paired comparisons of Section&nbsp;5 are stable where the absolute levels are not.
+
+<div id="tab:perfold">
+
+| **Configuration** | **f0** | **f1** | **f2** | **f3** | **f4** | **mean** |
+|:---|:--:|:--:|:--:|:--:|:--:|:--:|
+| ESM-2, base | 0.572 | 0.599 | 0.530 | 0.576 | 0.604 | 0.576 ±0.029 |
+| ESM-2 + boundary head | 0.593 | 0.613 | 0.560 | 0.589 | 0.629 | 0.597 ±0.026 |
+| ESM-2 + adapter | 0.622 | 0.626 | 0.561 | 0.595 | 0.606 | 0.602 ±0.026 |
+| ESM-2 + both | 0.639 | 0.650 | 0.603 | 0.613 | 0.646 | 0.630 ±0.021 |
+| ESM-C 6B, base | 0.575 | 0.611 | 0.571 | 0.590 | 0.592 | 0.588 ±0.016 |
+| ESM-C 6B + boundary head | 0.664 | 0.634 | 0.609 | 0.639 | 0.661 | 0.641 ±0.022 |
+| ESM-C 6B + adapter | 0.613 | 0.618 | 0.576 | 0.604 | 0.597 | 0.602 ±0.017 |
+| ESM-C 6B + both | 0.664 | 0.690 | 0.643 | 0.658 | 0.676 | 0.666 ±0.018 |
+
+The same scores as numbers: segment F1 at ±3 per outer fold, mean ± standard deviation across the five.
+
+</div>
+
 # D Metric implementation bug
 
 While auditing the DeepPeptide implementation of the matching criterion (Section&nbsp;4.2), we found a bug in the function that implements it (`get_counts_for_protein`), reproduced below in simplified form:
@@ -220,19 +241,19 @@ Two further notes on the reference implementation. Its recall guard tests the wr
 
 ## Protocol
 
-Data was split into seven GraphPart folds (30% identity threshold, motif-balanced as in Section&nbsp;4.1), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured +0.074 on one and -0.011 on the other, ESM-C 6B against ESM-C 600M gave +0.028 and -0.021, and the net effect of the 3Di channel gave +0.015 and -0.018. Effects that kept their sign still moved by a lot: the isolated sequence adapter measured -0.001 on one fold and +0.045 on the other. Figure&nbsp;4 shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10–24 residues and fold 5 bimodal, so results below pool them (model-select ∪ sealed, ≈2,300 proteins) to reduce (but not eliminate) this instability. This pooling is why the “sealed” fold is not, in practice, a held-out test set independent of model selection.
+Data was split into seven GraphPart folds (30% identity threshold, motif-balanced as in Section&nbsp;4.1), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured +0.074 on one and -0.011 on the other, ESM-C 6B against ESM-C 600M gave +0.028 and -0.021, and the net effect of the 3Di channel gave +0.015 and -0.018. Effects that kept their sign still moved by a lot: the isolated sequence adapter measured -0.001 on one fold and +0.045 on the other. Figure&nbsp;5 shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10–24 residues and fold 5 bimodal, so results below pool them (model-select ∪ sealed, ≈2,300 proteins) to reduce (but not eliminate) this instability. This pooling is why the “sealed” fold is not, in practice, a held-out test set independent of model selection.
 
-![Figure 4](figures/fold_divergence.png)
+![Figure 5](figures/fold_divergence.png)
 
-***Figure&nbsp;4.*** Why the folds of the earlier seven-fold split are not interchangeable: (a) the segment-length profile of each fold against the profile of the whole dataset, (b) the <em>L</em><sub>1</sub> distance between the two. Fold 4 tracks the overall distribution closely (0.07) while five of the seven folds sit above 0.23. Balancing was done on cleavage motif and homology, not on segment length, so this axis was left free. The same holds for the five-fold split used in the main text, where the imbalance is taxonomic (Table&nbsp;3).
+***Figure&nbsp;5.*** Why the folds of the earlier seven-fold split are not interchangeable: (a) the segment-length profile of each fold against the profile of the whole dataset, (b) the <em>L</em><sub>1</sub> distance between the two. Fold 4 tracks the overall distribution closely (0.07) while five of the seven folds sit above 0.23. Balancing was done on cleavage motif and homology, not on segment length, so this axis was left free. The same holds for the five-fold split used in the main text, where the imbalance is taxonomic (Table&nbsp;3).
 
-![Figure 5](figures/trades.png)
+![Figure 6](figures/trades.png)
 
-***Figure&nbsp;5.*** Precision/recall trade-offs by segment type when adding the 3Di channel or the bond-prediction loss, single-split protocol, pooled held-out folds.
+***Figure&nbsp;6.*** Precision/recall trade-offs by segment type when adding the 3Di channel or the bond-prediction loss, single-split protocol, pooled held-out folds.
 
 ## Summary of tested modifications
 
-Table&nbsp;4 summarizes the modifications tested under screening protocol, with the corrected matcher (Appendix&nbsp;D) applied throughout. Two of these rows were carried forward as candidates, the boundary head and the adapter (Section&nbsp;3), and both were confirmed. The embedding swap was not a candidate but became a factor of the confirmation design, and it is the row this table reads least well: nested cross-validation puts ESM-C 6B at 0.588±0.016 against ESM-2’s 0.576±0.029 (Table&nbsp;1), overlapping intervals, where this table records a confident +0.03. Everything else below remains at the confidence of a single pooled split.
+Table&nbsp;5 summarizes the modifications tested under screening protocol, with the corrected matcher (Appendix&nbsp;D) applied throughout. Two of these rows were carried forward as candidates, the boundary head and the adapter (Section&nbsp;3), and both were confirmed. The embedding swap was not a candidate but became a factor of the confirmation design, and it is the row this table reads least well: nested cross-validation puts ESM-C 6B at 0.588±0.016 against ESM-2’s 0.576±0.029 (Table&nbsp;1), overlapping intervals, where this table records a confident +0.03. Everything else below remains at the confidence of a single pooled split.
 
 <div id="tab:verdict">
 
@@ -259,7 +280,7 @@ A larger set of ideas was tried under the same single-split protocol and did not
 
 - **Known-peptide dictionary.** An Aho–Corasick index of peptides from the training data was used to flag substring matches in a query sequence, injected as a bonus on the CRF state emissions, as a bias on the start, inside and end emissions specifically, fused into the encoder hidden state, and concatenated with the embedding before the encoder. No consistent benefit was observed, and the checkpoint for one of the variants can no longer be loaded.
 
-- **Structural features.** Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5 (Heinzinger et al. 2024) structural alphabet (3Di, as used in Foldseek (Kempen et al. 2024)) were tested as additional input channels, and results were mixed (Table&nbsp;4).
+- **Structural features.** Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5 (Heinzinger et al. 2024) structural alphabet (3Di, as used in Foldseek (Kempen et al. 2024)) were tested as additional input channels, and results were mixed (Table&nbsp;5).
 
 - **LoRA fine-tuning.** Low-rank adaptation of the last few pLM layers, instead of fully frozen embeddings, scored 0.558 and 0.567 against 0.621 for the frozen baseline, all three on the 2022 release under its own five-fold split rather than the protocol of Appendix&nbsp;F. It also ran for fewer epochs in the same time budget, though we did not measure the cost directly.
 
@@ -269,25 +290,25 @@ A larger set of ideas was tried under the same single-split protocol and did not
 
 None of these modifications showed a consistent gain large enough, under the single-split protocol, to justify testing under nested cross-validation ahead of the two reported in the main text. The complete experiment log (including runs not summarized above) is maintained in the project repository rather than reproduced here, since it was collected under a protocol we no longer treat as sufficient evidence on its own.
 
-![Figure 6](figures/datascale_curve.png)
+![Figure 7](figures/datascale_curve.png)
 
-***Figure&nbsp;6.*** F1 (±3) against the number of training proteins, single-split protocol. ESM-2 rises from 0.498 at 40% of the training folds to 0.583 at 85%, then falls back to 0.572 at 100%, so it is still gaining over most of the range but not at the last point. The ESM-C 6B curves are flat from the smallest size tested, with movement smaller than the bootstrap interval, so nothing is observed saturating: they simply never climb.
+***Figure&nbsp;7.*** F1 (±3) against the number of training proteins, single-split protocol. ESM-2 rises from 0.498 at 40% of the training folds to 0.583 at 85%, then falls back to 0.572 at 100%, so it is still gaining over most of the range but not at the last point. The ESM-C 6B curves are flat from the smallest size tested, with movement smaller than the bootstrap interval, so nothing is observed saturating: they simply never climb.
 
 ## What the screening runs looked like
 
-Three figures from the screening stage are worth keeping, each for a different reason, and none of them should be read as confirmed evidence in the sense of Section&nbsp;5. Figure&nbsp;7 is the comparison the verdict column of Table&nbsp;4 summarizes, with the bootstrap intervals that made most of those verdicts unsafe. Figure&nbsp;8 is the earliest form of the interaction that Section&nbsp;5 later confirms under nested cross-validation, and shows that the boundary head was already worth more on the wider embedding a protocol ago. Figure&nbsp;9 asks what recall actually tracks: for both ESM-C models it follows the maximum sequence identity between a held-out peptide and any training segment far more closely than it follows how many training segments the protein’s genus contributes, which is the behaviour of a model retrieving near neighbours rather than one that has learned the cleavage grammar. On the ESM-2 baseline the two axes are closer to comparable. This is a single split and we draw no conclusion from it, but it is the observation that would most repay a proper test.
+Three figures from the screening stage are worth keeping, each for a different reason, and none of them should be read as confirmed evidence in the sense of Section&nbsp;5. Figure&nbsp;8 is the comparison the verdict column of Table&nbsp;5 summarizes, with the bootstrap intervals that made most of those verdicts unsafe. Figure&nbsp;9 is the earliest form of the interaction that Section&nbsp;5 later confirms under nested cross-validation, and shows that the boundary head was already worth more on the wider embedding a protocol ago. Figure&nbsp;10 asks what recall actually tracks: for both ESM-C models it follows the maximum sequence identity between a held-out peptide and any training segment far more closely than it follows how many training segments the protein’s genus contributes, which is the behaviour of a model retrieving near neighbours rather than one that has learned the cleavage grammar. On the ESM-2 baseline the two axes are closer to comparable. This is a single split and we draw no conclusion from it, but it is the observation that would most repay a proper test.
 
-![Figure 7](figures/scoreboard.png)
+![Figure 8](figures/scoreboard.png)
 
-***Figure&nbsp;7.*** Screening comparison on the pooled held-out folds at ±3: F1, precision and recall with bootstrap confidence intervals over 2<span>,322 proteins. The top row is a gated-projector control at full width, not the configuration carried into the main text.
+***Figure&nbsp;8.*** Screening comparison on the pooled held-out folds at ±3: F1, precision and recall with bootstrap confidence intervals over 2<span>,322 proteins. The top row is a gated-projector control at full width, not the configuration carried into the main text.
 
-![Figure 8](figures/interaction.png)
+![Figure 9](figures/interaction.png)
 
-***Figure&nbsp;8.*** Boundary head × embedding interaction under the screening protocol: F1 gain from adding the boundary head on top of ESM-2 against on top of ESM-C 6B. This is the earlier, unconfirmed version of the interaction that Section&nbsp;5 measures under nested cross-validation.
+***Figure&nbsp;9.*** Boundary head × embedding interaction under the screening protocol: F1 gain from adding the boundary head on top of ESM-2 against on top of ESM-C 6B. This is the earlier, unconfirmed version of the interaction that Section&nbsp;5 measures under nested cross-validation.
 
-![Figure 9](figures/similarity.png)
+![Figure 10](figures/similarity.png)
 
-***Figure&nbsp;9.*** Recall on held-out peptides as a function of (a) how well-represented the protein’s genus is in training and (b) maximum sequence identity to a training segment, screening protocol. For the two ESM-C models recall tracks maximum identity to a training segment far more than genus abundance, while for the ESM-2 baseline the two axes are closer to comparable. The <em>x</em> axis in (a) counts training <em>segments</em> in the genus, not proteins.
+***Figure&nbsp;10.*** Recall on held-out peptides as a function of (a) how well-represented the protein’s genus is in training and (b) maximum sequence identity to a training segment, screening protocol. For the two ESM-C models recall tracks maximum identity to a training segment far more than genus abundance, while for the ESM-2 baseline the two axes are closer to comparable. The <em>x</em> axis in (a) counts training <em>segments</em> in the genus, not proteins.
 
 # Boundary placement beyond the ±3 window
 

@@ -177,13 +177,11 @@ Proteolysis cuts precursor proteins into mature peptides and propeptides, and pr
 \begin{figure}[t]
 \centering
 \MaybeImage{figures/fig_tolerance.png}{1.0}
-\caption{The problem, the two blocks and what they buy. (a) One held-out precursor, with the
-$\pm3$ acceptance window shaded around each annotated cleavage site. Both of the baseline's cuts
-fall inside the window, so they count as found at the headline tolerance and not at an exact
-match, while ours, carrying both additions, lands on the annotated residue. (b) Where the boundary
-head and the adapter attach to the base pipeline. (c) The F1 gap to the ESM-2 base at each
-tolerance, the base itself drawn flat at zero as the reference every other line is measured
-against. A curve is flat only if it is a parallel translation of the baseline, and none of the six carrying an addition is.
+\caption{The problem, the two additions and what they buy. (a) One held-out precursor, with the
+$\pm3$ acceptance window shaded around each annotated cleavage site. (b) The architecture, with the
+two additions marked on it. (c) The F1 gap to the ESM-2 base at each tolerance, the base itself
+drawn flat at zero as the reference every other line is measured against. A curve is flat only if
+it is a parallel translation of the baseline, and none of the six carrying an addition is.
 Corrected matcher throughout, means over the five outer folds.}
 \label{fig:hook}
 \end{figure}
@@ -467,6 +465,30 @@ All proteins & 8897 & 1558 & 2572 & 1263 & 2025 & 1479 \\
 % $$
 % How a predicted segment is scored against the ground truth -- including the tolerance used for boundary matching -- is defined later, in \Cref{sec:matching}, alongside the rest of the evaluation protocol; it is an evaluation-time decision rather than part of the task definition itself.
 
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fig_perfold.png}{1.0}
+\caption{Segment F1 at $\pm3$ on each outer fold, every configuration on one axis, with the band
+between the best and worst configuration shaded. The lines move together: fold~2 is the hardest
+for all eight and folds~1 and~4 the easiest, so most of the vertical movement within a line is the
+fold rather than the architecture. Within one configuration the score spans $0.040$ to $0.074$
+across the folds, more than either addition is worth on its own, which is what makes a single split
+unable to resolve them and pairing by fold necessary. The ordering of configurations is largely
+preserved from fold to fold, which is why the paired comparisons of \Cref{sec:results} are stable
+where the absolute levels are not.}
+\label{fig:perfold}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{The same scores as numbers: segment F1 at $\pm3$ per outer fold, mean $\pm$ standard
+deviation across the five.}
+\label{tab:perfold}
+\small
+\resizebox{\linewidth}{!}{%
+\input{figures/perfold_table.tex}}
+\end{table}
 
 \FloatBarrier
 
