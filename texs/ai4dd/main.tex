@@ -169,12 +169,13 @@ Proteolysis cuts precursor proteins into mature peptides and propeptides, and pr
 \begin{figure}[t]
 \centering
 \MaybeImage{figures/fig_tolerance.png}{1.0}
-\caption{Boundary localization. (a) One held-out precursor, with the $\pm3$ acceptance window
-shaded around each annotated cleavage site. Both of the baseline's cuts fall inside the window,
-so they count as found at the headline tolerance and not at an exact match, while the model with
-both additions lands on the annotated residue. (b) Segment F1 as the tolerance tightens.
-(c) The absolute gap to the ESM-2 base at each tolerance, flat only if a curve were a parallel
-translation of the baseline. Corrected matcher, error bars over the five outer folds.}
+\caption{The problem, the two blocks and what they buy. (a) One held-out precursor, with the
+$\pm3$ acceptance window shaded around each annotated cleavage site. Both of the baseline's cuts
+fall inside the window, so they count as found at the headline tolerance and not at an exact
+match, while the model with both additions lands on the annotated residue. (b) Where the boundary
+head and the adapter attach to the base pipeline. (c) The F1 gap to the ESM-2 base at each
+tolerance, flat only if a curve were a parallel translation of the baseline. Corrected matcher,
+error bars over the five outer folds.}
 \label{fig:hook}
 \end{figure}
 
@@ -205,7 +206,7 @@ Most predictors of proteolytic cleavage are specific by construction: one line c
 \section{Method}
 \label{sec:method}
 
-\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
+\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
 
 
 \paragraph{Boundary head.} A small feed-forward block (LayerNorm, Linear, GELU, Linear, hidden size 64) is applied to the contextual per-residue features. For each position and each segment type it emits three numbers, scoring how much that position looks like a segment start, an interior position, or a segment end, and these are added to the emissions of the corresponding position-fixed CRF states. The final linear layer is initialized to zero, so training begins at exactly the base model and the head only learns corrections that lower the loss. It costs 4{,}678 parameters on a trainable stack of 224{,}710.
@@ -364,12 +365,6 @@ Methods for predicting proteolytic peptides fall into three broad classes.
 
 Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (\Cref{sec:method}), evaluated under a more conservative protocol (\Cref{sec:eval}) on data rebuilt at greater scale (\Cref{sec:dataset}).
 
-\begin{figure}[h]
-\centering
-\MaybeImage{figures/architecture_scheme.jpg}{1.0}
-\caption{The pipeline from sequence to decoded segments, and where the two additions change it (top), with a zoom into the emission step (bottom). The adapter re-projects the frozen pLM embedding before the CNN--BiLSTM encoder. The boundary head reads the encoder output and adds a position-specific correction to the per-state CRF emissions before decoding. In the baseline (bottom, shaded) a single 3-way emission is repeated across every state of a given type; the boundary head produces a start/inside/end correction per type on top of it, so the first and last states of a segment no longer see the same evidence as its interior.}
-\label{fig:arch}
-\end{figure}
 
 \section{Dataset details}
 \label{sec:app-problem}

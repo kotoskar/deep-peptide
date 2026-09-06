@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse, gzip, json, pathlib, sys
 
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import pandas as pd
 from matplotlib.patches import Rectangle
 
@@ -155,6 +156,17 @@ def draw_example(ax, ex):
                  loc="left", pad=7)
 
 
+def _trim_white(img, thresh=0.985):
+    """Drop the scheme's white margin, which otherwise eats half of panel (b)."""
+    a = img[..., :3] / (255.0 if img.dtype != float else 1.0)
+    ink = (a.mean(axis=2) < thresh)
+    rows, cols = ink.any(axis=1).nonzero()[0], ink.any(axis=0).nonzero()[0]
+    if not len(rows) or not len(cols):
+        return img
+    r0, r1, c0, c1 = rows[0], rows[-1] + 1, cols[0], cols[-1] + 1
+    return img[r0:r1, c0:c1]
+
+
 def draw_curves(ax_abs, ax_gap, loaded, tol, task):
     x = list(range(len(tol)))
     for _, label, key, s in loaded:
@@ -197,6 +209,11 @@ def main() -> int:
     ap.add_argument("--allow-incomplete", action="store_true",
                     help="also plot runs whose nested CV is not finished (off by default: a "
                          "partial run has no protocol-valid mean)")
+    ap.add_argument("--abc", action="store_true",
+                    help="problem / architecture / result layout: the precursor example on top, "
+                         "the architecture scheme and the gap curve below. The absolute-F1 panel "
+                         "drops out, since Table 1 carries the same numbers.")
+    ap.add_argument("--arch", default="texs/ai4dd/figures/architecture_scheme.jpg")
     ap.add_argument("--esm2-only", action="store_true",
                     help="drop the ESM-C series, to match a main text that parks them")
     args = ap.parse_args()
@@ -228,6 +245,20 @@ def main() -> int:
     if args.no_example:
         fig, (ax_abs, ax_gap) = plt.subplots(1, 2, figsize=(textwidth(1.0), 2.35),
                                              layout="constrained")
+    elif args.abc:
+        # The scheme is 2.24:1, so it needs the wider of the two lower cells or it
+        # sits in a letterbox with the curve panel towering over it.
+        fig = plt.figure(figsize=(textwidth(1.0), 3.02), layout="constrained")
+        gs = fig.add_gridspec(2, 2, height_ratios=[0.58, 1.5], width_ratios=[1.45, 1.0],
+                              hspace=0.02)
+        ax_ex = fig.add_subplot(gs[0, :])
+        ax_arch = fig.add_subplot(gs[1, 0])
+        ax_gap = fig.add_subplot(gs[1, 1])
+        ex = load_example()
+        draw_example(ax_ex, ex)
+        ax_arch.imshow(_trim_white(mpimg.imread(args.arch)))
+        ax_arch.set_axis_off()
+        ax_arch.set_title("(b) where they attach", loc="left")
     else:
         fig = plt.figure(figsize=(textwidth(1.0), 3.02), layout="constrained")
         gs = fig.add_gridspec(2, 2, height_ratios=[0.58, 1.5], hspace=0.02)
@@ -239,8 +270,17 @@ def main() -> int:
         print(f"[example] {EX_PROT} ({EX_CELL}) length {ex['length']}: "
               f"true {ex['true']} base {ex['base']} full {ex['full']}")
 
-    draw_curves(ax_abs, ax_gap, loaded, args.tolerances, args.task)
-    handles, labels = ax_abs.get_legend_handles_labels()
+    if args.abc:
+        # draw_curves wants two axes; give it a throwaway for the absolute panel
+        # and keep only the gap, which is the panel that carries the argument.
+        scratch = fig.add_subplot(gs[1, 0]); scratch.set_visible(False)
+        draw_curves(scratch, ax_gap, loaded, args.tolerances, args.task)
+        ax_gap.set_title("(c) gap to the base", loc="left")
+        legend_src = scratch
+    else:
+        draw_curves(ax_abs, ax_gap, loaded, args.tolerances, args.task)
+        legend_src = ax_abs
+    handles, labels = legend_src.get_legend_handles_labels()
     fig.legend(handles, labels, loc="outside lower center", ncols=2,
                handlelength=2.4, columnspacing=1.6)
 
