@@ -238,7 +238,7 @@ Folds come from GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity ceil
 
 Peptides and propeptides are matched separately. A prediction is a true positive when its start and its end both fall within $\pm\tau$ residues of a true segment of the same type. Unmatched predictions are false positives and unmatched true segments false negatives. Following the original evaluation we keep $\tau=3$ as the headline setting, since annotated sites carry a few residues of experimental uncertainty. Sweeping $\tau$ down to zero then asks a second question, not whether a peptide was found but how precisely its ends were placed. The reference implementation of this criterion carries an upstream variable-shadowing bug that marks the wrong true segment as matched, so everything reported here is re-scored with a corrected matcher (\Cref{sec:eval-metric}).
 
-\paragraph{Agreement with the published baseline.} DeepPeptide reports precision $0.68$ and recall $0.49$ at $\pm3$, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of $0.570$. Running the base architecture on that release under the same protocol scores $0.574\pm0.069$ with the original matcher and $0.590\pm0.064$ with the corrected one of \Cref{sec:eval-metric}. The F1 reproduces, the operating point does not: our original-matcher precision is $0.614$ and recall $0.541$. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of \Cref{tab:main-results} is measured under the same setting (\Cref{sec:app-upstream}). On the 2026 rebuild the base reaches $0.576\pm0.029$, so the rebuild does not move it either.
+\paragraph{Agreement with the published baseline.} DeepPeptide reports precision $0.68$ and recall $0.49$ at $\pm3$, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of $0.570$. Running the base architecture on that release under the same protocol scores $0.574\pm0.069$ with the original matcher and $0.590\pm0.064$ with the corrected one of \Cref{sec:eval-metric}. The F1 reproduces, the operating point does not: our original-matcher precision is $0.614$ and recall $0.541$. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of \Cref{tab:main-results} is measured under the same setting (\Cref{sec:app-upstream}). Under the corrected matcher throughout, the 2026 rebuild gives $0.576\pm0.029$ against that $0.590\pm0.064$, so it reads $0.014$ lower by a margin smaller than either run's spread across folds.
 
 
 \section{Results}
@@ -247,7 +247,8 @@ Peptides and propeptides are matched separately. A prediction is a true positive
 We ran the experiments in two stages. 
  
 \paragraph{Screening.} We first split the data into seven GraphPart folds with fixed roles:
-four for training, one for epoch selection, one for comparing architectures and one held back.
+four for training, one for epoch selection, and two held out, one for comparing architectures and
+one intended as a sealed test, which the screening numbers pool.
 Against that split we screened roughly a dozen modifications, with the protocol, the verdict table
 and the per-candidate figures in \Cref{sec:app-old-protocol}, among them the segment-type
 trade-offs of \Cref{fig:trades} and the data-scaling curves of \Cref{fig:datascale}.

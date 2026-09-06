@@ -51,7 +51,7 @@ Peptides and propeptides are matched separately. A prediction is a true positive
 
 #### Agreement with the published baseline.
 
-DeepPeptide reports precision 0.68 and recall 0.49 at ±3, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of 0.570. Running the base architecture on that release under the same protocol scores 0.574±0.069 with the original matcher and 0.590±0.064 with the corrected one of Appendix&nbsp;C. The F1 reproduces, the operating point does not: our original-matcher precision is 0.614 and recall 0.541. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of Table&nbsp;1 is measured under the same setting (Appendix&nbsp;D). On the 2026 rebuild the base reaches 0.576±0.029, so the rebuild does not move it either.
+DeepPeptide reports precision 0.68 and recall 0.49 at ±3, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of 0.570. Running the base architecture on that release under the same protocol scores 0.574±0.069 with the original matcher and 0.590±0.064 with the corrected one of Appendix&nbsp;C. The F1 reproduces, the operating point does not: our original-matcher precision is 0.614 and recall 0.541. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of Table&nbsp;1 is measured under the same setting (Appendix&nbsp;D). Under the corrected matcher throughout, the 2026 rebuild gives 0.576±0.029 against that 0.590±0.064, so it reads 0.014 lower by a margin smaller than either run’s spread across folds.
 
 # 5 Results
 
@@ -59,7 +59,7 @@ We ran the experiments in two stages.
 
 #### Screening.
 
-We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, one for comparing architectures and one held back. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;F, among them the segment-type trade-offs of Figure&nbsp;5 and the data-scaling curves of Figure&nbsp;6.
+We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, and two held out, one for comparing architectures and one intended as a sealed test, which the screening numbers pool. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;F, among them the segment-type trade-offs of Figure&nbsp;5 and the data-scaling curves of Figure&nbsp;6.
 
 The folds of that split are not interchangeable (Figure&nbsp;4), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the worth paying for, and two cleared that bar: the boundary head and the adapter sat at or above the base throughout.
 
@@ -434,7 +434,7 @@ Rives, Alexander, Joshua Meier, Tom Sercu, et al. 2021. “Biological Structure 
 
 <div id="ref-song2018prosperous" class="csl-entry">
 
-Song, Jiangning et al. 2018. “PROSPERous: High-Throughput Prediction of Substrate Cleavage Sites for 90 Proteases with Improved Accuracy.” *Bioinformatics* 34 (4): 684–87. <https://doi.org/10.1093/bioinformatics/btx670>.
+Song, Jiangning, Fuyi Li, André Leier, et al. 2018. “PROSPERous: High-Throughput Prediction of Substrate Cleavage Sites for 90 Proteases with Improved Accuracy.” *Bioinformatics* 34 (4): 684–87. <https://doi.org/10.1093/bioinformatics/btx670>.
 
 </div>
 
@@ -488,7 +488,7 @@ Wang, Lei, Zilu Zeng, Zhidong Xue, and Yan Wang. 2024. “DeepNeuropePred: A Rob
 
 <div id="ref-zhang2024deepbp" class="csl-entry">
 
-Zhang, M., J. Zhou, X. Wang, et al. 2024. “DeepBP: Ensemble Deep Learning Strategy for Bioactive Peptide Prediction.” *BMC Bioinformatics* 25: 352. <https://doi.org/10.1186/s12859-024-05974-5>.
+Zhang, Ming, Jianren Zhou, Xiaohua Wang, Xun Wang, and Fang Ge. 2024. “DeepBP: Ensemble Deep Learning Strategy for Bioactive Peptide Prediction.” *BMC Bioinformatics* 25: 352. <https://doi.org/10.1186/s12859-024-05974-5>.
 
 </div>
 
