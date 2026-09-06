@@ -171,10 +171,10 @@ under peptide therapeutics, vaccine design and proteomics. Its benchmark counts 
 correct when both of its ends land within $\pm3$ residues of a true one. Segments are only 5 to 50
 residues long, so that window rewards finding segments over placing them, and a model that places
 them better gains almost nothing for it. We target placement. The strongest model for this
-formulation decodes with a conditional random field (CRF) that distinguishes a segment's start,
+formulation decodes with a conditional random field that distinguishes a segment's start,
 interior and end but feeds all of those states one emission per label. We add a zero-initialized
 boundary head that gives those states position-specific evidence, and a lightweight adapter
-re-projecting the frozen protein language model (pLM) embedding before the encoder. Under the
+re-projecting the frozen protein language model embedding before the encoder. Under the
 $5\times4$ nested cross-validation the baseline uses, on a rebuilt UniProtKB/Swiss-Prot 2026
 dataset, they add $0.054$ segment F1 over a $0.576$ base and reach $0.666$ on ESM-C 6B. What they
 buy is mostly placement rather than coverage: with detection held fixed, the share of boundaries landing
@@ -210,7 +210,7 @@ A multi-epitope vaccine construct can then be checked at the design stage for th
 
 The benchmark for this task rewards detection, not localization. A predicted segment counts as correct if both of its endpoints fall within $\pm 3$ residues of a ground-truth segment of the same type, and a single F1 score at this tolerance is reported (\Cref{fig:hook}). Segments are only 5--50 residues long, so on a short peptide this tolerance is comparable to the length of the segment itself. A model can therefore raise its F1 simply by finding more segments while its boundaries stay imprecise, and conversely it can place boundaries much more precisely and gain almost nothing, because predictions that close already counted as correct. The second case is our concern: the metric cannot see the improvement we are after.
 
-We therefore make boundary localization the target of both the model and the evaluation. Our baseline is DeepPeptide~\citep{deeppeptide2023}, the strongest general-purpose model for this formulation. It has three parts: a frozen protein language model, a CNN--BiLSTM encoder, and a linear-chain CRF. The CRF has separate states for the start, the interior, and the end of a segment, so any valid path must visit them in that order. The decoder is therefore boundary-aware by design. The encoder, however, gives it nothing to work with: every state of the same segment type receives the same emission score. Closing that gap is the natural way to sharpen boundaries rather than merely find more segments. We close it with two small, independent additions and evaluate them under $5\times4$ nested cross-validation on the DeepPeptide dataset rebuilt from the 2026 UniProtKB/Swiss-Prot release (\Cref{sec:eval-protocol,sec:dataset}).
+We therefore make boundary localization the target of both the model and the evaluation. Our baseline is DeepPeptide~\citep{deeppeptide2023}, the strongest general-purpose model for this formulation. It has three parts: a frozen protein language model (pLM), a CNN--BiLSTM encoder, and a linear-chain conditional random field (CRF). The CRF has separate states for the start, the interior, and the end of a segment, so any valid path must visit them in that order. The decoder is therefore boundary-aware by design. The encoder, however, gives it nothing to work with: every state of the same segment type receives the same emission score. Closing that gap is the natural way to sharpen boundaries rather than merely find more segments. We close it with two small, independent additions and evaluate them under $5\times4$ nested cross-validation on the DeepPeptide dataset rebuilt from the 2026 UniProtKB/Swiss-Prot release (\Cref{sec:eval-protocol,sec:dataset}).
 
 
 %\textbf{Where existing methods fall short.} Most predictors of proteolytic cleavage are specific to one enzyme or one class of organism (\Cref{sec:related}), whereas what matters in practice is the combined effect of every protease active in an organism. The strongest general-purpose alternative, DeepPeptide~\citep{deeppeptide2023}, poses the task as full sequence segmentation on top of frozen pLM embeddings and an extended-state linear-chain CRF decoder, and remains, to our knowledge, the closest match to this formulation. But its CRF emissions are identical for every state of a given segment type at a given position, even though the decoder's own state graph already distinguishes a segment's start, interior, and end (a segment's path always moves start $\to$ interior $\to$ end) -- the position-specific evidence a well-designed decoder could condition on is simply never computed by the encoder that feeds it.
@@ -575,7 +575,7 @@ Data was split into seven GraphPart folds (30\% identity threshold, motif-balanc
 \label{fig:folds}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!htb]
 \centering
 \MaybeImage{figures/fig_bylength_screen.png}{1.0}
 \caption{Segment F1 at $\pm3$ against the length of the true segment under the seven-fold screening
