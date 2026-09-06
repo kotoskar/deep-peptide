@@ -163,8 +163,8 @@ or one product class in one kind of organism~\citep{southey2006neuropred,wang202
 and neither answers what an organism's full complement of proteases does to a designed precursor.
 General-purpose models on frozen pLM embeddings~\citep{lin2023esm2,esm_cambrian_blog_2024} mostly
 score peptides already excised~\citep{du2024plm4ace,bpfun2025} rather than locating them, and
-PeptideLocator~\citep{mooney2013peptidelocator} returns a per-residue heatmap rather than a
-segmentation. DeepPeptide~\citep{deeppeptide2023} is, to our knowledge, the only model that
+PeptideLocator~\citep{mooney2013peptidelocator} scores each residue rather than
+segmenting. DeepPeptide~\citep{deeppeptide2023} is, to our knowledge, the only model that
 segments a precursor into typed peptide and propeptide spans, and it established the
 homology-partitioned benchmark used here~\citep{graphpart2023}, so we take both its architecture
 and its data pipeline as our starting point (\Cref{sec:app-related}).
