@@ -13,7 +13,7 @@ Proteolysis cuts precursor proteins into mature peptides and propeptides, and pr
 
 ***Figure&nbsp;1.*** The problem, the two blocks and what they buy. (a) One held-out precursor, with the ±3 acceptance window shaded around each annotated cleavage site. Both of the baseline’s cuts fall inside the window, so they count as found at the headline tolerance and not at an exact match, while the model with both additions lands on the annotated residue. (b) Where the boundary head and the adapter attach to the base pipeline. (c) The F1 gap to the ESM-2 base at each tolerance, flat only if a curve were a parallel translation of the baseline. Corrected matcher, error bars over the five outer folds.
 
-Proteomic databases record intact sequences, not what proteases leave behind. A multi-epitope vaccine construct can therefore be checked at the design stage for the fragments it will yield in vivo, and proteolysis is itself disrupted in neurodegenerative, oncological and endocrine disease, where expected and observed cleavage patterns can be compared.
+Proteomic databases record intact sequences, not what proteases leave behind, so the products of cleavage have to be predicted. A multi-epitope vaccine construct can then be checked at the design stage for the fragments it will yield in vivo, and since proteolysis is itself disrupted in neurodegenerative, oncological and endocrine disease, expected and observed cleavage patterns can be compared between healthy and diseased tissue.
 
 The benchmark for this task rewards detection, not localization. A predicted segment counts as correct if both of its endpoints fall within ±3 residues of a ground-truth segment of the same type, and a single F1 score at this tolerance is reported (Figure&nbsp;1). Segments are only 5–50 residues long, so on a short peptide this tolerance is comparable to the length of the segment itself. A model can therefore raise its F1 simply by finding more segments while its boundaries stay imprecise, and conversely it can place boundaries much more precisely and gain almost nothing, because predictions that close already counted as correct. The second case is our concern: the metric cannot see the improvement we are after.
 
@@ -55,17 +55,17 @@ DeepPeptide reports precision 0.68 and recall 0.49 at ±3 under nested cross-val
 
 # 5 Results
 
-Development ran in two stages: screening and confirmation.
+We ran the experiments in two stages.
 
 #### Screening.
 
-An earlier split divided the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, one for comparing architectures and one held back. Roughly a dozen modifications were screened against it. Appendix&nbsp;E gives the protocol, the full verdict table and the per-candidate figures.
+We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, one for comparing architectures and one held back. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;E.
 
-The folds of that split are not interchangeable (Figure&nbsp;4), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. What it can do is separate the consistently unhelpful from the worth paying for, and two candidates, the boundary head and the adapter, sat at or above the base throughout.
+The folds of that split are not interchangeable (Figure&nbsp;4), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the worth paying for, and two candidates cleared that bar: the boundary head and the adapter sat at or above the base throughout.
 
 #### Confirmation.
 
-The two survivors are re-evaluated with the 5×4 nested cross-validation DeepPeptide itself uses, on ESM-2 and on ESM-C 6B, the embedding entering as a factor of the design rather than as a third candidate. For each of five outer folds, four models are trained on three of the remaining folds and validated on the fourth, then tested on the outer fold, which they never saw. An outer fold’s score is the mean over its four models and the estimate is the mean over the five outer folds. The reported spread is the standard deviation across outer folds rather than across all 20 cells, since four models sharing an outer fold share a test set. Selection happened at the screening stage, so what follows confirms two pre-specified hypotheses rather than searching a space.
+We then re-evaluated the two survivors with the 5×4 nested cross-validation DeepPeptide itself uses, on ESM-2 and on ESM-C 6B, so that the embedding is a factor of the design and not a third candidate. For each of five outer folds we train four models on three of the remaining folds and validate on the fourth, then test on the outer fold, which they never saw. An outer fold’s score is the mean over its four models, the estimate is the mean over the five outer folds, and the reported spread is the standard deviation across outer folds rather than across all 20 cells, since four models sharing an outer fold share a test set. Because selection happened at the screening stage, what follows is a test of two pre-specified hypotheses.
 
 Table&nbsp;1 reports the same 2×2 factorial on both embeddings under that protocol, with the corrected matcher.[^1]
 
@@ -90,7 +90,7 @@ Table&nbsp;1 reports the same 2×2 factorial on both embeddings under that proto
 
 #### The two additions act on different errors.
 
-Each improves F1 by a similar amount on its own, and together they give 0.054 for ESM-2 and 0.079 for ESM-C, slightly more than the sum of the parts. Splitting F1 into its components explains why. The boundary head is almost purely a precision effect: precision rises by 0.052 while recall does not move at all (-0.001). The adapter is mostly a recall effect: recall rises by 0.040 against 0.007 of precision. Applied together they recover both, 0.046 precision and 0.059 recall. They add up because they act on different error types.
+Each improves F1 by a similar amount on its own, and together they give 0.054 for ESM-2 and 0.079 for ESM-C, slightly more than the sum of the parts. Splitting F1 into its components explains why. The boundary head is almost purely a precision effect: precision rises by 0.052 while recall does not move at all (-0.001). The adapter is mostly a recall effect: recall rises by 0.040 against 0.007 of precision. Applied together they recover both, 0.046 precision and 0.059 recall.
 
 #### Tightening the tolerance.
 
@@ -290,9 +290,9 @@ None of these modifications showed a consistent gain large enough, under the sin
 
 ***Figure&nbsp;6.*** F1 (±3) against the number of training proteins, single-split protocol. ESM-2 rises from 0.498 at 40% of the training folds to 0.583 at 85%, then falls back to 0.572 at 100%, so it is still gaining over most of the range but not at the last point. The ESM-C 6B curves are flat from the smallest size tested, with movement smaller than the bootstrap interval, so nothing is observed saturating: they simply never climb.
 
-## Supplementary figures
+## What the screening runs looked like
 
-The figures below are from the same screening stage as Table&nbsp;5 and none of them should be read as confirmed evidence in the sense of Section&nbsp;5.
+Three figures from the screening stage are worth keeping, each for a different reason, and none of them should be read as confirmed evidence in the sense of Section&nbsp;5. Figure&nbsp;7 is the comparison the verdict column of Table&nbsp;5 summarizes, with the bootstrap intervals that made most of those verdicts unsafe. Figure&nbsp;8 is the earliest form of the interaction that Section&nbsp;5 later confirms under nested cross-validation, and shows that the boundary head was already worth more on the wider embedding a protocol ago. Figure&nbsp;9 asks what recall actually tracks: for both ESM-C models it follows the maximum sequence identity between a held-out peptide and any training segment far more closely than it follows how many training segments the protein’s genus contributes, which is the behaviour of a model retrieving near neighbours rather than one that has learned the cleavage grammar. On the ESM-2 baseline the two axes are closer to comparable. This is a single split and we draw no conclusion from it, but it is the observation that would most repay a proper test.
 
 ![Figure 7](figures/scoreboard.png)
 
