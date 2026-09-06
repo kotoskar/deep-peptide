@@ -438,6 +438,20 @@ where the absolute levels are not.}
 \label{fig:perfold}
 \end{figure}
 
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fig_bylength_cv.png}{1.0}
+\caption{Why a fold's length profile is not a cosmetic difference. Segment F1 at $\pm3$ against the
+length of the true segment, with the number of true segments in each bin below. Quality is not flat
+in length: the base architecture scores $0.715$ on segments of 25--29 residues and $0.274$ on those
+of 45--50, a spread of $0.441$, which is several times any effect this paper measures. A fold
+holding more long segments is therefore harder before any model touches it, and the folds do differ
+in length composition (\Cref{fig:folds}). This is what makes them non-exchangeable in the sense
+\Cref{sec:conclusion} means. The two additions help most where the base is already strongest and
+least at the long end, so they do not flatten the curve.}
+\label{fig:bylength}
+\end{figure}
+
 \begin{table}[h]
 \centering
 \caption{The same scores as numbers: segment F1 at $\pm3$ per outer fold, mean $\pm$ standard
