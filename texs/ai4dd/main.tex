@@ -532,7 +532,7 @@ $0.570$ (\Cref{sec:matching}), so the base we improve on is not a weak one.
 
 Two further notes on the reference implementation. Its recall guard tests the wrong denominator,
 returning zero when no segment is predicted but dividing by the true-segment count that the guard
-never checked; on this data the branch is unreachable, so the value is latent rather than wrong.
+never checked. On this data the branch is unreachable, so the value is latent rather than wrong.
 And its evaluation script builds the ground truth with overlapping annotations kept separate while
 its training dataset merges them, a discrepancy we did not attempt to reconcile because our
 scoring rebuilds the ground truth from the labelled sequences directly.
