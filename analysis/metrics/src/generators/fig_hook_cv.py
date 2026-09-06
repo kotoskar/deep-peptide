@@ -176,17 +176,26 @@ def draw_curves(ax_abs, ax_gap, loaded, tol, task):
         ax_abs.errorbar(x, mean, yerr=std, label=label, color=colour, marker=marker,
                         linestyle=dash, markersize=3.2, linewidth=1.3,
                         capsize=2, elinewidth=0.7)
-    ref = next((s for n, _, _, s in loaded if n == "5cv_baseline_esm2_fp32"), None)
-    if ref is not None:
-        rmean, _ = series(ref, tol, task)
-        ax_gap.axhline(0, color="#9AA5A6", linewidth=0.8, zorder=1)
-        for name, _, key, s in loaded:
+    ref_entry = next(((n, l, k, sm) for n, l, k, sm in loaded
+                      if n == "5cv_baseline_esm2_fp32"), None)
+    if ref_entry is not None:
+        _, ref_label, ref_key, ref_summary = ref_entry
+        rmean, _ = series(ref_summary, tol, task)
+        # The reference is drawn as a series of its own rather than as a bare
+        # rule: it is the model every other line is measured against, and a
+        # legend entry for a line that is not on the plot is worse than useless.
+        colour, marker, dash = SERIES_STYLE[ref_key]
+        ax_gap.plot(x, [0] * len(x), color=colour, marker=marker, linestyle=dash,
+                    markersize=3.2, linewidth=1.3, label=f"{ref_label} (reference)",
+                    zorder=2)
+        for name, label, key, sm in loaded:
             if name == "5cv_baseline_esm2_fp32":
                 continue
             colour, marker, dash = SERIES_STYLE[key]
-            mean, _ = series(s, tol, task)
+            mean, _ = series(sm, tol, task)
             ax_gap.plot(x, [m - r for m, r in zip(mean, rmean)], color=colour,
-                        marker=marker, linestyle=dash, markersize=3.2, linewidth=1.3)
+                        marker=marker, linestyle=dash, markersize=3.2, linewidth=1.3,
+                        label=label)
     xlabels = [f"$\\pm{t}$" if t else "exact" for t in tol]
     for ax in (ax_abs, ax_gap):
         ax.set_xticks(x)
@@ -279,7 +288,7 @@ def main() -> int:
         draw_curves(scratch, ax_gap, loaded, args.tolerances, args.task)
         ax_gap.set_ylabel("")
         ax_gap.set_title("(c) F1 gap to the ESM-2 base", loc="left")
-        legend_src = scratch
+        legend_src = ax_gap
     else:
         draw_curves(ax_abs, ax_gap, loaded, args.tolerances, args.task)
         legend_src = ax_abs
