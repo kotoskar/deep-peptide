@@ -215,7 +215,7 @@ Most predictors of proteolytic cleavage are specific by construction. One line c
 \section{Method}
 \label{sec:method}
 
-\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b, drawn at reading size in \Cref{fig:arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
+\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF~\citep{lafferty2001crf} that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b, drawn at reading size in \Cref{fig:arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
 
 
 \paragraph{Boundary head.} A small feed-forward block (LayerNorm, Linear, GELU, Linear, hidden size 64) is applied to the contextual per-residue features. For each position and each segment type it emits three numbers, scoring how much that position looks like a segment start, an interior position, or a segment end, and these are added to the emissions of the corresponding position-fixed CRF states. The final linear layer is initialized to zero, so training begins at exactly the base model and the head only learns corrections that lower the loss. It costs 4{,}678 parameters on a trainable stack of 224{,}710.
@@ -230,7 +230,7 @@ Most predictors of proteolytic cleavage are specific by construction. One line c
 \subsection{Dataset}
 \label{sec:dataset}
 A precursor $x=(a_1,\dots,a_L)$ is labelled per residue with $y_t \in \{\textsf{None},\textsf{Peptide},\textsf{Propeptide}\}$ and contiguous runs of a label form typed segments, so the task is to recover which stretches of a precursor become mature peptides and which become propeptides that are excised and discarded.
-DeepPeptide built its dataset from \texttt{PEPTIDE} and \texttt{PROPEP} annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release~\citep{uniprot2025}. The collection grows from 8{,}449 proteins to 9{,}619, of which 8{,}897 both carry ESM-2 embeddings and enter the five folds used here.
+DeepPeptide built its dataset from \texttt{PEPTIDE} and \texttt{PROPEP} annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release~\citep{uniprot2025}. The collection grows from 8{,}449 proteins to 9{,}619 (\Cref{fig:datadist}), of which 8{,}897 both carry ESM-2 embeddings and enter the five folds used here.
 Folds come from GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity ceiling, balanced by cleavage-motif class. Segment-length filtering, motif balancing and the full composition of the rebuild are given in \Cref{sec:app-problem}.
 
 \subsection{Evaluation criterion}
@@ -249,7 +249,8 @@ We ran the experiments in two stages.
 \paragraph{Screening.} We first split the data into seven GraphPart folds with fixed roles:
 four for training, one for epoch selection, one for comparing architectures and one held back.
 Against that split we screened roughly a dozen modifications, with the protocol, the verdict table
-and the per-candidate figures in \Cref{sec:app-old-protocol}.
+and the per-candidate figures in \Cref{sec:app-old-protocol}, among them the segment-type
+trade-offs of \Cref{fig:trades} and the data-scaling curves of \Cref{fig:datascale}.
  
 The folds of that split are not interchangeable (\Cref{fig:folds}), and under one assignment of
 roles several modifications changed the \emph{sign} of their measured effect between the two

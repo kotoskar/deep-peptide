@@ -103,8 +103,11 @@ def draw_example(ax, ex):
     x0 = max(1, min(cuts) - 9)              # keep a little N-terminal context
     top = len(lanes) * (h + gap) - gap
 
+    # The window is drawn taller than the lanes so it reads as a band across the
+    # panel: confined to the lane block it is occluded by the segment rectangles
+    # sitting on top of it, which is the one thing panel (a) exists to show.
     for c in cuts:                          # +-3 acceptance window
-        ax.add_patch(Rectangle((c - TOL - 0.5, 0), 2 * TOL + 1, top,
+        ax.add_patch(Rectangle((c - TOL - 0.5, -0.3), 2 * TOL + 1, top + 0.6,
                                facecolor="#9AA5A6", alpha=0.22, edgecolor="none",
                                zorder=0))
         ax.plot([c, c], [0, top], color="#7F8B8C", lw=0.6, ls=(0, (2, 2)), zorder=4)
