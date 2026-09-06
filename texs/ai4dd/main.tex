@@ -342,7 +342,7 @@ selected one later than epoch 58.
 \bibliography{refs}
 
 \section*{Impact Statement}
-This paper improves a computational tool for predicting proteolytic cleavage products from protein sequence. Potential applications include interpreting proteomics data, informing vaccine and peptide-drug design, and studying disease-associated proteolysis; we are not aware of societal risks specific to this work beyond those generally associated with more accurate protein sequence analysis tools.
+This paper improves a computational tool for predicting proteolytic cleavage products from protein sequence. Potential applications include interpreting proteomics data, informing vaccine and peptide-drug design, and studying disease-associated proteolysis. We are not aware of societal risks specific to this work beyond those generally associated with more accurate protein sequence analysis tools.
 \newpage
 \appendix
 \section*{Appendix}
@@ -352,9 +352,9 @@ This paper improves a computational tool for predicting proteolytic cleavage pro
 
 Methods for predicting proteolytic peptides fall into three broad classes.
 
-\textbf{Protease-specific models.} These predict cleavage only for a limited set of enzymes, most of which have a known recognition motif. ProP~\citep{duckert2004prop} targets cleavage by the PACE/PC family in animals and plants; PROSPER~\citep{song2012prosper} and its successor PROSPERous~\citep{song2018prosperous} predict cleavage for one chosen enzyme at a time, as does the later ProsperousPlus~\citep{li2023prosperousplus}; DeepCleave~\citep{li2020deepcleave} is restricted to caspases and matrix metalloproteinases; and Procleave~\citep{li2020procleave} likewise handles one enzyme at a time and additionally requires 3D structural input. The shared limitation of this class is scope: in practice, one is usually interested in the combined effect of all proteases active in an organism, not any single enzyme.
+\textbf{Protease-specific models.} These predict cleavage only for a limited set of enzymes, most of which have a known recognition motif. ProP~\citep{duckert2004prop} targets cleavage by the PACE/PC family in animals and plants. PROSPER~\citep{song2012prosper} and its successor PROSPERous~\citep{song2018prosperous} predict cleavage for one chosen enzyme at a time, as does the later ProsperousPlus~\citep{li2023prosperousplus}. DeepCleave~\citep{li2020deepcleave} is restricted to caspases and matrix metalloproteinases, and Procleave~\citep{li2020procleave} likewise handles one enzyme at a time and additionally requires 3D structural input. The shared limitation of this class is scope: in practice, one is usually interested in the combined effect of all proteases active in an organism, not any single enzyme.
 
-\textbf{Organism- or peptide-type-specific models.} A separate class targets neuropeptides or other bioactive fragments specific to a given organism. NeuroPred~\citep{southey2006neuropred} and the species-agnostic DeepNeuropePred~\citep{wang2024deepneuropepred} only detect cleavage near a handful of basic residues; NeuroPred-PLM~\citep{wang2023neuropredplm} does not localize cleavage sites at all but classifies an already-excised sequence. A related group of models finds signal subsequences rather than any bioactive peptide: SignalP~\citep{teufel2022signalp6} and TargetP~\citep{almagro2019targetp} identify the type of signal peptide, which indicates where a protein is trafficked.
+\textbf{Organism- or peptide-type-specific models.} A separate class targets neuropeptides or other bioactive fragments specific to a given organism. NeuroPred~\citep{southey2006neuropred} and the species-agnostic DeepNeuropePred~\citep{wang2024deepneuropepred} only detect cleavage near a handful of basic residues, while NeuroPred-PLM~\citep{wang2023neuropredplm} does not localize cleavage sites at all but classifies an already-excised sequence. A related group of models finds signal subsequences rather than any bioactive peptide: SignalP~\citep{teufel2022signalp6} and TargetP~\citep{almagro2019targetp} identify the type of signal peptide, which indicates where a protein is trafficked.
 
 \textbf{General-purpose models on pLM embeddings.} \textbf{Protein language models} (pLMs) are transformers trained without supervision on large sequence corpora, typically by masked-residue recovery, and they produce transferable per-residue embeddings: ESM-2~\citep{lin2023esm2}, the earlier ESM line~\citep{esm2_2019}, ESM Cambrian~\citep{esm_cambrian_blog_2024,ESM-family}, and Ankh~\citep{ankh2023}. Compact task-specific heads are then trained on top of these frozen embeddings. Besides \textbf{DeepPeptide}~\citep{deeppeptide2023} itself, this recipe underlies DeepNeuropePred, NeuroPred-PLM, and SignalP~6, as well as models that score already-excised peptides rather than finding them: pLM4ACE~\citep{du2024plm4ace} predicts ACE-inhibitory activity, and BPFun~\citep{bpfun2025} and DeepBP~\citep{zhang2024deepbp} predict broader bioactivity, building on earlier pre-pLM work such as PeptideRanker~\citep{mooney2012peptideranker}. Before pLMs, PeptideLocator~\citep{mooney2013peptidelocator} addressed a problem close to ours, but its output is a per-residue heatmap of similarity to known bioactive peptides rather than an explicit segmentation, and it was the main point of comparison in the original DeepPeptide paper.
 
@@ -405,7 +405,7 @@ enforces between folds.
 
 \begin{table}[h]
 \centering
-\caption{Proteins per outer fold, and how three frequent genera distribute across them. \emph{Cyriopagopus} and \emph{Lycosa} are spider venoms, \emph{Conus} a cone snail; each is a homology cluster that GraphPart is obliged to keep intact. \textit{Homo}, by contrast, is spread evenly (71/81/66/130/84).}
+\caption{Proteins per outer fold, and how three frequent genera distribute across them. \emph{Cyriopagopus} and \emph{Lycosa} are spider venoms, \emph{Conus} a cone snail, and each is a homology cluster that GraphPart is obliged to keep intact. \textit{Homo}, by contrast, is spread evenly (71/81/66/130/84).}
 \label{tab:genus}
 \small
 \begin{tabular}{lrrrrrr}
@@ -468,7 +468,7 @@ Across the eight runs the correction shifts mean F1 by $+0.015$ to $+0.022$, alw
 
 \subsection{Protocol}
 
-Data was split into seven GraphPart folds (30\% identity threshold, motif-balanced as in \Cref{sec:dataset}), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured $+0.074$ on one and $-0.011$ on the other; ESM-C 6B against ESM-C 600M gave $+0.028$ and $-0.021$; the net effect of the 3Di channel gave $+0.015$ and $-0.018$. Effects that kept their sign still moved by a lot: the isolated gated adapter measured $-0.001$ on one fold and $+0.045$ on the other. \Cref{fig:folds} shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10--24 residues and fold 5 bimodal, so results below pool them (model-select $\cup$ sealed, $\approx$2{,}300 proteins) to reduce (but not eliminate) this instability; this pooling is why the ``sealed'' fold is not, in practice, a held-out test set independent of model selection.
+Data was split into seven GraphPart folds (30\% identity threshold, motif-balanced as in \Cref{sec:dataset}), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured $+0.074$ on one and $-0.011$ on the other, ESM-C 6B against ESM-C 600M gave $+0.028$ and $-0.021$, and the net effect of the 3Di channel gave $+0.015$ and $-0.018$. Effects that kept their sign still moved by a lot: the isolated gated adapter measured $-0.001$ on one fold and $+0.045$ on the other. \Cref{fig:folds} shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10--24 residues and fold 5 bimodal, so results below pool them (model-select $\cup$ sealed, $\approx$2{,}300 proteins) to reduce (but not eliminate) this instability. This pooling is why the ``sealed'' fold is not, in practice, a held-out test set independent of model selection.
 
 \begin{figure}[h]
 \centering
@@ -503,7 +503,7 @@ Boundary head on ESM-2 & decoder addition & $\approx 0$ (CI includes zero) & no 
 Structural channel (3Di) & extra input & propep.\ $+0.02$ / pep.\ $-0.03$, net trade-off & no effect \\
 ESM-C 6B compression 2560$\to$256 & optimization & $\approx 0$, $10\times$ narrower input and $16\times$ fewer trainable parameters & no effect \\
 Gated adapter on ESM-C 6B (pLM re-projection) & input adapter & $+0.022$, CI $[+0.008, +0.038]$ & helps \\
-Bond-prediction auxiliary loss (on ESM-C 6B) & extra loss & pep.\ $-0.05$, net $-0.015$; neutral on ESM-2 & harmful \\
+Bond-prediction auxiliary loss (on ESM-C 6B) & extra loss & pep.\ $-0.05$, net $-0.015$, neutral on ESM-2 & harmful \\
 Telescopic segment CRF & decoder addition & $\approx 0$ on ESM-2, $+0.022$ on ESM-C 6B, no CI available & unresolved \\
 \bottomrule
 \end{tabular}
@@ -513,11 +513,11 @@ Note the apparent tension with \Cref{tab:main-results}: under this earlier proto
 
 \subsection{Additional exploratory modifications}
 
-A larger set of ideas was tried under the same single-split protocol and did not show a clear, consistent benefit; we list them for completeness and as candidates for future re-testing, without effect-size claims:
+A larger set of ideas was tried under the same single-split protocol and did not show a clear, consistent benefit. We list them for completeness and as candidates for future re-testing, without effect-size claims:
 
 \begin{itemize}
   \item \textbf{Known-peptide dictionary.} An Aho--Corasick index of peptides from the training data was used to flag substring matches in a query sequence, injected as a bonus on the CRF state emissions, as a bias on the start, inside and end emissions specifically, fused into the encoder hidden state, and concatenated with the embedding before the encoder. No consistent benefit was observed, and the checkpoint for one of the variants can no longer be loaded.
-  \item \textbf{Structural features.} Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5~\citep{heinzinger2023prostt5} structural alphabet (3Di, as used in Foldseek~\citep{vankempen2024foldseek}) were tested as additional input channels; results were mixed (\Cref{tab:verdict}).
+  \item \textbf{Structural features.} Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5~\citep{heinzinger2023prostt5} structural alphabet (3Di, as used in Foldseek~\citep{vankempen2024foldseek}) were tested as additional input channels, and results were mixed (\Cref{tab:verdict}).
   \item \textbf{LoRA fine-tuning.} Low-rank adaptation of the last few pLM layers, instead of fully frozen embeddings, scored $0.558$ and $0.567$ against $0.621$ for the frozen baseline, all three on the 2022 release under its own five-fold split rather than the protocol of \Cref{sec:app-old-protocol}. It also ran for fewer epochs in the same time budget, though we did not measure the cost directly.
   \item \textbf{Projector variants.} Multi-scale and multi-branch projectors between the embedding and the CNN--BiLSTM were tried as alternative re-projection schemes to the adapter of \Cref{sec:method}.
   \item \textbf{Structural-projection width and telescopic CRF.} The width of the structural-feature projection (16/32/48 units) left pooled F1 flat at $0.691$, $0.697$ and $0.693$, the telescopic segment CRF, an alternative decoder formulation that scores whole segments through a relative-position head, came out level with the base decoder on ESM-2 and $+0.022$ ahead on ESM-C 6B. Per-protein outputs were not retained for either run, so neither number carries a confidence interval and we treat the modification as untested rather than as having no effect.
@@ -559,7 +559,7 @@ matcher, mean $\pm$ std.\ over the five outer folds.}
 The $\pm3$ criterion of \Cref{sec:matching} is the benchmark's, and \Cref{sec:intro} says why it
 cannot see the improvement this paper is about. This appendix scores the same predictions without
 it. Predicted and true segments of the same type are matched greedily one to one by intersection
-over union, and a match counts as a hit when the overlap clears a threshold $\tau$; precision and
+over union, and a match counts as a hit when the overlap clears a threshold $\tau$. Precision and
 recall use all predicted and all true segments as their denominators, so nothing is conditioned on
 what either model happened to find. Every configuration is scored on the $35{,}504$ protein-cells
 common to all runs, which takes the coverage difference between the two embeddings
@@ -571,9 +571,9 @@ five, and $+0.024$ under both additions, on five of five, reproducing the split 
 \begin{table}[h]
 \centering
 \caption{Segment F1 under overlap matching. The first column requires only that a predicted and a
-true segment of the same type share one residue; the rest require an intersection over union of at
+true segment of the same type share one residue, and the rest require an intersection over union of at
 least $\tau$. Same cells as \Cref{tab:main-results}, restricted to the protein set common to every
-run; mean over the five outer folds.}
+run, mean over the five outer folds.}
 \label{tab:iou}
 \small
 \begin{tabular}{lccccc}
@@ -598,12 +598,12 @@ base & $0.738$ & $0.672$ & $0.574$ & $0.496$ & $0.419$ \\
 \paragraph{Placement, not coverage.} The looser the criterion, the less either addition is worth.
 Paired by outer fold against the ESM-2 base, at a gate that asks only for a single residue of
 overlap the boundary head is worth $-0.013\pm0.026$ and the adapter $+0.006\pm0.012$, neither
-distinguishable from zero; at $\tau\ge0.5$ they are worth $+0.001\pm0.021$ and $+0.019\pm0.017$,
+distinguishable from zero. At $\tau\ge0.5$ they are worth $+0.001\pm0.021$ and $+0.019\pm0.017$,
 and at $\tau\ge0.9$ $+0.028\pm0.004$ and $+0.029\pm0.015$, both on five folds of five. Underneath
 that near-zero F1 at the overlap gate the two move in opposite directions: the head issues $219$
 fewer segments per fold, buying $+0.022$ precision for $-0.035$ recall, while the adapter issues
 $130$ more and buys $+0.024$ recall for $-0.021$ precision. Neither finds appreciably more of the
-annotation than the base architecture does; what changes is where the boundaries land. This is the
+annotation than the base architecture does. What changes is where the boundaries land. This is the
 same conclusion \Cref{tab:main-results} reaches through a tolerance, reached without one.
 
 The mean IoU taken over \emph{all} true segments moves the other way for the head, $0.576$ to
