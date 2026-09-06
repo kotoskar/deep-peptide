@@ -285,13 +285,13 @@ one of them deciding the result. GraphPart keeps homologs together, and taxa \em
 homology clusters: 313 of 714 \emph{Conus} sequences fall in fold~1 against 16 in fold~2, all 293
 \emph{Cyriopagopus} avoid fold~0 entirely, and the folds differ in size by a factor of two
 (\Cref{tab:genus} in \Cref{sec:app-problem}). The base architecture's outer-fold scores span $0.074$
-(\Cref{fig:perfold,tab:perfold} in \Cref{sec:app-problem}), three and a half times the $+0.021$
+(\Cref{fig:perfold,tab:perfold} in \Cref{sec:app-perfold}), three and a half times the $+0.021$
 effect the same experiment resolves once averaged over them, and what the folds differ in is
-segment length, on which quality is far from flat (\Cref{fig:bylength}).
+segment length, on which quality is far from flat (\Cref{fig:bylength} in \Cref{sec:app-perfold}).
 
 \paragraph{What the protocol does not settle.} Nothing was selected on outer-fold
 scores inside confirmation, since every cell of the $2\times2$ is reported, but the screening that
-chose the candidates ran on the same proteins, and sealing that would take a third held-out level
+chose the candidates (\Cref{sec:app-old-protocol}) ran on the same proteins, and sealing that would take a third held-out level
 at roughly 1{,}600 GPU-hours for the grid, on 2/5 of the data. The spread covers fold composition, not seed
 variation, and the base row is untuned rather than the published system (\Cref{sec:app-upstream}).
 
@@ -320,8 +320,6 @@ Methods for predicting proteolytic peptides fall into three broad classes.
 
 Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (\Cref{sec:method}), evaluated under the same $5\times4$ nested cross-validation it uses (\Cref{sec:eval-protocol}) on data rebuilt from a current release (\Cref{sec:dataset}).
 
-
-
 \FloatBarrier
 
 \section{The architecture at reading size}
@@ -330,9 +328,8 @@ Among these, DeepPeptide is, to our knowledge, the only model that poses the tas
 \begin{figure}[ht]
 \centering
 \MaybeImage{figures/architecture_scheme.jpg}{1.0}
-\caption{The base architecture and the two additions, at reading size. \Cref{fig:hook}b shows the
-same diagram at the scale of a single panel, where it locates the two blocks rather than
-documenting them. Top: the pipeline, with the adapter between the frozen pLM and the
+\caption{The base architecture and the two additions, at reading size. \Cref{fig:hook}b carries a
+single-panel version of this diagram, which locates the two blocks rather than documenting them. Top: the pipeline, with the adapter between the frozen pLM and the
 CNN--BiLSTM encoder and the boundary head reading the encoder's output. Bottom: what the head
 adds. The base model computes one emission per label and shares it across all 50 position states
 of that label, so the CRF's start, interior and end states are fed identical evidence. The head
@@ -415,50 +412,6 @@ All proteins & 8897 & 1558 & 2572 & 1263 & 2025 & 1479 \\
 % \underbrace{\texttt{NL}}_{\textsf{Peptide}}
 % $$
 % How a predicted segment is scored against the ground truth -- including the tolerance used for boundary matching -- is defined later, in \Cref{sec:matching}, alongside the rest of the evaluation protocol; it is an evaluation-time decision rather than part of the task definition itself.
-
-
-\begin{figure}[h]
-\centering
-\MaybeImage{figures/fig_perfold.png}{1.0}
-\caption{Segment F1 at $\pm3$ on each outer fold, every configuration on one axis, with the band
-between the best and worst configuration shaded, and below it the median length of the true
-segments each fold contains. The lines move together: fold~2 is the hardest for all eight and
-fold~1 or~4 the easiest for most, so much of the vertical movement within a line is the fold rather
-than the architecture. The folds were balanced on homology and cleavage motif, not on segment
-length, and that free axis tracks the difficulty: ordering them by median segment length and by the
-base architecture's score differs in one adjacent swap. Within one configuration the score spans $0.040$ to $0.074$
-across the folds, more than either addition is worth on its own, which is what makes a single split
-unable to resolve them and pairing by fold necessary. The ordering of configurations is largely
-preserved from fold to fold, which is why the paired comparisons of \Cref{sec:results} are stable
-where the absolute levels are not.}
-\label{fig:perfold}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\MaybeImage{figures/fig_bylength_cv.png}{1.0}
-\caption{Why a fold's length profile is not a cosmetic difference. Segment F1 at $\pm3$ against the
-length of the true segment, with the number of true segments in each bin below. Quality is far from
-flat in length: the base architecture scores $0.715$ on segments of 25--29 residues and $0.274$ on
-those of 45--50, a spread of $0.441$, several times any effect this paper measures, and it falls
-away at the short end too. A fold's length profile therefore sets how hard it is before any model
-touches it, and the five outer folds do differ on that axis, their median true segment running from
-15 residues in fold~2 to 24 in fold~4 (\Cref{fig:perfold}). That is what makes them
-non-exchangeable in the sense \Cref{sec:conclusion} means. The two additions help least where the
-base is already strongest, $+0.015$ at 25--29 residues, and most where it is weakest, $+0.126$ at
-35--39 and $+0.121$ at 45--50, so they flatten the curve without levelling it.}
-\label{fig:bylength}
-\end{figure}
-
-\begin{table}[h]
-\centering
-\caption{\Cref{fig:perfold} as numbers: segment F1 at $\pm3$ per outer fold, mean $\pm$ standard
-deviation across the five.}
-\label{tab:perfold}
-\small
-\resizebox{\linewidth}{!}{%
-\input{figures/perfold_table.tex}}
-\end{table}
 
 \FloatBarrier
 
@@ -551,13 +504,28 @@ scoring rebuilds the ground truth from the labelled sequences directly.
 
 \subsection{Protocol}
 
-Data was split into seven GraphPart folds (30\% identity threshold, motif-balanced as in \Cref{sec:dataset}), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured $+0.074$ on one and $-0.011$ on the other, ESM-C 6B against ESM-C 600M gave $+0.028$ and $-0.021$, and the net effect of the 3Di channel gave $+0.015$ and $-0.018$. Effects that kept their sign still moved by a lot: the isolated sequence adapter measured $-0.001$ on one fold and $+0.045$ on the other. \Cref{fig:folds} shows one reason, namely that the folds differ substantially in segment-length composition. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10--24 residues and fold 5 bimodal, so results below pool them (model-select $\cup$ sealed, $\approx$2{,}300 proteins) to reduce (but not eliminate) this instability. This pooling is why the ``sealed'' fold is not, in practice, a held-out test set independent of model selection.
+Data was split into seven GraphPart folds (30\% identity threshold, motif-balanced as in \Cref{sec:dataset}), with folds assigned fixed roles: four folds for training, one for validation (epoch selection), one for model selection (comparing architectures), and one originally intended as a fully sealed test fold. This separated architecture selection from evaluation, but the evaluation itself was still a single draw: one random assignment of roles, one pair of held-out folds. Several modifications changed the sign of their measured effect between the two held-out folds. Replacing ESM-2 with ESM-C 6B measured $+0.074$ on one and $-0.011$ on the other, ESM-C 6B against ESM-C 600M gave $+0.028$ and $-0.021$, and the net effect of the 3Di channel gave $+0.015$ and $-0.018$. Effects that kept their sign still moved by a lot: the isolated sequence adapter measured $-0.001$ on one fold and $+0.045$ on the other. \Cref{fig:folds} shows one reason, namely that the folds differ substantially in segment-length composition, and \Cref{fig:bylengthscreen} shows why that difference matters: under this protocol the base architecture scores $0.724$ on segments of 25--29 residues and $0.230$ on those of 45--50, so a fold's length profile largely sets how hard it is before any model is chosen. The two held-out folds turn out to be complementary in segment-length composition, fold 2 concentrated at 10--24 residues and fold 5 bimodal, so results below pool them (model-select $\cup$ sealed, $\approx$2{,}300 proteins) to reduce (but not eliminate) this instability. This pooling is why the ``sealed'' fold is not, in practice, a held-out test set independent of model selection.
 
 \begin{figure}[h]
 \centering
 \MaybeImage{figures/fold_divergence.png}{0.7}
 \caption{Why the folds of the earlier seven-fold split are not interchangeable: (a) the segment-length profile of each fold against the profile of the whole dataset, (b) the $L_1$ distance between the two. Fold 4 tracks the overall distribution closely ($0.07$) while five of the seven folds sit above $0.23$. Balancing was done on cleavage motif and homology, not on segment length, so this axis was left free. The same holds for the five-fold split used in the main text, where the imbalance is taxonomic (\Cref{tab:genus}).}
 \label{fig:folds}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fig_bylength_screen.png}{1.0}
+\caption{Segment F1 at $\pm3$ against the length of the true segment under the seven-fold screening
+split, with the number of true segments each held-out fold contributes to a bin below. Quality
+depends strongly on length for every model: the base architecture scores $0.724$ on segments of
+25--29 residues and $0.230$ on those of 45--50, and ESM-C 6B falls further over the same range,
+from $0.751$ to $0.061$. The two held-out folds are composed differently on that axis, fold~5
+carrying $13.0\%$ of its segments at 35--39 residues against $3.6\%$ in fold~2, so an effect
+measured on one fold is measured on an easier or harder mixture than the same effect on the other.
+That is one mechanism behind the sign flips reported above. These are screening numbers and are not
+comparable with the nested cross-validation values in \Cref{sec:app-perfold}.}
+\label{fig:bylengthscreen}
 \end{figure}
 
 \begin{figure}[h]
@@ -653,6 +621,64 @@ a proper test.
 \label{fig:similarity}
 \end{figure}
 
+
+\FloatBarrier
+
+\section{Fold-level results under the confirmation protocol}
+\label{sec:app-perfold}
+
+The screening protocol of \Cref{sec:app-old-protocol} raised a question it could not answer: how
+much of a measured difference belongs to the architecture and how much to the fold it was measured
+on. The confirmation protocol can answer it, because every configuration runs on all five outer
+folds and can be read fold by fold instead of only as an average. This section reports that
+reading. It is not further evidence for either addition, which \Cref{sec:results} carries. It is
+the evidence behind the limitation stated in \Cref{sec:conclusion}, that the folds are not
+exchangeable and that their spread is wider than the effects measured across them.
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fig_perfold.png}{1.0}
+\caption{Segment F1 at $\pm3$ on each outer fold, every configuration on one axis, with the band
+between the best and worst configuration shaded, and below it the median length of the true
+segments each fold contains. The lines move together: fold~2 is the hardest for all eight and
+fold~1 or~4 the easiest for most, so much of the vertical movement within a line is the fold rather
+than the architecture. The folds were balanced on homology and cleavage motif, not on segment
+length, and that free axis tracks the difficulty: ordering them by median segment length and by the
+base architecture's score differs in one adjacent swap. Within one configuration the score spans $0.040$ to $0.074$
+across the folds, more than either addition is worth on its own, which is what makes a single split
+unable to resolve them and pairing by fold necessary. The ordering of configurations is largely
+preserved from fold to fold, which is why the paired comparisons of \Cref{sec:results} are stable
+where the absolute levels are not.}
+\label{fig:perfold}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\MaybeImage{figures/fig_bylength_cv.png}{1.0}
+\caption{Why a fold's length profile is not a cosmetic difference. Segment F1 at $\pm3$ against the
+length of the true segment, with the number of true segments in each bin below. Quality is far from
+flat in length: the base architecture scores $0.715$ on segments of 25--29 residues and $0.274$ on
+those of 45--50, a spread of $0.441$, several times any effect this paper measures, and it falls
+away at the short end too. A fold's length profile therefore sets how hard it is before any model
+touches it, and the five outer folds do differ on that axis, their median true segment running from
+15 residues in fold~2 to 24 in fold~4 (\Cref{fig:perfold}). That is what makes them
+non-exchangeable in the sense \Cref{sec:conclusion} means. The two additions help least where the
+base is already strongest, $+0.015$ at 25--29 residues, and most where it is weakest, $+0.126$ at
+35--39 and $+0.121$ at 45--50, so they flatten the curve without levelling it.}
+\label{fig:bylength}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Segment F1 at $\pm3$ for every configuration on each of the five outer folds of the
+nested cross-validation, and in the last column the mean over the folds with their standard
+deviation. Each entry is the mean over the four inner models of that cell, scored with the
+corrected matcher.}
+\label{tab:perfold}
+\small
+\resizebox{\linewidth}{!}{%
+\input{figures/perfold_table.tex}}
+\end{table}
 
 \FloatBarrier
 
