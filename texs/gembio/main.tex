@@ -86,18 +86,17 @@ an Embedding Adapter, and What a $\pm3$ Benchmark Hides}
 Designing a peptide construct means predicting where proteases will cut it, and a design loop can
 only use a cleavage predictor at the resolution that predictor is measured at. The benchmark for
 this task accepts a predicted segment when both of its endpoints land within $\pm3$ residues of the
-annotation, a window comparable to the peptide itself at the short end of the 5--50 residue range:
-an oracle can improve its
-score by finding more segments while placing none of them better, and can place every boundary
-exactly and gain almost nothing. We make placement the target of both the model and the
-measurement. Two small additions to the strongest available segmenter, a zero-initialized boundary
-head that gives its conditional random field the position-specific evidence its own state graph
-already distinguishes, and a lightweight adapter that re-projects the frozen protein language model
-embedding, improve segment F1 by $+0.054$ together on ESM-2 and $+0.079$ on ESM-C 6B under the
-$5\times4$ nested cross-validation DeepPeptide itself uses. Scored without any acceptance window, the head
-covers less of the annotation than the base and the adapter covers more, so most of what the pair
-buys is placement rather than coverage, which is what a design loop needs and what a $\pm3$ window
-cannot report. We also quantify why this benchmark is
+annotation, a window comparable to the peptide itself at the short end of the 5--50 residue range,
+so the score rewards finding segments over placing them. We make placement the target of both the
+model and the measurement. We add two small blocks to the strongest available segmenter. A
+zero-initialized boundary head gives its conditional random field the position-specific evidence
+its own state graph already distinguishes, and a lightweight adapter re-projects the frozen protein
+language model embedding. Together they improve segment F1 by $+0.054$ on ESM-2 and $+0.079$ on
+ESM-C 6B, under the $5\times4$ nested cross-validation DeepPeptide itself uses. Scored with no acceptance window at all, the head covers less of the
+annotation than the base while the adapter covers more, and the pair gains little there. Most of
+what it buys is placement: with detection held fixed, the share of boundaries landing on the
+annotated residue rises from $0.62$ to $0.70$ on all five outer folds. That is what a design loop
+needs and what a $\pm3$ window cannot report. We also quantify why this benchmark is
 hard to measure on at all: homology-aware folds are taxonomically non-exchangeable, and their
 spread exceeds either addition measured on its own.
 \end{abstract}
@@ -131,11 +130,11 @@ That resolution is currently coarse, and the coarseness is in the benchmark rath
 models. A predicted segment counts as correct when both of its endpoints fall within $\pm3$
 residues of a ground-truth segment of the same type, and a single F1 at that tolerance is reported
 (\Cref{fig:hook}). Segments are 5--50 residues long, so on a short peptide the acceptance window is
-comparable to the peptide itself. Two consequences follow, and they pull in opposite directions. An
-oracle can raise its score by finding more segments while placing none of them better. And it can
-place every boundary on the annotated residue and gain almost nothing, because predictions that
-close were already counted. For a design loop the second is the expensive one: moving a cut by
-three residues changes the peptide, and the metric that ranks oracles cannot see the difference.
+comparable to the peptide itself. The metric is therefore blind in both directions: an oracle can
+raise its score by finding more segments while placing none of them better, and it can place every
+boundary on the annotated residue and gain almost nothing, because predictions that close already
+counted. For a design loop the second is the expensive one, since moving a cut by three residues
+changes the peptide the construct yields.
 
 We therefore make placement the target of both the model and the measurement. The oracle we start
 from is DeepPeptide~\citep{deeppeptide2023}, the strongest general-purpose model for this
@@ -170,7 +169,7 @@ and its data pipeline as our starting point (\Cref{sec:app-related}).
 \section{Method}
 \label{sec:method}
 
-\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF~\citep{lafferty2001crf} that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b, drawn at reading size in \Cref{sec:app-arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}, and \Cref{sec:app-upstream} sets out how the configuration we train relates to the published one.
+\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF~\citep{lafferty2001crf} that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The boundary head closes that gap where it opens, at the emissions, and the adapter works on the features the emissions are computed from, so the two act at opposite ends of the pipeline (\Cref{fig:hook}b, drawn at reading size as \Cref{fig:arch} in \Cref{sec:app-arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}, and \Cref{sec:app-upstream} sets out how the configuration we train relates to the published one.
 
 
 \paragraph{Boundary head.} A small feed-forward block (LayerNorm, Linear, GELU, Linear, hidden size 64) is applied to the contextual per-residue features. For each position and each segment type it emits three numbers, scoring how much that position looks like a segment start, an interior position, or a segment end, and these are added to the emissions of the corresponding position-fixed CRF states. The final linear layer is initialized to zero, so training begins at exactly the base model and the head only learns corrections that lower the loss. It costs 4{,}678 parameters on a trainable stack of 224{,}710.
@@ -193,27 +192,25 @@ Folds come from GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity ceil
 
 Peptides and propeptides are matched separately. A prediction is a true positive when its start and its end both fall within $\pm\tau$ residues of a true segment of the same type. Unmatched predictions are false positives and unmatched true segments false negatives. Following the original evaluation we keep $\tau=3$ as the headline setting, since annotated sites carry a few residues of experimental uncertainty. Sweeping $\tau$ down to zero then asks a second question, not whether a peptide was found but how precisely its ends were placed. The reference implementation of this criterion carries an upstream variable-shadowing bug that marks the wrong true segment as matched, so everything reported here is re-scored with a corrected matcher (\Cref{sec:eval-metric}).
 
-\paragraph{Agreement with the published baseline.} DeepPeptide reports precision $0.68$ and recall $0.49$ at $\pm3$, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of $0.570$. Running the base architecture on that release under the same protocol scores $0.574\pm0.069$ with the original matcher and $0.590\pm0.064$ with the corrected one of \Cref{sec:eval-metric}. The F1 reproduces, the operating point does not: our original-matcher precision is $0.614$ and recall $0.541$. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of \Cref{tab:main-results} is measured under the same setting (\Cref{sec:app-upstream}). Under the corrected matcher throughout, the 2026 rebuild gives $0.576\pm0.029$ against that $0.590\pm0.064$, so it reads $0.014$ lower by a margin smaller than either run's spread across folds.
+\paragraph{Agreement with the published baseline.} DeepPeptide reports precision $0.68$ and recall $0.49$ at $\pm3$, both segment types together, averaged over the twenty models of its nested cross-validation on the 2022 data, which implies an F1 of $0.570$. Running the base architecture on that release under the same protocol scores $0.574\pm0.069$ with the original matcher and $0.590\pm0.064$ with the corrected one of \Cref{sec:eval-metric}. The F1 reproduces, the operating point does not: our original-matcher precision is $0.614$ and recall $0.541$. The published system tunes its hyperparameters per outer fold, while we hold one configuration fixed across all 20 cells so that every row of \Cref{tab:main-results} is measured under the same setting (\Cref{sec:app-upstream}). Under the corrected matcher throughout, the 2026 rebuild gives $0.576\pm0.029$ against that $0.590\pm0.064$, so it reads $0.014$ lower, a gap smaller than either run's spread across folds.
 
 
 \section{Results}
 \label{sec:results}
 
-We ran the experiments in two stages. 
- 
 \paragraph{Screening.} We first split the data into seven GraphPart folds with fixed roles:
 four for training, one for epoch selection, and two held out, one for comparing architectures and
-one intended as a sealed test, which the screening numbers pool.
-Against that split we screened roughly a dozen modifications, with the protocol, the verdict table
-and the per-candidate figures in \Cref{sec:app-old-protocol}, among them the segment-type
+one intended as a sealed test.
+Against that split we screened roughly a dozen modifications, with the protocol, verdict table and
+per-candidate figures in \Cref{sec:app-old-protocol}, among them the segment-type
 trade-offs and data-scaling curves of \Cref{fig:trades,fig:datascale}.
  
 The folds of that split are not interchangeable (\Cref{fig:folds} in \Cref{sec:app-old-protocol}), and under one assignment of
 roles several modifications changed the \emph{sign} of their measured effect between the two
-held-out folds. A single draw of this kind cannot resolve an effect of $0.02$--$0.03$, so none of
-those numbers is reported as a finding. It can, however, separate the consistently unhelpful
-from the promising, and two cleared that bar: the boundary head and the adapter sat at or
-above the base throughout.
+held-out folds. A single draw cannot resolve an effect of $0.02$--$0.03$, so none of those
+numbers is reported as a finding. It can, however, separate the consistently unhelpful
+from the promising, and two cleared that bar: the boundary head and the adapter were the only
+candidates whose worst measurement was still level with the base.
  
 \paragraph{Confirmation.}
 \label{sec:eval-protocol}
@@ -223,8 +220,8 @@ factor of the design and not a third candidate. For each of five outer folds we
 train four models on three of the remaining folds and validate on the fourth,
 then test on the outer fold, which they never saw. An outer fold's score is the
 mean over its four models, the estimate is the mean over the five outer folds,
-and the reported spread is the standard deviation across outer folds rather than
-across all 20 cells, since four models sharing an outer fold share a test set.
+and the reported spread is the standard deviation across outer folds,
+since four models sharing an outer fold share a test set.
 Because selection happened at the screening stage, what follows is a test of two
 pre-specified hypotheses. \Cref{tab:main-results} reports the resulting grid, each
 addition alone and both together, on both embeddings.\footnote{Implementation, the configuration behind every row, the per-cell scores every table is aggregated from and a script that rebuilds them: \url{https://anonymous.4open.science/r/cleavage-site-segmentation-5851}}
@@ -235,7 +232,8 @@ addition alone and both together, on both embeddings.\footnote{Implementation, t
 the five outer folds, with the standard deviation across them as a subscript. Precision and recall
 are at the headline $\pm3$ tolerance, and the four F1 columns tighten it to an exact residue.
 \emph{Growth} is how much a row's F1 advantage over the ESM-2 base widens between $\pm3$ and an
-exact match.}
+exact match. A subscript is a row's spread across folds, not the uncertainty of a difference:
+the text pairs every effect fold by fold against its own base, which is far narrower.}
 \label{tab:main-results}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -261,40 +259,40 @@ both            & \ms{0.690}{.013} & \ms{0.646}{.033} & \ms{0.666}{.018} & \ms{0
 \end{tabular}}
 \end{table}
 
-\paragraph{The two additions act on different errors.} On ESM-2 each improves F1 by a similar amount alone and together they give $0.054$, against $0.079$ on ESM-C, close to the sum of the parts in both cases. Splitting the ESM-2 rows into precision and recall shows the two are not competing for the same errors. The head is almost purely a precision effect, $+0.052$ against $-0.001$ of recall, the adapter mostly a recall effect, $+0.040$ against $+0.007$, and applied together they recover both, $+0.046$ and $+0.059$.
+\paragraph{The two additions act on different errors.} On ESM-2 each improves F1 by a similar amount alone and together they give $0.054$, against $0.079$ on ESM-C, close to the sum of the parts in both cases. Splitting the ESM-2 rows into precision and recall shows the two are not competing for the same errors. The head is almost purely a precision effect, the adapter mostly a recall effect, and applied together they recover both.
 
-\paragraph{Tightening the tolerance.} Sweeping $\tau$ from $\pm3$ to an exact match, absolute F1 falls steeply for every model, the strongest configuration from $0.666$ to $0.466$. A model that is better overall retains a different fraction of its $\pm3$ score even when no boundary is placed better, so we compare absolute gaps rather than ratios. Every gap an addition opens widens as the tolerance tightens, the largest step in each case being the last, from $\pm1$ to exact, and only the embedding swap on its own does not grow. The \emph{growth} column of \Cref{tab:main-results} carries that as a direction rather than as six resolved effects: all six are positive, on four or five outer folds of five each, but four of the six spreads reach zero. What follows is what the claim rests on.
+\paragraph{Tightening the tolerance.} As $\tau$ tightens from $\pm3$ to an exact match, absolute F1 falls steeply for every model, the strongest configuration from $0.666$ to $0.466$. A model that is better overall retains a different fraction of its $\pm3$ score even when no boundary is placed better, so we compare absolute gaps rather than ratios. Every gap an addition opens is wider at an exact match than at $\pm3$, the largest step in each case being the last, from $\pm1$ to exact, and only the embedding swap on its own does not grow. The \emph{growth} column of \Cref{tab:main-results} carries that as a direction rather than as six resolved effects: all six are positive, on four or five outer folds of five each, but four of the six spreads reach zero.
 
-A widening gap is not proof of better localization, since a model that finds more segments gains ground at every tolerance. To hold detection fixed we compared each variant against the base on the true segments both localize within $\pm3$, cell by cell. On that set the share of boundaries placed on the exact residue is $0.630$ for the base against $0.652$ for the boundary head, $0.619$ against $0.668$ for the adapter and $0.621$ against $0.698$ for both, each positive on all five outer folds. A gate is itself a choice, so \Cref{sec:app-quality} asks the same question with no window at all, and there the two blocks part company. When a hit needs only a single residue of overlap the head covers less than the base, recall $-0.035$ and below it on four folds of five, while gaining precision, and the adapter covers more, $+0.024$ on four of five, while losing it, so their F1 there barely moves, $-0.013$ and $+0.006$. The head's gain is placement alone, the adapter buys placement and coverage together, and a $\pm3$ window records the mixture as recall. Scored at individual cleavage sites the head's gain lies entirely on the C-terminal side, $+0.028\pm0.006$ on five folds of five against nothing on the N-side.
+A widening gap alone is not proof, since a model that finds more segments gains ground at every tolerance. To hold detection fixed we compared each variant against the base on the true segments both localize within $\pm3$, cell by cell. On that set the share of boundaries placed on the exact residue is $0.630$ for the base against $0.652$ for the boundary head, $0.619$ against $0.668$ for the adapter and $0.621$ against $0.698$ for both, each positive on all five outer folds. A gate is itself a choice, so \Cref{sec:app-quality} asks the same question with no window at all, and there the two blocks part company. When a hit needs only a single residue of overlap, the head covers less of the annotation than the base: recall falls by $0.035$, on four outer folds of five, while precision rises. The adapter does the reverse, $+0.024$ of recall on four of five against a loss of precision. None of the three moves F1 much there, $-0.013$ for the head, $+0.006$ for the adapter and $+0.018$ for the pair, and none of the three is distinguishable from zero. The head's gain is placement alone, the adapter buys placement and coverage together, and a $\pm3$ window records the mixture as recall. Scored at individual cleavage sites the head's gain lies entirely on the C-terminal side, $+0.028\pm0.006$ on five folds of five against nothing on the N-side.
 
-\paragraph{Capacity the base decoder cannot use.} The base architecture on ESM-C 6B reaches $0.588\pm0.016$ against $0.576\pm0.029$ on ESM-2, a paired difference of $+0.012\pm0.019$ over the five outer folds, so an embedding twice as wide buys no confirmed improvement on its own while either addition on the narrower one does. What they are worth there depends on which one. Paired by outer fold against its own base, the head is worth two and a half times as much on ESM-C 6B as on ESM-2, the adapter about half as much, and the two together more. All six effects are positive on five folds of five, and only the ESM-C adapter's spread reaches zero. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched it is the less there is to re-project, whereas the head supplies position-specific evidence and a richer embedding carries more of it. Read the other way, the swap is worth $+0.012$ F1 under the base architecture and $+0.036$ under both additions, a split \Cref{sec:app-quality} reproduces on the protein-cells common to all runs.
+\paragraph{Capacity the base decoder cannot use.} The base architecture on ESM-C 6B reaches $0.588\pm0.016$ against $0.576\pm0.029$ on ESM-2, a paired difference of $+0.012\pm0.019$ over the five outer folds, so an embedding twice as wide buys no confirmed improvement on its own while either addition on the narrower one does. Paired by outer fold against its own base, the head is worth two and a half times as much on ESM-C 6B as on ESM-2, the adapter about half as much, and the two together more. All six effects are positive on five folds of five, and only the ESM-C adapter's spread reaches zero. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched it is the less there is to re-project, whereas the head supplies position-specific evidence and a richer embedding carries more of it.
 
 \section{Conclusion and limitations}
 \label{sec:conclusion}
 
 A zero-initialized boundary head at the decoder and a lightweight adapter at the input improve
-segment F1 by $+0.054$ together on ESM-2 and $+0.079$ on ESM-C 6B. Where that gain comes from matters for a design loop. At a gate asking
-only for one residue of overlap the head covers less than the base while the adapter covers more,
-so the head's contribution is placement alone and the adapter's placement on top of coverage. What grows as the requirement tightens is placement: the pair's
+segment F1 by $+0.054$ on ESM-2 and $+0.079$ on ESM-C 6B. Where that gain comes from matters for a design loop. The head's contribution is placement alone and the adapter's is
+placement on top of coverage. What grows as the requirement tightens is placement: the pair's
 advantage reaches $+0.077\pm0.005$ at exact match on ESM-2 and $+0.095\pm0.015$ on ESM-C 6B, each
 against its own base. An oracle asked whether a construct yields the peptide it was designed to yield
-is read at that end of the curve, which is the end the benchmark reports least well.
+is read at that end of the curve, the end the benchmark reports least well.
 
-\paragraph{The folds stay unequal.} Averaging over folds does not make them comparable, it only stops
-one of them deciding the result. GraphPart keeps homologs together, and taxa \emph{are}
+\paragraph{The folds stay unequal.} Averaging over folds does not make them comparable. It only
+stops one of them deciding the result. GraphPart keeps homologs together, and taxa \emph{are}
 homology clusters: 313 of 714 \emph{Conus} sequences fall in fold~1 against 16 in fold~2, all 293
 \emph{Cyriopagopus} avoid fold~0 entirely, and the folds differ in size by a factor of two
-(\Cref{tab:genus} in \Cref{sec:app-problem}). The base architecture's outer-fold scores span $0.074$
-(\Cref{fig:perfold,tab:perfold} in \Cref{sec:app-perfold}), three and a half times the $+0.021$
-effect the same experiment resolves once averaged over them, and what the folds differ in is
-segment length, on which quality is far from flat (\Cref{fig:bylength} in \Cref{sec:app-perfold}).
+(\Cref{tab:genus} in \Cref{sec:app-problem}). They differ on a second axis as well, segment length,
+on which quality is far from flat (\Cref{fig:bylength} in \Cref{sec:app-perfold}). The base
+architecture's outer-fold scores span $0.074$ (\Cref{fig:perfold,tab:perfold} in
+\Cref{sec:app-perfold}), three and a half times the boundary head's $+0.021$ on ESM-2 and wider
+than any single addition in \Cref{tab:main-results}.
 
 \paragraph{What the protocol does not settle.} Nothing was selected on outer-fold
 scores inside confirmation, since every cell of the $2\times2$ is reported, but the screening that
 chose the candidates (\Cref{sec:app-old-protocol}) ran on the same proteins the folds are drawn
-from, and sealing that would take a third held-out level at roughly 1{,}600 GPU-hours for the grid,
-on a training fraction cut from 3/5 to 2/5 of an already small dataset. The spread covers fold composition, not seed
-variation, and the base row is untuned rather than the published system (\Cref{sec:app-upstream}).
+from, and sealing that would take a third held-out level, at roughly 1{,}600 GPU-hours for the grid. The spread covers fold composition and not seed variation,
+the base row is untuned rather than the published system (\Cref{sec:app-upstream}), and everything
+here is measured on natural precursors, so transfer to designed constructs is untested.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
@@ -347,7 +345,7 @@ emits three numbers per position and per segment type and adds them to the state
 
 \begin{table}[h]
 \centering
-\caption{Dataset composition: the 2022 release used by the original DeepPeptide against the 2026 release rebuilt here. Counts are before homology partitioning, which leaves 7{,}623 proteins of the 2022 release and 8{,}994 of the 2026 one, of which 8{,}897 also carry an ESM-2 embedding and form the five folds used here.}
+\caption{Dataset composition: the 2022 release used by the original DeepPeptide against the 2026 release rebuilt here. Counts are before homology partitioning, which leaves 7{,}623 proteins of the 2022 release and 9{,}035 of the 2026 one. Of those, 8{,}897 carry an ESM-2 embedding and form the five folds used with ESM-2, and 8{,}999 carry an ESM-C 6B embedding, each partitioned separately, so the two are close but neither contains the other.}
 \label{tab:dataset}
 \small
 \begin{tabular}{lrr}
@@ -370,7 +368,8 @@ Median peptide length (residues) & 21 & 20 \\
 \label{fig:datadist}
 \end{figure}
 
-Two filters from the original pipeline are kept unchanged. Segments shorter than 5 or longer
+\Cref{fig:datadist} shows what the rebuilt release is made of, by segment length, segment type
+and genus. Two filters from the original pipeline are kept unchanged. Segments shorter than 5 or longer
 than 50 residues are dropped: the CRF's state count fixes the upper bound, and a segment shorter
 than five residues is barely scoreable at a $\pm3$ tolerance. Folds are then balanced by
 cleavage-motif class, obtained by $k$-means ($k=50$) on ESM-2 embeddings of the four residues
@@ -572,7 +571,7 @@ A larger set of ideas was tried under the same single-split protocol and did not
   \item \textbf{Structural features.} Features extracted from predicted 3D structures (AlphaFold2 representations via the AFToolkit codebase, with several confidence-based filtering variants) and from the ProstT5~\citep{heinzinger2023prostt5} structural alphabet (3Di, as used in Foldseek~\citep{vankempen2024foldseek}) were tested as additional input channels, and results were mixed (\Cref{tab:verdict}).
   \item \textbf{LoRA fine-tuning.} Low-rank adaptation of the last few pLM layers, instead of fully frozen embeddings, scored $0.558$ and $0.567$ against $0.621$ for the frozen baseline, all three on the 2022 release under its own five-fold split rather than the protocol of \Cref{sec:app-old-protocol}. It also ran for fewer epochs in the same time budget, though we did not measure the cost directly.
   \item \textbf{Projector variants.} Multi-scale and multi-branch projectors between the embedding and the CNN--BiLSTM were tried as alternative re-projection schemes to the adapter of \Cref{sec:method}.
-  \item \textbf{Structural-projection width and telescopic CRF.} The width of the structural-feature projection (16/32/48 units) left pooled F1 flat at $0.691$, $0.697$ and $0.693$, the telescopic segment CRF, an alternative decoder formulation that scores whole segments through a relative-position head, came out level with the base decoder on ESM-2 and $+0.022$ ahead on ESM-C 6B. Per-protein outputs were not retained for either run, so neither number carries a confidence interval and we treat the modification as untested rather than as having no effect.
+  \item \textbf{Structural-projection width and telescopic CRF.} The width of the structural-feature projection (16/32/48 units) left pooled F1 flat at $0.691$, $0.697$ and $0.693$. The telescopic segment CRF, an alternative decoder formulation that scores whole segments through a relative-position head, came out level with the base decoder on ESM-2 and $+0.022$ ahead on ESM-C 6B. Per-protein outputs were not retained for either run, so neither number carries a confidence interval and we treat the modification as untested rather than as having no effect.
 \end{itemize}
 
 None of these modifications showed a consistent gain large enough, under the single-split protocol, to justify testing under nested cross-validation ahead of the two reported in the main text. The complete experiment log (including runs not summarized above) is maintained in the project repository rather than reproduced here, since it was collected under a protocol we no longer treat as sufficient evidence on its own.
@@ -716,7 +715,8 @@ $7.5\%$ further.
 
 \paragraph{Dropping the window.} A gate is itself a choice, so we also score the same predictions
 with no tolerance. Predicted and true segments of the same type are matched greedily one to one by
-intersection over union, and a match counts as a hit when the overlap clears a threshold on intersection over union.
+overlap, and a match counts as a hit when their intersection over union clears a threshold
+(\Cref{tab:iou}).
 Precision and recall use all predicted and all true segments as their denominators, so nothing is
 conditioned on what either model happened to find. Every configuration is scored on the
 $35{,}504$ protein-cells common to all runs, which takes the coverage difference between the two
@@ -754,13 +754,14 @@ base & $0.738$ & $0.672$ & $0.574$ & $0.496$ & $0.419$ \\
 
 \paragraph{Mostly placement.} The looser the criterion, the less either addition is worth.
 Paired by outer fold against the ESM-2 base, at a gate that asks only for a single residue of
-overlap the boundary head is worth $-0.013\pm0.026$ and the adapter $+0.006\pm0.012$, neither
-distinguishable from zero. At $\mathrm{IoU}\ge0.5$ they are worth $+0.001\pm0.021$ and $+0.019\pm0.017$,
+overlap the boundary head is worth $-0.013\pm0.026$, the adapter $+0.006\pm0.012$ and the two
+together $+0.018\pm0.025$, none of them distinguishable from zero. At $\mathrm{IoU}\ge0.5$ they are worth $+0.001\pm0.021$ and $+0.019\pm0.017$,
 and at $\mathrm{IoU}\ge0.9$ $+0.028\pm0.004$ and $+0.028\pm0.015$, both on five folds of five. Underneath
 that near-zero F1 at the overlap gate the two move in opposite directions: the head issues $219$
 fewer segments per fold, buying $+0.022$ precision for $-0.035$ recall, while the adapter issues
-$130$ more and buys $+0.024$ recall for $-0.021$ precision. The head finds no more of the annotation than the
-base does and the adapter only modestly more. What changes most is where the boundaries land, which
+$130$ more and buys $+0.024$ recall for $-0.021$ precision. The pair moves the same way as the adapter and no further,
+$+0.026$ of recall against $+0.004$ of precision. The head finds no more of the annotation than the
+base does, and neither the adapter nor the pair finds much more. What changes most is where the boundaries land, which
 is the conclusion \Cref{tab:main-results} reaches through a tolerance, reached here without one.
 
 The mean IoU taken over \emph{all} true segments moves the other way for the head, $0.576$ to
