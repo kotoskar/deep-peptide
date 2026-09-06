@@ -315,7 +315,7 @@ A widening gap is not proof of better localization, since a model that finds mor
 
 \paragraph{Capacity the base decoder cannot use.} The base architecture on ESM-C 6B reaches $0.588\pm0.016$ against $0.576\pm0.029$ on ESM-2, a paired difference of $+0.012\pm0.019$ over the five outer folds, so an embedding twice as wide buys no confirmed improvement on its own while either addition on the narrower one does. What they are worth there depends on which one. Paired by outer fold against its own base, the head gains $+0.054\pm0.026$ on ESM-C 6B against $+0.021\pm0.007$ on ESM-2, the adapter $+0.014\pm0.014$ against $+0.026\pm0.018$, and the two together $+0.079\pm0.009$ against $+0.054\pm0.016$, all six positive on five folds of five, though the ESM-C adapter's spread reaches zero. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched it is the less there is to re-project, whereas the head supplies position-specific evidence and a richer embedding carries more of it. Read the other way, the swap is worth $+0.012$ F1 under the base architecture and $+0.036$ under both additions, a split \Cref{sec:app-quality} reproduces on the protein-cells common to all runs.
 
-\section{Conclusion}
+\section{Conclusion and limitations}
 \label{sec:conclusion}
 
 A zero-initialized boundary head at the decoder and a lightweight adapter at the input improve

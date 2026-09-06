@@ -104,15 +104,15 @@ A widening gap is not proof of better localization, since a model that finds mor
 
 The base architecture on ESM-C 6B reaches 0.588±0.016 against 0.576±0.029 on ESM-2, a paired difference of +0.012±0.019 over the five outer folds, so an embedding twice as wide buys no confirmed improvement on its own while either addition on the narrower one does. What they are worth there depends on which one. Paired by outer fold against its own base, the head gains +0.054±0.026 on ESM-C 6B against +0.021±0.007 on ESM-2, the adapter +0.014±0.014 against +0.026±0.018, and the two together +0.079±0.009 against +0.054±0.016, all six positive on five folds of five, though the ESM-C adapter’s spread reaches zero. The adapter re-projects an embedding trained for masked-residue recovery, and the less mismatched it is the less there is to re-project, whereas the head supplies position-specific evidence and a richer embedding carries more of it. Read the other way, the swap is worth +0.012 F1 under the base architecture and +0.036 under both additions, a split Appendix&nbsp;G reproduces on the protein-cells common to all runs.
 
-# 6 Conclusion
+# 6 Conclusion and limitations
 
 A zero-initialized boundary head at the decoder and a lightweight adapter at the input improve segment F1 by +0.054 together on ESM-2 and +0.079 on ESM-C 6B. What matters for a design loop is where that gain comes from, and the two blocks answer differently. At a gate asking only for one residue of overlap the head covers less than the base while the adapter covers more, so the head’s contribution is placement alone and the adapter’s placement on top of coverage. What grows as the requirement tightens is placement, reaching +0.077±0.005 at exact match on ESM-2 and +0.095±0.015 on ESM-C 6B, each against its own base. An oracle asked whether a construct yields the peptide it was designed to yield is read at exactly that end of the curve, which is the end the benchmark reports least well.
 
-#### Limitations: the folds stay unequal.
+#### The folds stay unequal.
 
 Averaging over folds does not make them comparable, it only stops one of them deciding the result. GraphPart keeps homologs together, and taxa *are* homology clusters: 313 of 714 *Conus* sequences fall in fold 1 against 16 in fold 2, all 293 *Cyriopagopus* avoid fold 0 entirely, and the folds differ in size by a factor of two (Table&nbsp;3 in Appendix&nbsp;C). The base architecture scores 0.572, 0.599, 0.530, 0.576 and 0.604 on outer folds 0 to 4, a range of 0.074, three and a half times the +0.021 effect the same experiment resolves once averaged over them.
 
-#### Limitations: what the protocol does not settle.
+#### What the protocol does not settle.
 
 Nothing was selected on outer-fold scores inside confirmation, since every cell of the 2×2 is reported, but the screening that chose the candidates ran on the same proteins, and sealing that would take a third held-out level at roughly 1,600 GPU-hours for the grid, on 2/5 of an already small dataset. The spread covers fold composition and not seed variation, and the base row is untuned rather than the tuned published system (Appendix&nbsp;E).
 
