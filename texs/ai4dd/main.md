@@ -61,7 +61,7 @@ We ran the experiments in two stages.
 
 We first split the data into seven GraphPart folds with fixed roles: four for training, one for epoch selection, and two held out, one for comparing architectures and one intended as a sealed test, which the screening numbers pool. Against that split we screened roughly a dozen modifications, with the protocol, the verdict table and the per-candidate figures in Appendix&nbsp;F, among them the segment-type trade-offs and data-scaling curves of Figure&nbsp;6 and Figure&nbsp;7.
 
-The folds of that split are not interchangeable (Figure&nbsp;4 in that appendix), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the worth paying for, and two cleared that bar: the boundary head and the adapter sat at or above the base throughout.
+The folds of that split are not interchangeable (Figure&nbsp;4 in Appendix&nbsp;F), and under one assignment of roles several modifications changed the *sign* of their measured effect between the two held-out folds. A single draw of this kind cannot resolve an effect of 0.02–0.03, so none of those numbers is reported as a finding. It can, however, separate the consistently unhelpful from the promising, and two cleared that bar: the boundary head and the adapter sat at or above the base throughout.
 
 #### Confirmation.
 
