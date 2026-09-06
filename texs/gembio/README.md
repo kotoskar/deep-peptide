@@ -16,9 +16,9 @@ the work from the oracle end:
   can only use it at the resolution the oracle has been measured at;
 * the benchmark's ±3 acceptance window is most of a short peptide, so it cannot
   report the property a design loop needs;
-* the two blocks buy placement and not coverage, which the tolerance-free gate
-  establishes, and the gain is largest at exact placement, which is the end of
-  the curve a design loop reads.
+* the head's gain is placement alone and the adapter's placement on top of
+  coverage, which the tolerance-free gate establishes, and what grows as the
+  requirement tightens is placement, the end of the curve a design loop reads.
 
 Title, abstract, introduction, related work, the baseline paragraph and the
 conclusion are rewritten. Everything else is inherited.

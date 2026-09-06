@@ -12,9 +12,10 @@ vertical gap between lines.
     env/bin/python analysis/metrics/src/generators/fig_perfold.py
 """
 from __future__ import annotations
-import argparse, json, pathlib, statistics as st, sys
+import argparse, json, pathlib, re, statistics as st, sys
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from paperstyle import apply, SERIES_STYLE, textwidth  # noqa: E402
@@ -32,6 +33,27 @@ RUNS = [
 ]
 
 
+def fold_median_lengths(labels_csv, split_csv):
+    """Median true-segment length in each outer fold.
+
+    The folds are balanced on homology and cleavage motif, not on segment
+    length, so this axis was left free, and it is the axis quality tracks.
+    """
+    lab = pd.read_csv(labels_csv)
+    sp = pd.read_csv(split_csv)
+    fold = dict(zip(sp["AC"], sp["cluster"]))
+    lab = lab[lab["protein_id"].isin(fold)]
+    lens = {}
+    for _, r in lab.iterrows():
+        f = int(fold[r["protein_id"]])
+        for col in ("coordinates", "propeptide_coordinates"):
+            v = r[col]
+            if isinstance(v, str):
+                for a, b in re.findall(r"\((\d+)-(\d+)\)", v):
+                    lens.setdefault(f, []).append(int(b) - int(a) + 1)
+    return {f: st.median(v) for f, v in lens.items()}
+
+
 def per_outer(run, root, tol=3):
     d = json.load(open(pathlib.Path(root) / run / "nested_cv_tolerance.json"))
     v = d[f"per_outer_tol{tol}_all_f1"]
@@ -42,6 +64,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="runs")
     ap.add_argument("--outdir", default="texs/ai4dd/figures")
+    ap.add_argument("--labels", default="data/uniprot_2026/labeled_sequences.csv")
+    ap.add_argument("--split",
+                    default="data/uniprot_2026/graphpart_assignments_5motif.esm2covered.csv")
     args = ap.parse_args()
 
     series = []
@@ -51,8 +76,13 @@ def main() -> int:
         except FileNotFoundError:
             print(f"[skip] {run}")
 
+    # What each fold is made of, on the axis quality actually tracks.
+    med = fold_median_lengths(args.labels, args.split)
+
     apply()
-    fig, ax = plt.subplots(figsize=(textwidth(1.0), 2.5), layout="constrained")
+    fig, (ax, axl) = plt.subplots(
+        2, 1, figsize=(textwidth(1.0), 2.9), height_ratios=[2.4, 1.0],
+        sharex=True, layout="constrained")
     x = list(range(5))
     for label, key, ys in series:
         colour, marker, dash = SERIES_STYLE[key]
@@ -64,11 +94,14 @@ def main() -> int:
     hi = [max(ys[i] for _, _, ys in series) for i in x]
     ax.fill_between(x, lo, hi, color="#9AA5A6", alpha=0.13, zorder=0, linewidth=0)
 
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"fold {i}" for i in x])
+    axl.bar(x, [med[i] for i in x], color="#9AA5A6", alpha=0.55, width=0.6, linewidth=0)
+    axl.set_ylabel("median segment\nlength (residues)")
+    axl.set_xticks(x)
+    axl.set_xticklabels([f"fold {i}" for i in x])
+    axl.set_xlabel("outer fold of the nested cross-validation")
     ax.set_ylabel("segment F1 at $\\pm3$")
-    ax.set_xlabel("outer fold of the nested cross-validation")
-    ax.margins(x=0.04)
+    for a in (ax, axl):
+        a.margins(x=0.04)
     fig.legend(loc="outside lower center", ncols=2, handlelength=2.4, columnspacing=1.6)
 
     out = pathlib.Path(args.outdir) / "fig_perfold.png"
@@ -90,6 +123,10 @@ def main() -> int:
         + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
     print(f"wrote {tex}")
 
+    order_f1 = sorted(x, key=lambda i: series[0][2][i])
+    order_len = sorted(x, key=lambda i: med[i])
+    print(f"folds by base F1     : {order_f1}")
+    print(f"folds by median length: {order_len}")
     spread = [max(ys) - min(ys) for _, _, ys in series]
     across = [max(s[2][i] for s in series) - min(s[2][i] for s in series) for i in x]
     print(f"within-configuration range across folds: {min(spread):.3f} to {max(spread):.3f}")
