@@ -85,12 +85,6 @@ def load_example():
 
 # ------------------------------------------------------------------ drawing ---
 
-# Width of the lane-label gutter, in residues. Panel (a) spans the figure while
-# (b) and (c) lose width to the curve panel's axis decorations, so the top row is
-# pulled in to keep the three panels reading as one block.
-LABEL_GUTTER = 8
-
-
 def draw_example(ax, ex):
     """Three stacked lanes, cropped to the informative part of the chain.
 
@@ -102,8 +96,8 @@ def draw_example(ax, ex):
     """
     L = ex["length"]
     lanes = [("annotation", ex["true"], True),
-             ("base", ex["base"], False),
-             ("+ both", ex["full"], False)]
+             ("baseline", ex["base"], False),
+             ("ours", ex["full"], False)]
     h, gap = 0.9, 0.12                      # lanes essentially touching
     cuts = sorted({c for segs in ex["true"].values() for s in segs for c in s})
     x0 = max(1, min(cuts) - 9)              # keep a little N-terminal context
@@ -127,7 +121,8 @@ def draw_example(ax, ex):
                 if is_true:
                     ax.text((s + e) / 2, y + h / 2, TYPE_LABEL[task], ha="center",
                             va="center", fontsize=6, color="white", zorder=5)
-        ax.text(x0 - 1.6, y + h / 2, label, ha="right", va="center", fontsize=6.5)
+        ax.text(x0 + 0.6, y + h / 2, label, ha="left", va="center", fontsize=6,
+                color="#4A4A4A", zorder=6)
 
     # Displacement of each baseline cut, drawn inside its own lane.
     y_base = (len(lanes) - 2) * (h + gap)
@@ -148,7 +143,7 @@ def draw_example(ax, ex):
                     ax.text(true_c + (3.4 if d > 0 else -3.4), top + 0.05, f"{d:+d}",
                             ha="center", va="bottom", fontsize=5.8, color=AIRI["E21"])
 
-    ax.set_xlim(x0 - LABEL_GUTTER, L + 1.5)
+    ax.set_xlim(x0 - 0.5, L + 1.5)
     ax.set_ylim(-0.35, top + 0.75)
     ax.set_yticks([])
     ax.set_xticks([x0] + [t for t in (20, 30, 40, 50, 60, L) if t > x0 + 3])
