@@ -86,14 +86,15 @@ an Embedding Adapter, and What a $\pm3$ Benchmark Hides}
 Designing a peptide construct means predicting where proteases will cut it, and a design loop can
 only use a cleavage predictor at the resolution that predictor is measured at. The benchmark for
 this task accepts a predicted segment when both of its endpoints land within $\pm3$ residues of the
-annotation, which on a 5--50 residue peptide is most of the peptide: an oracle can improve its
+annotation, a window comparable to the peptide itself at the short end of the 5--50 residue range:
+an oracle can improve its
 score by finding more segments while placing none of them better, and can place every boundary
 exactly and gain almost nothing. We make placement the target of both the model and the
 measurement. Two small additions to the strongest available segmenter, a zero-initialized boundary
 head that gives its conditional random field the position-specific evidence its own state graph
 already distinguishes, and a lightweight adapter that re-projects the frozen protein language model
 embedding, improve segment F1 by $+0.054$ together on ESM-2 and $+0.079$ on ESM-C 6B under the
-$5\times4$ nested cross-validation the benchmark itself uses. Scored without any acceptance window, the head
+$5\times4$ nested cross-validation DeepPeptide itself uses. Scored without any acceptance window, the head
 covers less of the annotation than the base and the adapter covers more, so most of what the pair
 buys is placement rather than coverage, which is what a design loop needs and what a $\pm3$ window
 cannot report. We also quantify why this benchmark is
@@ -119,8 +120,8 @@ Corrected matcher throughout, means over the five outer folds.}
 \end{figure}
 
 %Proteomic data typically records only the amino acid sequences of intact proteins, not the products of their cleavage, so predicting where a precursor will be cut -- and which resulting fragments are functional peptides rather than discarded propeptides -- has direct value in several applied settings. 
-Peptide and protein therapeutics are designed as precursors, and what reaches the target is
-whatever the proteases of the host leave behind. A multi-epitope vaccine construct is the clearest
+Many peptide and protein therapeutics are expressed as precursors, and what reaches the target
+is whatever the host's proteases leave behind. A multi-epitope vaccine construct is the clearest
 case: the fragments it presents are cut out in vivo, so the construct has to be checked at the
 design stage for the peptides it will actually yield and for junctions prone to unwanted cleavage.
 A model that predicts those cuts is an oracle in the design loop, and the loop can only use it at
@@ -136,28 +137,27 @@ place every boundary on the annotated residue and gain almost nothing, because p
 close were already counted. For a design loop the second is the expensive one: moving a cut by
 three residues changes the peptide, and the metric that ranks oracles cannot see the difference.
 
-Two of our three contributions are accordingly about measurement rather than architecture: what
-each block buys, decomposed at a criterion with no acceptance window, and why this benchmark is
-hard to measure on at all.
-
 We therefore make placement the target of both the model and the measurement. The oracle we start
 from is DeepPeptide~\citep{deeppeptide2023}, the strongest general-purpose model for this
-formulation. It has three parts: a frozen protein language model, a CNN--BiLSTM encoder, and a
-linear-chain CRF~\citep{lafferty2001crf}. The CRF has separate states for the start, the interior
+formulation. It has three parts: a frozen protein language model (pLM), a CNN--BiLSTM encoder, and a
+linear-chain conditional random field (CRF)~\citep{lafferty2001crf}. The CRF has separate states for the start, the interior
 and the end of a segment, so any valid path must visit them in that order, and the decoder is
 boundary-aware by design. The encoder gives it nothing to work with: every state of the same
 segment type receives the same emission score. Closing that gap is the natural way to sharpen
 placement rather than merely find more segments, and we close it with two small, independent
-additions evaluated under the $5\times4$ nested cross-validation the benchmark itself uses, on the
+additions evaluated under the $5\times4$ nested cross-validation DeepPeptide itself uses, on the
 DeepPeptide dataset rebuilt from the 2026 UniProtKB/Swiss-Prot release
-(\Cref{sec:eval-protocol,sec:dataset}).
+(\Cref{sec:eval-protocol,sec:dataset}). Our contributions are those two blocks, a decomposition of
+what each buys at a criterion with no acceptance window, and a quantified account of why this
+benchmark is hard to measure on at all, so two of the three are about measurement rather than
+architecture.
 
 \section{Related work}
 \label{sec:related}
 
 Most predictors of proteolytic cleavage are specific by construction, covering a fixed set of
 proteases with known recognition motifs~\citep{duckert2004prop,song2012prosper,li2023prosperousplus,li2020deepcleave,li2020procleave}
-or one product class in one kind of organism~\citep{southey2006neuropred,wang2024deepneuropepred},
+or one product class, usually neuropeptides~\citep{southey2006neuropred,wang2024deepneuropepred},
 and neither answers what an organism's full complement of proteases does to a designed precursor.
 General-purpose models on frozen pLM embeddings~\citep{lin2023esm2,esm_cambrian_blog_2024} mostly
 score peptides already excised~\citep{du2024plm4ace,bpfun2025} rather than locating them, and
@@ -208,11 +208,11 @@ Against that split we screened roughly a dozen modifications, with the protocol,
 and the per-candidate figures in \Cref{sec:app-old-protocol}, among them the segment-type
 trade-offs and data-scaling curves of \Cref{fig:trades,fig:datascale}.
  
-The folds of that split are not interchangeable (\Cref{fig:folds} in that appendix), and under one assignment of
+The folds of that split are not interchangeable (\Cref{fig:folds} in \Cref{sec:app-old-protocol}), and under one assignment of
 roles several modifications changed the \emph{sign} of their measured effect between the two
 held-out folds. A single draw of this kind cannot resolve an effect of $0.02$--$0.03$, so none of
 those numbers is reported as a finding. It can, however, separate the consistently unhelpful
-from the worth paying for, and two cleared that bar: the boundary head and the adapter sat at or
+from the promising, and two cleared that bar: the boundary head and the adapter sat at or
 above the base throughout.
  
 \paragraph{Confirmation.}
@@ -275,9 +275,9 @@ A widening gap is not proof of better localization, since a model that finds mor
 A zero-initialized boundary head at the decoder and a lightweight adapter at the input improve
 segment F1 by $+0.054$ together on ESM-2 and $+0.079$ on ESM-C 6B. Where that gain comes from matters for a design loop. At a gate asking
 only for one residue of overlap the head covers less than the base while the adapter covers more,
-so the head's contribution is placement alone and the adapter's placement on top of coverage. What grows as the requirement tightens is placement,
-reaching $+0.077\pm0.005$ at exact match on ESM-2 and $+0.095\pm0.015$ on ESM-C 6B, each against
-its own base. An oracle asked whether a construct yields the peptide it was designed to yield
+so the head's contribution is placement alone and the adapter's placement on top of coverage. What grows as the requirement tightens is placement: the pair's
+advantage reaches $+0.077\pm0.005$ at exact match on ESM-2 and $+0.095\pm0.015$ on ESM-C 6B, each
+against its own base. An oracle asked whether a construct yields the peptide it was designed to yield
 is read at that end of the curve, which is the end the benchmark reports least well.
 
 \paragraph{The folds stay unequal.} Averaging over folds does not make them comparable, it only stops
@@ -291,8 +291,9 @@ segment length, on which quality is far from flat (\Cref{fig:bylength} in \Cref{
 
 \paragraph{What the protocol does not settle.} Nothing was selected on outer-fold
 scores inside confirmation, since every cell of the $2\times2$ is reported, but the screening that
-chose the candidates (\Cref{sec:app-old-protocol}) ran on the same proteins, and sealing that would take a third held-out level
-at roughly 1{,}600 GPU-hours for the grid, on 2/5 of the data. The spread covers fold composition, not seed
+chose the candidates (\Cref{sec:app-old-protocol}) ran on the same proteins the folds are drawn
+from, and sealing that would take a third held-out level at roughly 1{,}600 GPU-hours for the grid,
+on a training fraction cut from 3/5 to 2/5 of an already small dataset. The spread covers fold composition, not seed
 variation, and the base row is untuned rather than the published system (\Cref{sec:app-upstream}).
 
 \bibliographystyle{plainnat}

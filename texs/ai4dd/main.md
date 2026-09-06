@@ -1,6 +1,6 @@
 # Placement, Not Coverage: Position-Aware CRF Emissions for Proteolytic Segmentation
 
-*Anonymous submission — AI4DD @ NeurIPS 2026. Rendered from `texs/ai4dd/main.tex`.*
+*Anonymous submission — AI for Drug Discovery (NeurIPS 2026). Rendered from `texs/ai4dd/main.tex`.*
 
 ## Abstract
 

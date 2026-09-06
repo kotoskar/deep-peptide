@@ -180,9 +180,15 @@ def front_matter(tex: str) -> str:
     abstract = re.search(r'\\begin\{abstract\}(.*?)\\end\{abstract\}', tex, re.S)
     parts = []
     if title:
-        parts.append('# ' + re.sub(r'\s+', ' ', title.group(1)).strip())
-    parts.append('*Anonymous submission — AI4DD @ NeurIPS 2026. '
-                 'Rendered from `texs/ai4dd/main.tex`.*')
+        head = re.sub(r'\s+', ' ', title.group(1)).strip()
+        head = re.sub(r'\$(.+?)\$', lambda m: demath(m.group(1)), head)
+        parts.append('# ' + demath(head))
+    # The venue comes from the file, so the two copies of this script cannot
+    # disagree with the paper they render.
+    venue = re.search(r'\\workshoptitle\{(.*?)\}', tex, re.S)
+    venue = re.sub(r'\s+', ' ', venue.group(1)).strip() if venue else 'NeurIPS 2026'
+    parts.append(f'*Anonymous submission — {venue}. '
+                 f'Rendered from `texs/ai4dd/main.tex`.*')
     if abstract:
         body = abstract.group(1)
         body = re.sub(r'%.*', '', body)
