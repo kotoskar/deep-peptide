@@ -32,13 +32,14 @@ def textwidth(frac=1.0):
 # Canonical (colour, marker, linestyle) per role, reused across figures so a
 # given model looks the same wherever it appears.
 SERIES_STYLE = {
+    # Two channels, one meaning each: colour+marker say which architecture,
+    # dash says which embedding. Solid is ESM-2, dashed is ESM-C 6B, so a
+    # reader can read either question off the plot without the legend.
     "base_esm2":       (AIRI["E22"], "o", "-"),
-    "base_esmc":       (AIRI["A"],   "s", "--"),
     "boundary":        (AIRI["E21"], "^", "-"),
-    "adapter":         (AIRI["F2"],  "D", "-."),
-    "full":            (AIRI["C"],   "v", (0, (3, 1, 1, 1))),
-    # ESM-C 6B variants (branch B: appear only once runs/5cv_esmc6b_* exist).
-    # Same marker as the ESM-2 counterpart, dashed like the ESM-C base.
+    "adapter":         (AIRI["F2"],  "D", "-"),
+    "full":            (AIRI["C"],   "v", "-"),
+    "base_esmc":       (AIRI["E22"], "o", "--"),
     "boundary_esmc":   (AIRI["E21"], "^", "--"),
     "adapter_esmc":    (AIRI["F2"],  "D", "--"),
     "full_esmc":       (AIRI["C"],   "v", "--"),

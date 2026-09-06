@@ -118,10 +118,9 @@ Adapter for Predicting Proteolytic Peptides and Propeptides}
 % (5cv_baseline_esm2_fp32); the bf16 run it replaced scored 0.5725 +- 0.0253
 % against 0.5761 +- 0.0294, so the precision confound was worth 0.0036 and every
 % effect shrank by 6-23% without changing a sign, a fold count or the ordering.
-% ESM-C 6B is back in the main text with the base, the boundary head and both
-% additions; the adapter-only cell of that factorial is 9/20 and is deliberately
-% absent rather than described as pending. Figure 1 is regenerated from
-% fig_hook_cv.py and skips incomplete runs by default.
+% ESM-C 6B is back in the main text as a full 2x2, so Table 1 carries eight rows.
+% Figure 1 is regenerated from fig_hook_cv.py --abc: problem, architecture,
+% result.
 %
 % Appendix D (sec:app-quality) is new: the tolerance-free suite. Its headline is
 % that at a gate asking only for one residue of overlap neither addition gains
@@ -206,7 +205,7 @@ Most predictors of proteolytic cleavage are specific by construction: one line c
 \section{Method}
 \label{sec:method}
 
-\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
+\paragraph{The base architecture.} DeepPeptide passes a frozen ESM-2 embedding through a CNN--BiLSTM stack and decodes it with a linear-chain CRF that expands each of $\{\textsf{Peptide}, \textsf{Propeptide}\}$ into a chain of up to 50 position states, 101 in all, so a legal path can only realize a contiguous segment of admissible length. The encoder computes one emission per label and shares it across all 50 states of that label: the decoder is boundary-aware, the features feeding it are not. The two additions close that gap from opposite ends of the pipeline (\Cref{fig:hook}b, drawn at reading size in \Cref{fig:arch}). Other embedding sources and architectural modifications were screened as well, with verdicts in \Cref{sec:app-old-protocol}.
 
 
 \paragraph{Boundary head.} A small feed-forward block (LayerNorm, Linear, GELU, Linear, hidden size 64) is applied to the contextual per-residue features. For each position and each segment type it emits three numbers, scoring how much that position looks like a segment start, an interior position, or a segment end, and these are added to the emissions of the corresponding position-fixed CRF states. The final linear layer is initialized to zero, so training begins at exactly the base model and the head only learns corrections that lower the loss. It costs 4{,}678 parameters on a trainable stack of 224{,}710.
@@ -359,7 +358,7 @@ Methods for predicting proteolytic peptides fall into three broad classes.
 
 \textbf{Baseline architecture: DeepPeptide.} Since we build directly on it throughout this paper (\Cref{sec:method}), DeepPeptide's architecture is worth describing in detail rather than treating as a black box. It first encodes a precursor sequence with a frozen pLM (ESM-2), producing a per-residue embedding that is not fine-tuned during training. This embedding is refined by a convolution, a single-layer bidirectional LSTM and a second convolution. The published description does not fix the widths: they are searched with Optuna inside the inner cross-validation loop. The configuration we train throughout uses 32 convolutional filters of width 3 and an LSTM hidden size of 64 per direction, giving 224{,}710 trainable parameters for the base model. These features are consumed by a linear-chain CRF decoder whose state set is extended well beyond the three raw labels $\{\textsf{None}, \textsf{Peptide}, \textsf{Propeptide}\}$: each of the two positive labels is expanded into a chain of states long enough to represent segments up to a fixed maximum length (101 states in total for the 50-residue cap used here, \Cref{sec:dataset}), so that a legal path through the CRF can only realize a contiguous segment of valid length, with dedicated states marking its first and last positions. This makes segmentation, rather than independent per-residue classification, the object the model is directly optimized for -- and it is also where the gap described in \Cref{sec:intro} lives: every state in this extended set that shares a type receives the same emission from the encoder, regardless of whether it marks the start, interior, or end of a segment.
 
-\textbf{Baseline dataset for this task.} Beyond its architecture, DeepPeptide also established the data resource this line of work relies on: precursor sequences from UniProtKB/Swiss-Prot annotated with \texttt{PEPTIDE} and \texttt{PROPEP} feature types, partitioned into homology-aware folds with GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity threshold and additionally balanced by cleavage-flanking motif, then evaluated with the same family of nested cross-validation we adopt (\Cref{sec:eval-protocol}). This gave the field a standardized, already homology-controlled benchmark rather than an ad hoc collection of previously published peptide lists, and both the curated data and the construction pipeline that produced it are public. \Cref{sec:dataset} describes what we do with that resource: rebuilding it on a current UniProtKB/Swiss-Prot release, which adds 1{,}170 proteins and refreshes the annotations behind every segment.
+\textbf{Baseline dataset for this task.} Beyond its architecture, DeepPeptide also established the data resource this line of work relies on: precursor sequences from UniProtKB/Swiss-Prot annotated with \texttt{PEPTIDE} and \texttt{PROPEP} feature types, partitioned into homology-aware folds with GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity threshold and additionally balanced by cleavage-flanking motif, then evaluated with the same family of nested cross-validation we adopt (\Cref{sec:eval-protocol}). This gave the field a standardized, already homology-controlled benchmark rather than an ad hoc collection of previously published peptide lists, and both the curated data and the construction pipeline that produced it are public. \Cref{sec:dataset} describes what we do with that resource: rebuilding it on a current UniProtKB/Swiss-Prot release, which adds 1{,}170 proteins net and refreshes the annotations behind every segment.
 
 Among these, DeepPeptide is, to our knowledge, the only model that poses the task as full segmentation of the precursor into typed peptide and propeptide segments, and it is the strongest available baseline for this formulation. We therefore use its architecture and its dataset-construction methodology as the starting point for this work, rather than treating it as a system to audit: our contribution is an architectural addition to this general recipe (\Cref{sec:method}), evaluated under the same $5\times4$ nested cross-validation it uses (\Cref{sec:eval}) on data rebuilt from a current release (\Cref{sec:dataset}).
 
@@ -378,13 +377,25 @@ Among these, DeepPeptide is, to our knowledge, the only model that poses the tas
  & \textbf{2022} & \textbf{2026} \\
 \midrule
 Proteins & 8449 & 9619 \\
-\quad of which absent in 2022 & --- & 1178 ($\approx$12\%) \\
 Peptide segments & 6372 & 7431 \\
 Propeptide segments & 8211 & 9140 \\
 Median peptide length (residues) & 21 & 20 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[ht]
+\centering
+\MaybeImage{figures/architecture_scheme.jpg}{1.0}
+\caption{The base architecture and the two additions, at reading size. \Cref{fig:hook}b shows the
+same diagram at the scale of a single panel, where it locates the two blocks rather than
+documenting them. Top: the pipeline, with the adapter between the frozen pLM and the
+CNN--BiLSTM encoder and the boundary head reading the encoder's output. Bottom: what the head
+adds. The base model computes one emission per label and shares it across all 50 position states
+of that label, so the CRF's start, interior and end states are fed identical evidence. The head
+emits three numbers per position and per segment type and adds them to the states they describe.}
+\label{fig:arch}
+\end{figure}
 
 \begin{figure}[ht]
 \centering
