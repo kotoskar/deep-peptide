@@ -85,6 +85,12 @@ def load_example():
 
 # ------------------------------------------------------------------ drawing ---
 
+# Width of the lane-label gutter, in residues. Panel (a) spans the figure while
+# (b) and (c) lose width to the curve panel's axis decorations, so the top row is
+# pulled in to keep the three panels reading as one block.
+LABEL_GUTTER = 8
+
+
 def draw_example(ax, ex):
     """Three stacked lanes, cropped to the informative part of the chain.
 
@@ -95,9 +101,9 @@ def draw_example(ax, ex):
     shortened.
     """
     L = ex["length"]
-    lanes = [("Annotation", ex["true"], True),
-             ("ESM-2, base", ex["base"], False),
-             ("+ head + adapter", ex["full"], False)]
+    lanes = [("annotation", ex["true"], True),
+             ("base", ex["base"], False),
+             ("+ both", ex["full"], False)]
     h, gap = 0.9, 0.12                      # lanes essentially touching
     cuts = sorted({c for segs in ex["true"].values() for s in segs for c in s})
     x0 = max(1, min(cuts) - 9)              # keep a little N-terminal context
@@ -142,7 +148,7 @@ def draw_example(ax, ex):
                     ax.text(true_c + (3.4 if d > 0 else -3.4), top + 0.05, f"{d:+d}",
                             ha="center", va="bottom", fontsize=5.8, color=AIRI["E21"])
 
-    ax.set_xlim(x0 - 15, L + 1.5)
+    ax.set_xlim(x0 - LABEL_GUTTER, L + 1.5)
     ax.set_ylim(-0.35, top + 0.75)
     ax.set_yticks([])
     ax.set_xticks([x0] + [t for t in (20, 30, 40, 50, 60, L) if t > x0 + 3])
@@ -249,14 +255,15 @@ def main() -> int:
         # The scheme is 2.24:1, so it needs the wider of the two lower cells or it
         # sits in a letterbox with the curve panel towering over it.
         fig = plt.figure(figsize=(textwidth(1.0), 3.02), layout="constrained")
-        gs = fig.add_gridspec(2, 2, height_ratios=[0.58, 1.5], width_ratios=[1.45, 1.0],
-                              hspace=0.02)
+        gs = fig.add_gridspec(2, 2, height_ratios=[0.52, 1.5], width_ratios=[1.12, 1.0],
+                              hspace=0.02, wspace=0.05)
         ax_ex = fig.add_subplot(gs[0, :])
         ax_arch = fig.add_subplot(gs[1, 0])
         ax_gap = fig.add_subplot(gs[1, 1])
         ex = load_example()
         draw_example(ax_ex, ex)
         ax_arch.imshow(_trim_white(mpimg.imread(args.arch)))
+        ax_arch.set_anchor("W")
         ax_arch.set_axis_off()
         ax_arch.set_title("(b) where they attach", loc="left")
     else:
@@ -275,7 +282,8 @@ def main() -> int:
         # and keep only the gap, which is the panel that carries the argument.
         scratch = fig.add_subplot(gs[1, 0]); scratch.set_visible(False)
         draw_curves(scratch, ax_gap, loaded, args.tolerances, args.task)
-        ax_gap.set_title("(c) gap to the base", loc="left")
+        ax_gap.set_ylabel("")
+        ax_gap.set_title("(c) F1 gap to the ESM-2 base", loc="left")
         legend_src = scratch
     else:
         draw_curves(ax_abs, ax_gap, loaded, args.tolerances, args.task)
