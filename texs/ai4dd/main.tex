@@ -221,7 +221,7 @@ Most predictors of proteolytic cleavage are specific by construction: one line c
 \subsection{Dataset}
 \label{sec:dataset}
 A precursor $x=(a_1,\dots,a_L)$ is labelled per residue with $y_t \in \{\textsf{None},\textsf{Peptide},\textsf{Propeptide}\}$ and contiguous runs of a label form typed segments, so the task is to recover which stretches of a precursor become mature peptides and which become propeptides that are excised and discarded.
-DeepPeptide built its dataset from \texttt{PEPTIDE} and \texttt{PROPEP} annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release~\citep{uniprot2025}. The collection grows from 8{,}449 proteins to 9{,}619, of which 8{,}897 carry ESM-2 embeddings and enter the five folds used here.
+DeepPeptide built its dataset from \texttt{PEPTIDE} and \texttt{PROPEP} annotations in the 2022 Swiss-Prot release. We rebuilt it with the same pipeline on the 2026 release~\citep{uniprot2025}. The collection grows from 8{,}449 proteins to 9{,}619, of which 8{,}897 both carry ESM-2 embeddings and enter the five folds used here.
 Folds come from GraphPart~\citep{graphpart2023} at a 30\% pairwise-identity ceiling, balanced by cleavage-motif class. Segment-length filtering, motif balancing and the full composition of the rebuild are given in \Cref{sec:app-problem}.
 
 \subsection{Evaluation criterion}
